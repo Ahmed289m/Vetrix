@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends
 
 from app.controllers.user_controller import UserController
+from app.core.permission_checker import TokenData, require_permission, require_clinic_id
+from app.core.permissions import Permissions
 from app.routes.dependencies import get_user_controller
 from app.schemas.user import UserCreate, UserUpdate
 
@@ -10,9 +12,18 @@ router = APIRouter(prefix="/users", tags=["users"])
 @router.post("")
 async def create_user(
     request: UserCreate,
+    current_user: TokenData = Depends(require_permission(Permissions.USERS_CREATE)),
+    clinic_check: TokenData = Depends(require_clinic_id()),
     controller: UserController = Depends(get_user_controller),
 ) -> dict:
-    created = await controller.create_user(request)
+    """
+    Create a new user (OWNER/ADMIN only).
+    
+    - ADMIN can create users in any clinic
+    - OWNER can create DOCTOR, STAFF, CLIENT in their clinic (not other OWNER)
+    - Current user's clinic_id is automatically assigned
+    """
+    created = await controller.create_user(request, current_user)
     return {
         "success": True,
         "message": "User created successfully.",
@@ -22,9 +33,17 @@ async def create_user(
 
 @router.get("")
 async def list_users(
+    current_user: TokenData = Depends(require_permission(Permissions.USERS_READ)),
+    clinic_check: TokenData = Depends(require_clinic_id()),
     controller: UserController = Depends(get_user_controller),
 ) -> dict:
-    users = await controller.list_users()
+    """
+    List users (authorized users only).
+    
+    - ADMIN sees all users
+    - OWNER/STAFF/DOCTOR see only users in their clinic
+    """
+    users = await controller.list_users(current_user)
     return {
         "success": True,
         "message": "Users fetched successfully.",
@@ -35,9 +54,17 @@ async def list_users(
 @router.get("/{user_id}")
 async def get_user(
     user_id: str,
+    current_user: TokenData = Depends(require_permission(Permissions.USERS_READ)),
     controller: UserController = Depends(get_user_controller),
 ) -> dict:
-    user = await controller.get_user(user_id)
+    """
+    Get a specific user.
+    
+    - ADMIN can read any user
+    - OWNER/STAFF/DOCTOR can read users in their clinic
+    - CLIENT can read only themselves
+    """
+    user = await controller.get_user(user_id, current_user)
     return {
         "success": True,
         "message": "User fetched successfully.",
@@ -49,9 +76,18 @@ async def get_user(
 async def update_user(
     user_id: str,
     request: UserUpdate,
+    current_user: TokenData = Depends(require_permission(Permissions.USERS_UPDATE)),
     controller: UserController = Depends(get_user_controller),
 ) -> dict:
-    updated = await controller.update_user(user_id, request)
+    """
+    Update a user (authorized users only).
+    
+    - ADMIN can update any user
+    - OWNER can update DOCTOR, STAFF, CLIENT in their clinic
+    - CLIENT can update only themselves
+    - Users cannot change their own role
+    """
+    updated = await controller.update_user(user_id, request, current_user)
     return {
         "success": True,
         "message": "User updated successfully.",
@@ -62,9 +98,16 @@ async def update_user(
 @router.delete("/{user_id}")
 async def delete_user(
     user_id: str,
+    current_user: TokenData = Depends(require_permission(Permissions.USERS_DELETE)),
     controller: UserController = Depends(get_user_controller),
 ) -> dict:
-    await controller.delete_user(user_id)
+    """
+    Delete a user (OWNER/ADMIN only).
+    
+    - ADMIN can delete any user
+    - OWNER can delete DOCTOR, STAFF, CLIENT in their clinic (not other OWNER)
+    """
+    await controller.delete_user(user_id, current_user)
     return {
         "success": True,
         "message": "User deleted successfully.",

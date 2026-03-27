@@ -1,3 +1,4 @@
+from app.core.permission_checker import TokenData
 from app.schemas.clinic import ClinicCreate, ClinicUpdate
 from app.services.clinic_service import ClinicService
 
@@ -9,8 +10,8 @@ class ClinicController:
     async def create_clinic(self, request: ClinicCreate) -> dict:
         return await self.clinic_service.create_clinic(request)
 
-    async def list_clinics(self) -> list[dict]:
-        return await self.clinic_service.list_clinics()
+    async def list_clinics(self, current_user: TokenData) -> list[dict]:
+        return await self.clinic_service.list_clinics(current_user)
 
     async def get_clinic(self, clinic_id: str) -> dict:
         return await self.clinic_service.get_clinic(clinic_id)

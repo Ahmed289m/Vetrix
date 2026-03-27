@@ -10,5 +10,6 @@ class Pet(BaseModel):
     type: PetType
     client_id: str
     clinic_id: str
+    owner_id: str | None = None  # For CLIENT ownership tracking
 
     model_config = ConfigDict(from_attributes=True, use_enum_values=True, populate_by_name=True)

@@ -10,7 +10,9 @@ class User(BaseModel):
     email: EmailStr
     password: str
     role: UserRole
-    clinic_id: str
+    clinic_id: str | None = None
+    is_active: bool = True
+    is_superuser: bool = False
 
     model_config = ConfigDict(from_attributes=True, use_enum_values=True, populate_by_name=True)
 

@@ -20,6 +20,10 @@ class UserRepository:
     async def list_users(self) -> list[dict]:
         return await self.collection.find().to_list(length=None)
 
+    async def list_users_by_clinic(self, clinic_id: str) -> list[dict]:
+        """List all users in a specific clinic."""
+        return await self.collection.find({"clinic_id": clinic_id}).to_list(length=None)
+
     async def update_user(self, user_id: str, payload: dict) -> dict | None:
         return await self.collection.find_one_and_update(
             {"$or": [{"_id": user_id}, {"user_id": user_id}]},

@@ -2,17 +2,17 @@ from pydantic import BaseModel, ConfigDict
 
 
 class PrescriptionCreate(BaseModel):
-    clinic_id: str
     client_id: str
     pet_id: str
     prescriptionItem_id: str
+    # clinic_id is set automatically from current_user
 
 
 class PrescriptionUpdate(BaseModel):
-    clinic_id: str | None = None
     client_id: str | None = None
     pet_id: str | None = None
     prescriptionItem_id: str | None = None
+    # clinic_id is immutable after creation
 
 
 class PrescriptionResponse(BaseModel):

@@ -30,9 +30,22 @@ class AuthService:
                 detail="Invalid email or password.",
             )
 
+        # Check if user is active
+        if not user.get("is_active", True):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User account is inactive.",
+            )
+
         subject = user.get("email")
         access_token = create_access_token(
-            subject=subject, extra_claims={"role": user.get("role"), "clinic_id": user.get("clinic_id")}
+            subject=subject,
+            extra_claims={
+                "role": user.get("role"),
+                "clinic_id": user.get("clinic_id"),
+                "is_superuser": user.get("is_superuser", False),
+                "email": user.get("email"),
+            },
         )
         refresh_token = create_refresh_token(subject=subject)
 

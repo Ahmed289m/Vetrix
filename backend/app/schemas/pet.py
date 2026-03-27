@@ -8,7 +8,7 @@ class PetCreate(BaseModel):
     weight: float
     type: PetType
     client_id: str
-    clinic_id: str
+    # clinic_id is set automatically from current_user
 
 
 class PetUpdate(BaseModel):
@@ -16,7 +16,7 @@ class PetUpdate(BaseModel):
     weight: float | None = None
     type: PetType | None = None
     client_id: str | None = None
-    clinic_id: str | None = None
+    # clinic_id is immutable after creation
 
 
 class PetResponse(BaseModel):
@@ -26,5 +26,6 @@ class PetResponse(BaseModel):
     type: PetType
     client_id: str
     clinic_id: str
+    owner_id: str | None = None
 
     model_config = ConfigDict(from_attributes=True)

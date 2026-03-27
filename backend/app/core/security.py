@@ -22,6 +22,17 @@ def create_access_token(
     expires_delta: timedelta | None = None,
     extra_claims: dict[str, Any] | None = None,
 ) -> str:
+    """
+    Create a JWT access token with optional extra claims (role, clinic_id, is_superuser).
+    
+    Args:
+        subject: User identifier (typically user_id or email)
+        expires_delta: Custom expiration time
+        extra_claims: Additional claims to include (role, clinic_id, is_superuser, email)
+    
+    Returns:
+        Encoded JWT token string
+    """
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=settings.access_token_expire_minutes)
     )

@@ -1,7 +1,10 @@
 from fastapi import HTTPException, status
 from uuid import uuid4
 
+from app.core.auth_utils import can_manage_user
+from app.core.permission_checker import TokenData
 from app.core.security import get_password_hash
+from app.models.enums.user_role import UserRole
 from app.models.user import User
 from app.repositories.clinic_repository import ClinicRepository
 from app.repositories.user_repository import UserRepository
@@ -29,11 +32,42 @@ class UserService:
         user.pop("password", None)
         return user
 
-    async def create_user(self, request: UserCreate) -> dict:
-        user_id = f"user_{uuid4().hex[:12]}"
-        clinic = await self.clinic_repository.get_by_clinic_id(request.clinic_id)
+    async def create_user(self, request: UserCreate, current_user: TokenData) -> dict:
+        """
+        Create a new user with authorization checks.
+        
+        - ADMIN can create users in any clinic
+        - OWNER can create DOCTOR, STAFF, CLIENT in their clinic (not OWNER)
+        - Target role cannot be higher than creator
+        """
+        # Enforce clinic isolation
+        clinic_id = request.clinic_id or current_user.clinic_id
+        if not clinic_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="clinic_id is required",
+            )
+        
+        if not current_user.is_superuser and current_user.clinic_id != clinic_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot create users in other clinics",
+            )
+        
+        # Verify clinic exists
+        clinic = await self.clinic_repository.get_by_clinic_id(clinic_id)
         if not clinic:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Clinic not found.")
+        
+        # Prevent non-admin from creating admin/owner
+        target_role = request.role
+        if not can_manage_user(current_user, target_role):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Not authorized to create user with role {target_role}",
+            )
+        
+        user_id = f"user_{uuid4().hex[:12]}"
         if await self.user_repository.get_by_user_id(user_id):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="User id already exists.")
 
@@ -55,26 +89,85 @@ class UserService:
             email=email_value,
             password=get_password_hash(password_value),
             role=request.role,
-            clinic_id=request.clinic_id,
+            clinic_id=clinic_id,
         )
         created = await self.user_repository.create_user(user_model.model_dump())
         return self._sanitize(created)
 
-    async def list_users(self) -> list[dict]:
-        users = await self.user_repository.list_users()
+    async def list_users(self, current_user: TokenData) -> list[dict]:
+        """
+        List users based on current user's role.
+        
+        - ADMIN sees all users
+        - OWNER/STAFF/DOCTOR see only users in their clinic
+        """
+        if current_user.is_superuser:
+            users = await self.user_repository.list_users()
+        else:
+            # Filter by clinic
+            if not current_user.clinic_id:
+                return []
+            users = await self.user_repository.list_users_by_clinic(current_user.clinic_id)
+        
         return [self._sanitize(user) for user in users]
 
-    async def get_user(self, user_id: str) -> dict:
+    async def get_user(self, user_id: str, current_user: TokenData) -> dict:
+        """
+        Get a user with clinic isolation check.
+        
+        - ADMIN can read any user
+        - Others can read users in their clinic
+        - CLIENT can read only themselves
+        """
         user = await self.user_repository.get_by_user_id(user_id)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+        
+        # Clinic isolation check
+        if not current_user.is_superuser:
+            if user.get("clinic_id") != current_user.clinic_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied",
+                )
+        
         return self._sanitize(user)
 
-    async def update_user(self, user_id: str, request: UserUpdate) -> dict:
+    async def update_user(self, user_id: str, request: UserUpdate, current_user: TokenData) -> dict:
+        """
+        Update a user with authorization checks.
+        
+        - ADMIN can update any user
+        - OWNER can update DOCTOR, STAFF, CLIENT in their clinic
+        - CLIENT can update only themselves
+        - Users cannot change their own role (prevent privilege escalation)
+        """
         current = await self.user_repository.get_by_user_id(user_id)
         if not current:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
 
+        # Clinic isolation check
+        if not current_user.is_superuser:
+            if current.get("clinic_id") != current_user.clinic_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied",
+                )
+        
+        # CLIENT can only update themselves
+        if current_user.role == UserRole.CLIENT and current_user.user_id != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Clients can only update their own profile",
+            )
+        
+        # Prevent role change (privilege escalation)
+        if request.role is not None and request.role != current.get("role"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot change user role",
+            )
+        
         payload = request.model_dump(exclude_none=True)
         if not payload:
             raise HTTPException(
@@ -103,7 +196,32 @@ class UserService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
         return self._sanitize(updated)
 
-    async def delete_user(self, user_id: str) -> None:
+    async def delete_user(self, user_id: str, current_user: TokenData) -> None:
+        """
+        Delete a user with authorization checks.
+        
+        - ADMIN can delete any user
+        - OWNER can delete DOCTOR, STAFF, CLIENT in their clinic
+        """
+        user = await self.user_repository.get_by_user_id(user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+        
+        # Clinic isolation check
+        if not current_user.is_superuser:
+            if user.get("clinic_id") != current_user.clinic_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied",
+                )
+            
+            # OWNER cannot delete higher-level users
+            if not can_manage_user(current_user, user.get("role")):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Not authorized to delete {user.get('role')} users",
+                )
+        
         deleted = await self.user_repository.delete_user(user_id)
         if not deleted:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")

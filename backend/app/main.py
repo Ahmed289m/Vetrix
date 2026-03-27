@@ -5,8 +5,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
-from app.core.database import close_mongo_connection, connect_to_mongo
+from app.core.database import close_mongo_connection, connect_to_mongo, get_database
 from app.middlewares.auth_middleware import AuthMiddleware
+from app.repositories.user_repository import UserRepository
 from app.routes.auth import router as auth_router
 from app.routes.appointment import router as appointment_router
 from app.routes.drug import router as drug_router
@@ -16,14 +17,23 @@ from app.routes.prescription import router as prescription_router
 from app.routes.prescription_item import router as prescription_item_router
 from app.routes.visit import router as visit_router
 from app.routes.user import router as user_router
+from app.services.admin_bootstrap_service import AdminBootstrapService
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    # Startup
     await connect_to_mongo()
     try:
+        # Bootstrap admin user
+        db = get_database()
+        user_repo = UserRepository(db)
+        bootstrap_service = AdminBootstrapService(user_repo)
+        await bootstrap_service.bootstrap_admin()
+        
         yield
     finally:
+        # Shutdown
         await close_mongo_connection()
 
 

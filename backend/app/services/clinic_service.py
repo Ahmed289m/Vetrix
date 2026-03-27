@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 from uuid import uuid4
 
+from app.core.permission_checker import TokenData
 from app.models.clinic import Clinic
 from app.repositories.clinic_repository import ClinicRepository
 from app.schemas.clinic import ClinicCreate, ClinicUpdate
@@ -32,8 +33,23 @@ class ClinicService:
         created = await self.clinic_repository.create_clinic(payload)
         return self._serialize_clinic(created)
 
-    async def list_clinics(self) -> list[dict]:
-        clinics = await self.clinic_repository.list_clinics()
+    async def list_clinics(self, current_user: TokenData) -> list[dict]:
+        """
+        List clinics based on user role.
+        - ADMIN: sees all clinics
+        - OWNER: sees only their clinic
+        """
+        if current_user.is_superuser:
+            # Admin sees all clinics
+            clinics = await self.clinic_repository.list_clinics()
+        else:
+            # OWNER/others see only their clinic
+            if current_user.clinic_id:
+                clinic = await self.clinic_repository.get_by_clinic_id(current_user.clinic_id)
+                clinics = [clinic] if clinic else []
+            else:
+                clinics = []
+        
         return [self._serialize_clinic(clinic) for clinic in clinics]
 
     async def get_clinic(self, clinic_id: str) -> dict:
