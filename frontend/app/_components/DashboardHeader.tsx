@@ -1,18 +1,21 @@
 "use client";
 
-import { Bell, Search, Sun, Moon, Languages } from "lucide-react";
+import { Sun, Moon, Languages } from "lucide-react";
 import { SidebarTrigger } from "@/app/_components/ui/sidebar";
 import { useLang } from "@/app/_hooks/useLanguage";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/_components/ui/tooltip";
 import { useTheme } from "@/app/_hooks/useTheme";
+import { AgencyModeToggle, UiMode } from "@/app/_components/AgencyModeToggle";
 
 type Role = "doctor" | "staff" | "admin" | "owner" | "client";
 
 interface DashboardHeaderProps {
   role: Role;
+  uiMode: UiMode;
+  onUiModeChange: (mode: UiMode) => void;
 }
 
-export function DashboardHeader({ role }: DashboardHeaderProps) {
+export function DashboardHeader({ role, uiMode, onUiModeChange }: DashboardHeaderProps) {
   const { isDark, toggle } = useTheme();
   const { t, lang, setLang } = useLang();
 
@@ -25,37 +28,21 @@ export function DashboardHeader({ role }: DashboardHeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-20 px-4 sm:px-8 py-4 flex items-center gap-4 bg-background/20 backdrop-blur-md border-b border-border/5">
+    <header className="sticky top-0 z-20 px-4 sm:px-6 py-3 flex items-center gap-3 bg-background/40 backdrop-blur-md border-b border-border/10">
       {/* Mobile menu toggle */}
-      <div className="flex items-center gap-4 lg:hidden">
-        <SidebarTrigger className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-foreground hover:bg-white/10 transition-colors" />
+      <div className="flex items-center gap-2 lg:hidden shrink-0">
+        <SidebarTrigger className="w-10 h-10 rounded-xl bg-muted/20 border border-border/20 flex items-center justify-center text-foreground hover:bg-muted/30 transition-colors" />
       </div>
 
-      {/* Search bar */}
-      <div className="flex-1 max-w-xl group">
-        <div className="relative flex items-center">
-          <div className="absolute left-4 z-10">
-            <Search className="w-4.5 h-4.5 text-muted-foreground/60 group-focus-within:text-emerald transition-colors" />
-          </div>
-          <input
-            type="text"
-            placeholder={t("search_anything")}
-            className="w-full h-11 pl-11 pr-4 rounded-2xl bg-white/5 border border-white/5 focus:border-emerald/30 focus:bg-white/[0.07] outline-none text-sm transition-all duration-300 placeholder:text-muted-foreground/40"
-          />
-          <div className="absolute right-3 hidden sm:flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-white/5">
-            <span className="text-[10px] font-black text-muted-foreground/60">⌘ K</span>
-          </div>
-        </div>
-      </div>
 
-      <div className="flex items-center gap-3 ml-auto">
+      <div className="flex items-center gap-2 sm:gap-3 ml-auto shrink-0">
         <TooltipProvider>
           {/* Theme toggle */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={toggleTheme}
-                className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-muted-foreground hover:text-emerald hover:bg-emerald/5 hover:border-emerald/20 transition-all duration-200 shadow-sm
+                className="w-10 h-10 rounded-xl bg-muted/20 border border-border/10 flex items-center justify-center text-muted-foreground hover:text-emerald hover:bg-emerald/5 hover:border-emerald/20 transition-all duration-200 shadow-sm
                 transform hover:scale-[1.05] active:scale-[0.95]"
               >
                 {isDark ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
@@ -66,26 +53,13 @@ export function DashboardHeader({ role }: DashboardHeaderProps) {
             </TooltipContent>
           </Tooltip>
 
-          {/* Notifications */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                className="relative w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-muted-foreground hover:text-emerald hover:bg-emerald/5 hover:border-emerald/20 transition-all duration-300 shadow-sm"
-              >
-                <Bell className="w-4.5 h-4.5" />
-                <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-coral shadow-[0_0_8px_rgba(239,68,68,0.5)] animate-pulse" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent className="bg-popover border-border/10 text-xs font-bold px-3 py-1.5 rounded-lg shadow-xl">
-              {t("notifications")}
-            </TooltipContent>
-          </Tooltip>
+          <AgencyModeToggle mode={uiMode} onChange={onUiModeChange} compact />
 
           {/* Settings */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-muted-foreground hover:text-emerald hover:bg-emerald/5 hover:border-emerald/20 transition-all duration-300 shadow-sm hidden sm:flex"
+                className="w-10 h-10 rounded-xl bg-muted/20 border border-border/10 flex items-center justify-center text-muted-foreground hover:text-emerald hover:bg-emerald/5 hover:border-emerald/20 transition-all duration-300 shadow-sm hidden sm:flex"
                 onClick={toggleLang}
               >
                 <Languages className="w-4.5 h-4.5" />
@@ -97,12 +71,14 @@ export function DashboardHeader({ role }: DashboardHeaderProps) {
           </Tooltip>
         </TooltipProvider>
 
-        <div className="w-px h-6 bg-white/10 mx-1 hidden sm:block" />
+        <div className="w-px h-6 bg-border/20 mx-0.5 hidden md:block" />
 
         {/* User profile summary */}
-        <div className="flex items-center gap-3 pl-2 cursor-pointer group transition-transform duration-200 hover:translate-x-[2px]">
-          <div className="hidden sm:block text-right">
-            <p className="text-xs font-black capitalize leading-none group-hover:text-emerald transition-colors">Dr. {role}</p>
+        <div className="flex items-center gap-2 sm:gap-3 pl-0 sm:pl-1 cursor-pointer group transition-transform duration-200 hover:translate-x-[2px]">
+          <div className="hidden md:block text-right">
+            <p className="text-xs font-black capitalize leading-none group-hover:text-emerald transition-colors">
+              {role === "doctor" ? "Dr. " : ""}{role}
+            </p>
             <p className="text-[10px] text-muted-foreground/60 mt-1 font-bold uppercase tracking-wider">
               {t(role === "doctor" ? "veterinarian" : "reception")}
             </p>

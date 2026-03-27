@@ -1,8 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "@/app/_components/fast-motion";
-import { Plus, Search, UserPlus, PawPrint, Mail, Phone, MapPin, X, Dog, Cat, Bird, ChevronRight, Edit2, Trash2 } from "lucide-react";
+import { Plus, Search, UserPlus, PawPrint, Mail, Phone, MapPin, Dog, Cat, Bird, ChevronRight, Edit2, Trash2 } from "lucide-react";
+import { DashboardForm } from "@/app/_components/ui/dashboard-form";
+import { Input } from "@/app/_components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/_components/ui/select";
+import { motion, AnimatePresence } from "framer-motion";
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -33,16 +42,22 @@ interface Owner {
 const speciesIcons = { dog: Dog, cat: Cat, bird: Bird, other: PawPrint };
 
 const initialOwners: Owner[] = [
-  { id: "1", firstName: "Sarah", lastName: "Mitchell", email: "sarah.m@email.com", phone: "+1 555-0101", address: "123 Oak Street", hasAccount: true, pets: [
-    { id: "p1", name: "Bella", species: "dog", breed: "Golden Retriever", age: "4 years", weight: "28.5 kg" },
-    { id: "p2", name: "Whiskers", species: "cat", breed: "Persian", age: "2 years", weight: "4.2 kg" },
-  ], createdAt: "2024-01-15" },
-  { id: "2", firstName: "Tom", lastName: "Parker", email: "tom.p@email.com", phone: "+1 555-0102", address: "456 Elm Avenue", hasAccount: true, pets: [
-    { id: "p3", name: "Max", species: "cat", breed: "Siamese", age: "3 years", weight: "3.8 kg" },
-  ], createdAt: "2024-02-20" },
-  { id: "3", firstName: "Maria", lastName: "Garcia", email: "maria.g@email.com", phone: "+1 555-0103", address: "789 Pine Road", hasAccount: false, pets: [
-    { id: "p4", name: "Luna", species: "dog", breed: "Labrador", age: "2 years", weight: "25.0 kg" },
-  ], createdAt: "2024-03-10" },
+  {
+    id: "1", firstName: "Sarah", lastName: "Mitchell", email: "sarah.m@email.com", phone: "+1 555-0101", address: "123 Oak Street", hasAccount: true, pets: [
+      { id: "p1", name: "Bella", species: "dog", breed: "Golden Retriever", age: "4 years", weight: "28.5 kg" },
+      { id: "p2", name: "Whiskers", species: "cat", breed: "Persian", age: "2 years", weight: "4.2 kg" },
+    ], createdAt: "2024-01-15"
+  },
+  {
+    id: "2", firstName: "Tom", lastName: "Parker", email: "tom.p@email.com", phone: "+1 555-0102", address: "456 Elm Avenue", hasAccount: true, pets: [
+      { id: "p3", name: "Max", species: "cat", breed: "Siamese", age: "3 years", weight: "3.8 kg" },
+    ], createdAt: "2024-02-20"
+  },
+  {
+    id: "3", firstName: "Maria", lastName: "Garcia", email: "maria.g@email.com", phone: "+1 555-0103", address: "789 Pine Road", hasAccount: false, pets: [
+      { id: "p4", name: "Luna", species: "dog", breed: "Labrador", age: "2 years", weight: "25.0 kg" },
+    ], createdAt: "2024-03-10"
+  },
   { id: "4", firstName: "James", lastName: "Wilson", email: "james.w@email.com", phone: "+1 555-0104", address: "321 Maple Drive", hasAccount: false, pets: [], createdAt: "2024-03-15" },
 ];
 
@@ -83,8 +98,8 @@ export default function OwnersPage() {
     <motion.div variants={{ animate: { transition: { staggerChildren: 0.06 } } }} initial="initial" animate="animate" className="space-y-6 max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
       <motion.div variants={fadeUp} className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold text-emerald uppercase tracking-widest mb-1">Client Management</p>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Owners & Pets</h2>
+          <p className="text-xs font-semibold text-emerald uppercase tracking-widest mb-1">Clinical Network</p>
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Client <span className="text-emerald">Management</span></h2>
           <p className="text-sm text-muted-foreground mt-1">{owners.length} registered owners · {owners.reduce((sum, o) => sum + o.pets.length, 0)} pets</p>
         </div>
         <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setShowCreateOwner(true)} className="flex items-center gap-2 gradient-emerald-cyan text-primary-foreground px-5 py-3 rounded-xl text-sm font-bold glow-emerald ripple">
@@ -100,55 +115,124 @@ export default function OwnersPage() {
       </motion.div>
 
       {/* Create Owner Modal */}
-      <AnimatePresence>
-        {showCreateOwner && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-background/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowCreateOwner(false)}>
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="glass-card p-6 w-full max-w-lg space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold">Create Owner Profile</h3>
-                <button onClick={() => setShowCreateOwner(false)} className="p-1.5 rounded-lg hover:bg-muted"><X className="w-4 h-4" /></button>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs font-semibold text-muted-foreground mb-1 block">First Name *</label><input value={newOwner.firstName} onChange={(e) => setNewOwner((p) => ({ ...p, firstName: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none focus:border-emerald/30" /></div>
-                <div><label className="text-xs font-semibold text-muted-foreground mb-1 block">Last Name *</label><input value={newOwner.lastName} onChange={(e) => setNewOwner((p) => ({ ...p, lastName: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none focus:border-emerald/30" /></div>
-              </div>
-              <div><label className="text-xs font-semibold text-muted-foreground mb-1 block">Email</label><input value={newOwner.email} onChange={(e) => setNewOwner((p) => ({ ...p, email: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none focus:border-emerald/30" /></div>
-              <div><label className="text-xs font-semibold text-muted-foreground mb-1 block">Phone</label><input value={newOwner.phone} onChange={(e) => setNewOwner((p) => ({ ...p, phone: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none focus:border-emerald/30" /></div>
-              <div><label className="text-xs font-semibold text-muted-foreground mb-1 block">Address</label><input value={newOwner.address} onChange={(e) => setNewOwner((p) => ({ ...p, address: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none focus:border-emerald/30" /></div>
-              <button onClick={handleCreateOwner} className="w-full gradient-emerald-cyan text-primary-foreground py-3 rounded-xl text-sm font-bold glow-emerald">Create Owner</button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <DashboardForm
+        title="Create Owner Profile"
+        description="Register a new clinical owner to the system."
+        isOpen={showCreateOwner}
+        onOpenChange={setShowCreateOwner}
+        onSubmit={(e: React.FormEvent) => { e.preventDefault(); handleCreateOwner(); }}
+        submitLabel="Create Owner"
+      >
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1">First Name *</label>
+              <Input
+                value={newOwner.firstName}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewOwner((p) => ({ ...p, firstName: e.target.value }))}
+                className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Last Name *</label>
+              <Input
+                value={newOwner.lastName}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewOwner((p) => ({ ...p, lastName: e.target.value }))}
+                className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Email</label>
+            <Input
+              value={newOwner.email}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewOwner((p) => ({ ...p, email: e.target.value }))}
+              className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Phone</label>
+            <Input
+              value={newOwner.phone}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewOwner((p) => ({ ...p, phone: e.target.value }))}
+              className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Address</label>
+            <Input
+              value={newOwner.address}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewOwner((p) => ({ ...p, address: e.target.value }))}
+              className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
+            />
+          </div>
+        </div>
+      </DashboardForm>
 
       {/* Add Pet Modal */}
-      <AnimatePresence>
-        {showAddPet && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-background/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowAddPet(null)}>
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="glass-card p-6 w-full max-w-lg space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold">Add Pet</h3>
-                <button onClick={() => setShowAddPet(null)} className="p-1.5 rounded-lg hover:bg-muted"><X className="w-4 h-4" /></button>
-              </div>
-              <div><label className="text-xs font-semibold text-muted-foreground mb-1 block">Pet Name *</label><input value={newPet.name} onChange={(e) => setNewPet((p) => ({ ...p, name: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none focus:border-emerald/30" /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">Species</label>
-                  <select value={newPet.species} onChange={(e) => setNewPet((p) => ({ ...p, species: e.target.value as Pet["species"] }))} className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none">
-                    <option value="dog">Dog</option><option value="cat">Cat</option><option value="bird">Bird</option><option value="other">Other</option>
-                  </select>
-                </div>
-                <div><label className="text-xs font-semibold text-muted-foreground mb-1 block">Breed</label><input value={newPet.breed} onChange={(e) => setNewPet((p) => ({ ...p, breed: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none focus:border-emerald/30" /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs font-semibold text-muted-foreground mb-1 block">Age</label><input value={newPet.age} onChange={(e) => setNewPet((p) => ({ ...p, age: e.target.value }))} placeholder="e.g. 3 years" className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none focus:border-emerald/30" /></div>
-                <div><label className="text-xs font-semibold text-muted-foreground mb-1 block">Weight</label><input value={newPet.weight} onChange={(e) => setNewPet((p) => ({ ...p, weight: e.target.value }))} placeholder="e.g. 12.5 kg" className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none focus:border-emerald/30" /></div>
-              </div>
-              <button onClick={() => handleAddPet(showAddPet)} className="w-full gradient-emerald-cyan text-primary-foreground py-3 rounded-xl text-sm font-bold glow-emerald">Add Pet</button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <DashboardForm
+        title="Add New Pet"
+        description="Register a new patient for this owner."
+        isOpen={!!showAddPet}
+        onOpenChange={(open: boolean) => !open && setShowAddPet(null)}
+        onSubmit={(e: React.FormEvent) => { e.preventDefault(); showAddPet && handleAddPet(showAddPet); }}
+        submitLabel="Register Pet"
+      >
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Pet Name *</label>
+            <Input
+              value={newPet.name}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewPet((p) => ({ ...p, name: e.target.value }))}
+              className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Species</label>
+              <Select value={newPet.species} onValueChange={(val) => setNewPet((p) => ({ ...p, species: val as any }))}>
+                <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-black uppercase tracking-tight">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
+                  <SelectItem value="dog" className="rounded-xl font-bold">Dog</SelectItem>
+                  <SelectItem value="cat" className="rounded-xl font-bold">Cat</SelectItem>
+                  <SelectItem value="bird" className="rounded-xl font-bold">Bird</SelectItem>
+                  <SelectItem value="other" className="rounded-xl font-bold">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Breed</label>
+              <Input
+                value={newPet.breed}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewPet((p) => ({ ...p, breed: e.target.value }))}
+                className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Age</label>
+              <Input
+                value={newPet.age}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewPet((p) => ({ ...p, age: e.target.value }))}
+                placeholder="e.g. 3 years"
+                className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Weight</label>
+              <Input
+                value={newPet.weight}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewPet((p) => ({ ...p, weight: e.target.value }))}
+                placeholder="e.g. 12.5 kg"
+                className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
+              />
+            </div>
+          </div>
+        </div>
+      </DashboardForm>
 
       {/* Owner List */}
       <motion.div variants={fadeUp} className="space-y-3">
@@ -183,7 +267,7 @@ export default function OwnersPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                         <div className="flex items-center gap-2 text-muted-foreground"><Phone className="w-3.5 h-3.5" />{owner.phone || "No phone"}</div>
                         <div className="flex items-center gap-2 text-muted-foreground"><MapPin className="w-3.5 h-3.5" />{owner.address || "No address"}</div>
-                        <div className="text-muted-foreground">Registered: {owner.createdAt}</div>
+                        <div className="text-muted-foreground">Registered: {new Date(owner.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-2">

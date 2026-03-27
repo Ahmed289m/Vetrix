@@ -20,13 +20,13 @@ import {
   Hash,
   Calculator,
   FileText,
-  CalendarCheck,
-  Users,
-  Eye,
+  UserPlus,
+  Store,
+  Heart,
+  Calendar,
   Package,
-  Receipt,
-  TrendingUp,
-  BookOpen,
+  BarChart3,
+  Wallet,
   ChevronRight,
 } from "lucide-react";
 
@@ -47,64 +47,64 @@ const navItems: NavItem[] = [
     roles: ["doctor", "staff", "admin", "owner", "client"],
   },
   {
-    href: "/dashboard/cases",
-    labelKey: "cases",
-    icon: Hash,
-    roles: ["doctor", "staff"],
+    href: "/dashboard/users",
+    labelKey: "users_management",
+    icon: UserPlus,
+    roles: ["admin", "owner"],
   },
   {
-    href: "/dashboard/calculators",
-    labelKey: "calculators",
-    icon: Calculator,
-    roles: ["doctor"],
+    href: "/dashboard/clinics",
+    labelKey: "clinics",
+    icon: Store,
+    roles: ["admin", "owner"],
+  },
+  {
+    href: "/dashboard/owners",
+    labelKey: "clients",
+    icon: UserPlus,
+    roles: ["staff", "doctor", "owner", "admin"],
+  },
+  {
+    href: "/dashboard/pets",
+    labelKey: "patients",
+    icon: Heart,
+    roles: ["staff", "doctor", "owner", "client"],
+  },
+  {
+    href: "/dashboard/cases",
+    labelKey: "visits_cases",
+    icon: Hash,
+    roles: ["doctor", "staff", "owner"],
+  },
+  {
+    href: "/dashboard/appointments",
+    labelKey: "appointments",
+    icon: Calendar,
+    roles: ["staff", "owner", "client"],
   },
   {
     href: "/dashboard/prescriptions",
     labelKey: "prescriptions",
     icon: FileText,
+    roles: ["doctor", "owner"],
+  },
+  {
+    href: "/dashboard/calculators",
+    labelKey: "medical_calculators",
+    icon: Calculator,
     roles: ["doctor"],
   },
   {
-    href: "/dashboard/bookings",
-    labelKey: "bookings",
-    icon: CalendarCheck,
-    roles: ["staff"],
-  },
-  {
-    href: "/dashboard/owners",
-    labelKey: "owners_pets",
-    icon: Users,
-    roles: ["staff"],
-  },
-  {
-    href: "/dashboard/visits",
-    labelKey: "visits",
-    icon: Eye,
-    roles: ["staff"],
-  },
-  {
-    href: "/dashboard/inventory",
-    labelKey: "inventory",
-    icon: Package,
-    roles: ["staff"],
-  },
-  {
-    href: "/dashboard/invoices",
-    labelKey: "invoices",
-    icon: Receipt,
-    roles: ["staff"],
+    href: "/dashboard/reports",
+    labelKey: "analytics_reports",
+    icon: BarChart3,
+    roles: ["owner"],
   },
   {
     href: "/dashboard/finances",
-    labelKey: "finances",
-    icon: TrendingUp,
-    roles: ["staff"],
-  },
-  {
-    href: "/dashboard/reports",
-    labelKey: "reports",
-    icon: BookOpen,
-    roles: ["staff"],
+    labelKey: "financial_overview",
+    icon: Wallet,
+    roles: ["owner"],
   },
 ];
 
@@ -117,31 +117,31 @@ export function DashboardSidebar({ role }: { role: Role }) {
   return (
     <Sidebar
       variant="sidebar"
-      collapsible="none"
-      className="border-r border-border/5 bg-sidebar/60 backdrop-blur-xl"
+      collapsible="icon"
+      className="border-r border-border/10 bg-sidebar/60 backdrop-blur-xl"
     >
       {" "}
-      <SidebarHeader className="p-6 border-b border-border/10">
+      <SidebarHeader className="pt-8 pb-2 border-b border-border/10">
         <div className="flex flex-col items-center text-center">
           <div className="relative group">
             <div className="absolute -inset-1 from-emerald to-cyan rounded-xl blur opacity-25 group-hover:opacity-50 transition duration-500" />
             <Image
               src="/logo.svg"
               alt="Vetrix logo"
-              width={120}
-              height={120}
-              className="relative w-[120px] h-[120px] object-contain  transform group-hover:scale-105 transition-transform duration-300"
+              width={110}
+              height={110}
+              className="relative w-[110px] h-[110px] object-contain transform group-hover:scale-105 transition-transform duration-300"
             />
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 mt-2">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald animate-pulse" />
-            <p className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-[0.18em] leading-none">
-              {role} portal
+            <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-[0.18em] leading-none">
+              {role === "doctor" ? "Medical Portal" : "Management Portal"}
             </p>
           </div>
         </div>
       </SidebarHeader>
-      <SidebarContent className="custom-scrollbar px-2 py-4">
+      <SidebarContent className="custom-scrollbar px-2 py-1">
         <SidebarGroup>
           <SidebarGroupLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 px-4 mb-4">
             {t("navigation")}
@@ -158,11 +158,10 @@ export function DashboardSidebar({ role }: { role: Role }) {
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
-                      className={`relative flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-semibold transition-all duration-300 group overflow-hidden ${
-                        isActive
+                      className={`relative flex items-center gap-3.5 px-4 py-2.5 rounded-sm text-sm font-semibold transition-all duration-200 group overflow-hidden ${isActive
                           ? "bg-emerald/10 text-emerald"
                           : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-                      }`}
+                        }`}
                     >
                       <Link href={item.href}>
                         {isActive && (
@@ -186,8 +185,8 @@ export function DashboardSidebar({ role }: { role: Role }) {
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4 border-t border-border/10 bg-sidebar/30">
-        <div className="group flex items-center gap-3 px-3 py-3 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:border-emerald/20 transition-all duration-300 transition-transform duration-200 group-hover:scale-[1.02]">
+      <SidebarFooter className="p-4 border-t border-border/10">
+        <div className="group flex items-center gap-3 px-3 py-3 rounded-2xl bg-muted/20 border border-border/10 cursor-pointer hover:border-emerald/20 transition-all duration-300 transition-transform duration-200 group-hover:scale-[1.02]">
           <div className="relative">
             <div className="absolute -inset-0.5 bg-gradient-to-br from-emerald to-cyan rounded-lg blur-[2px] opacity-0 group-hover:opacity-40 transition duration-300" />
             <div className="relative w-9 h-9 rounded-lg gradient-emerald-cyan flex items-center justify-center text-xs font-black text-white uppercase shadow-md leading-none">
@@ -196,7 +195,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-black capitalize tracking-tight truncate group-hover:text-emerald transition-colors">
-              Dr. {role}
+              {role === "doctor" ? "Dr. " : ""}{role}
             </p>
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald shadow-[0_0_5px_rgba(16,185,129,0.5)]" />

@@ -33,7 +33,7 @@ const quickPrompts = [
   { label: "Emergency protocol", icon: Zap },
 ];
 
-export function ChatAssistant({ role }: { role: "doctor" | "staff" }) {
+export function ChatAssistant({ role }: { role: "doctor" | "staff" | "admin" | "owner" | "client" }) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -93,7 +93,9 @@ export function ChatAssistant({ role }: { role: "doctor" | "staff" }) {
           <div className="flex-1 min-w-0">
             <h3 className="text-lg font-extrabold tracking-tight gradient-text">Vetrix AI Assistant</h3>
             <p className="text-xs text-muted-foreground">
-              {role === "doctor" ? "Clinical intelligence · Protocols · Patient records" : "Scheduling · Billing · Inventory queries"}
+              {role === "doctor"
+                ? "Clinical intelligence · Protocols · Patient records"
+                : "Scheduling · Billing · Inventory queries"}
             </p>
           </div>
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald/10 border border-emerald/20">

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import SimulationMode from "../../_components/SimulationMode";
+import { useLang } from "@/app/_hooks/useLanguage";
 
 const stagger = { animate: { transition: { staggerChildren: 0.06 } } };
 const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" as const } } };
@@ -63,11 +64,11 @@ export function DoctorDashboard() {
   const [showSim, setShowSim] = useState(false);
 
   return (
-    <motion.div variants={stagger} initial="initial" animate="animate" className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+    <motion.div variants={stagger} initial="initial" animate="animate" className="space-y-5 sm:space-y-6 max-w-7xl mx-auto">
       <motion.div variants={fadeUp} className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <p className="text-xs font-semibold text-emerald uppercase tracking-widest mb-1">GOOD MORNING</p>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Welcome back <span className="gradient-text">Dr. Emily</span></h2>
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-arabic">Welcome back <span className="gradient-text">Dr. Emily</span></h2>
           <p className="text-sm text-muted-foreground mt-1.5"><span className="font-semibold text-foreground">4 Surgeries</span> and <span className="font-semibold text-foreground">8 Consultations</span> scheduled today.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -93,7 +94,7 @@ export function DoctorDashboard() {
       </AnimatePresence>
 
       <motion.div variants={fadeUp}>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-card-foreground">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-card-foreground">
           {clinicStats.map((s, i) => (
             <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
               className={`glass-card p-4 card-hover cursor-default border ${s.border}`}>
@@ -105,7 +106,7 @@ export function DoctorDashboard() {
         </div>
       </motion.div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
         <motion.div variants={fadeUp} className="xl:col-span-2">
           <div className="glass-card p-5 border-glow text-card-foreground">
             <div className="flex items-center justify-between mb-5">
@@ -113,12 +114,12 @@ export function DoctorDashboard() {
               <span className="text-xs font-bold text-emerald tabular-nums">{appointments.length} Scheduled</span>
             </div>
             <div className="relative space-y-0">
-              <div className="absolute left-[55px] sm:left-[67px] top-0 bottom-0 w-px bg-border" />
+              <div className="absolute left-[50px] sm:left-[67px] top-0 bottom-0 w-px bg-border/50" />
               {appointments.map((apt, i) => (
                 <motion.div key={apt.time} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
                   className="relative flex items-stretch gap-3 sm:gap-4 py-3 group cursor-pointer">
-                  <span className="text-xs sm:text-sm font-mono tabular-nums text-muted-foreground w-10 sm:w-12 shrink-0 pt-2 text-right">{apt.time}</span>
-                  <div className="relative z-10 flex flex-col items-center shrink-0 pt-2"><div className={`w-3 h-3 rounded-full ${statusDot[apt.status]} ring-2 ring-background`} /></div>
+                  <span className="text-[11px] sm:text-sm font-mono tabular-nums text-muted-foreground w-9 sm:w-12 shrink-0 pt-2 text-right">{apt.time}</span>
+                  <div className="relative z-10 flex flex-col items-center shrink-0 pt-2"><div className={`w-2.5 h-2.5 rounded-full ${statusDot[apt.status]} ring-2 ring-background`} /></div>
                   <div className={`flex-1 p-3 sm:p-4 rounded-xl border ${statusColors[apt.status]} backdrop-blur-sm group-hover:scale-[1.01] transition-all duration-300`}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-3 min-w-0">
@@ -138,7 +139,7 @@ export function DoctorDashboard() {
         <motion.div variants={fadeUp} className="space-y-6">
           <div className="glass-card p-5 text-card-foreground">
             <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {quickActions.map((action, i) => (
                 <motion.button key={action.title} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.08 }}
                   className="group flex flex-col items-center gap-2.5 p-4 rounded-xl bg-muted/30 border border-border/50 hover:border-emerald/30 hover:bg-emerald/5 transition-all duration-300 ripple"
@@ -157,9 +158,13 @@ export function DoctorDashboard() {
                 {diseaseData.map((entry, index) => (<Cell key={index} fill={entry.color} />))}
               </Pie><Tooltip contentStyle={{ backgroundColor: "hsl(217, 33%, 17%)", border: "1px solid hsl(217, 33%, 22%)", borderRadius: "12px", fontSize: "12px", color: "hsl(210, 20%, 92%)" }} /></PieChart>
             </ResponsiveContainer>
-            <div className="grid grid-cols-2 gap-2 mt-2">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-4">
               {diseaseData.slice(0, 4).map(d => (
-                <div key={d.name} className="flex items-center gap-2"><div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: d.color }} /><span className="text-[11px] text-muted-foreground truncate">{d.name}</span><span className="text-[11px] font-bold tabular-nums ml-auto">{d.value}%</span></div>
+                <div key={d.name} className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
+                  <span className="text-[11px] text-muted-foreground truncate">{d.name}</span>
+                  <span className="text-[11px] font-bold tabular-nums ml-auto">{d.value}%</span>
+                </div>
               ))}
             </div>
           </div>

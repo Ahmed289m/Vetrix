@@ -1,161 +1,247 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "@/app/_components/fast-motion";
-import { DollarSign, Plus, ArrowUpRight, ArrowDownLeft, X } from "lucide-react";
-import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from "recharts";
+import * as React from "react";
+import { Wallet, DollarSign, Download, Plus, MoreHorizontal, Receipt, ArrowUpRight, ArrowDownLeft, Search } from "lucide-react";
+import { Button } from "@/app/_components/ui/button";
+import { Input } from "@/app/_components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/app/_components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/app/_components/ui/dropdown-menu";
+import { Badge } from "@/app/_components/ui/badge";
+import { DashboardForm } from "@/app/_components/ui/dashboard-form";
+import { Label } from "@/app/_components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/_components/ui/select";
+import { cn } from "@/lib/utils";
 
-const fadeUp = {
-  initial: { opacity: 0, y: 16 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" as const } },
-};
-
-interface Transaction {
-  id: string;
-  type: "incoming" | "outgoing";
-  description: string;
-  amount: number;
-  category: string;
-  date: string;
-  reference: string;
-}
-
-const initialTransactions: Transaction[] = [
-  { id: "1", type: "incoming", description: "Payment - Sarah Mitchell (Bella surgery)", amount: 1250.00, category: "Surgery", date: "2024-03-18", reference: "PAY-0847" },
-  { id: "2", type: "incoming", description: "Payment - Tom Parker (Dental cleaning)", amount: 185.00, category: "Dental", date: "2024-03-18", reference: "PAY-0846" },
-  { id: "3", type: "outgoing", description: "VetPharm Co. - Medical supplies order", amount: 2340.00, category: "Supplies", date: "2024-03-17", reference: "PO-1234" },
-  { id: "4", type: "incoming", description: "Payment - Maria Garcia (Vaccination)", amount: 95.00, category: "Vaccination", date: "2024-03-17", reference: "PAY-0845" },
-  { id: "5", type: "outgoing", description: "Staff salary - March (partial)", amount: 8500.00, category: "Payroll", date: "2024-03-15", reference: "SAL-0315" },
-  { id: "6", type: "incoming", description: "Payment - James Wilson (Consultation)", amount: 120.00, category: "Consultation", date: "2024-03-16", reference: "PAY-0844" },
-  { id: "7", type: "outgoing", description: "Utility bills - March", amount: 450.00, category: "Utilities", date: "2024-03-15", reference: "UTL-0315" },
-  { id: "8", type: "incoming", description: "Payment - Lisa Brown (Emergency care)", amount: 890.00, category: "Emergency", date: "2024-03-16", reference: "PAY-0843" },
-];
-
-const revenueData = [
-  { day: "Mon", amount: 2400 }, { day: "Tue", amount: 3200 }, { day: "Wed", amount: 2800 },
-  { day: "Thu", amount: 3600 }, { day: "Fri", amount: 4100 }, { day: "Sat", amount: 1900 }, { day: "Sun", amount: 800 },
+const mockTransactions = [
+  { id: "TX-5044", client: "Ahmed", date: "2024-03-27", type: "Income", category: "Clinical Visit", amount: 120, status: "Paid" },
+  { id: "TX-5045", client: "Supplier X", date: "2024-03-26", type: "Expense", category: "Medication Restock", amount: -450, status: "Paid" },
+  { id: "TX-5046", client: "Sarah Connor", date: "2024-03-27", type: "Income", category: "Surgery", amount: 800, status: "Pending" },
 ];
 
 export default function FinancesPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
-  const [filter, setFilter] = useState<"all" | "incoming" | "outgoing">("all");
-  const [showAdd, setShowAdd] = useState(false);
-  const [newTx, setNewTx] = useState({ type: "incoming" as Transaction["type"], description: "", amount: "", category: "", reference: "" });
+  const [isFormOpen, setIsFormOpen] = React.useState(false);
 
-  const filtered = filter === "all" ? transactions : transactions.filter((t) => t.type === filter);
-  const totalIncoming = transactions.filter((t) => t.type === "incoming").reduce((s, t) => s + t.amount, 0);
-  const totalOutgoing = transactions.filter((t) => t.type === "outgoing").reduce((s, t) => s + t.amount, 0);
-
-  const handleAdd = () => {
-    if (!newTx.description || !newTx.amount) return;
-    setTransactions((prev) => [{
-      id: Date.now().toString(), type: newTx.type, description: newTx.description, amount: Number(newTx.amount), category: newTx.category, date: new Date().toISOString().split("T")[0], reference: newTx.reference || `TX-${Date.now().toString().slice(-4)}`,
-    }, ...prev]);
-    setNewTx({ type: "incoming", description: "", amount: "", category: "", reference: "" });
-    setShowAdd(false);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsFormOpen(false);
   };
 
   return (
-    <motion.div variants={{ animate: { transition: { staggerChildren: 0.06 } } }} initial="initial" animate="animate" className="space-y-6 max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
-      <motion.div variants={fadeUp} className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold text-emerald uppercase tracking-widest mb-1">Financial Management</p>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Finances</h2>
-        </div>
-        <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setShowAdd(true)} className="flex items-center gap-2 gradient-emerald-cyan text-primary-foreground px-5 py-3 rounded-xl text-sm font-bold glow-emerald ripple">
-          <Plus className="w-4 h-4" /> Record Transaction
-        </motion.button>
-      </motion.div>
-
-      <motion.div variants={fadeUp} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="glass-card p-5 border border-emerald/20">
-          <div className="flex items-center gap-2 mb-2"><ArrowDownLeft className="w-4 h-4 text-emerald" /><span className="text-xs font-bold uppercase text-muted-foreground">Income</span></div>
-          <p className="text-2xl font-extrabold text-emerald tabular-nums">${totalIncoming.toLocaleString()}</p>
-        </div>
-        <div className="glass-card p-5 border border-coral/20">
-          <div className="flex items-center gap-2 mb-2"><ArrowUpRight className="w-4 h-4 text-coral" /><span className="text-xs font-bold uppercase text-muted-foreground">Expenses</span></div>
-          <p className="text-2xl font-extrabold text-coral tabular-nums">${totalOutgoing.toLocaleString()}</p>
-        </div>
-        <div className="glass-card p-5 border border-cyan/20">
-          <div className="flex items-center gap-2 mb-2"><DollarSign className="w-4 h-4 text-cyan" /><span className="text-xs font-bold uppercase text-muted-foreground">Net</span></div>
-          <p className={`text-2xl font-extrabold tabular-nums ${totalIncoming - totalOutgoing >= 0 ? "text-emerald" : "text-coral"}`}>
-            ${(totalIncoming - totalOutgoing).toLocaleString()}
+    <div className="p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 mb-2">
+            <Wallet className="w-5 h-5 text-emerald" />
+            <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald">Treasury</span>
+          </div>
+          <h1 className="text-4xl font-black tracking-tight text-foreground">
+            Financial <span className="text-emerald">Overview</span>
+          </h1>
+          <p className="text-muted-foreground font-medium">
+            Track revenue streams, managed expenses and generate clinical invoices.
           </p>
         </div>
-      </motion.div>
+        <Button
+          onClick={() => setIsFormOpen(true)}
+          className="bg-emerald hover:bg-emerald/90 text-white font-black px-6 h-12 shadow-xl shadow-emerald/20 flex items-center gap-2"
+        >
+          <Plus className="w-5 h-5" />
+          Create Invoice
+        </Button>
+      </div>
 
-      <motion.div variants={fadeUp} className="glass-card p-5">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">Weekly Revenue</h3>
-        <ResponsiveContainer width="100%" height={160}>
-          <AreaChart data={revenueData}>
-            <defs><linearGradient id="finGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0.3} /><stop offset="95%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0} /></linearGradient></defs>
-            <XAxis dataKey="day" tick={{ fontSize: 10, fill: "hsl(215, 15%, 55%)" }} axisLine={false} tickLine={false} />
-            <Tooltip contentStyle={{ backgroundColor: "hsl(217, 33%, 17%)", border: "1px solid hsl(217, 33%, 22%)", borderRadius: "12px", fontSize: "12px", color: "hsl(210, 20%, 92%)" }} formatter={(v) => [`$${v}`, "Revenue"]} />
-            <Area type="monotone" dataKey="amount" stroke="hsl(160, 84%, 39%)" strokeWidth={2} fill="url(#finGradient)" />
-          </AreaChart>
-        </ResponsiveContainer>
-      </motion.div>
-
-      <motion.div variants={fadeUp} className="flex gap-2">
-        {(["all", "incoming", "outgoing"] as const).map((f) => (
-          <button key={f} onClick={() => setFilter(f)} className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
-            filter === f ? "gradient-emerald-cyan text-primary-foreground glow-emerald" : "bg-muted/30 border border-border/50 text-muted-foreground hover:border-emerald/30"
-          }`}>{f}</button>
-        ))}
-      </motion.div>
-
-      <motion.div variants={fadeUp} className="space-y-2">
-        {filtered.map((tx, i) => (
-          <motion.div key={tx.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-            className={`glass-card p-4 flex items-center gap-4 border ${tx.type === "incoming" ? "border-emerald/10" : "border-coral/10"}`}>
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tx.type === "incoming" ? "bg-emerald/10" : "bg-coral/10"}`}>
-              {tx.type === "incoming" ? <ArrowDownLeft className="w-5 h-5 text-emerald" /> : <ArrowUpRight className="w-5 h-5 text-coral" />}
+      {/* Summary Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="bg-emerald/10 backdrop-blur-md rounded-[2.5rem] border border-emerald/20 p-8 relative overflow-hidden group">
+          <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald/20 rounded-full blur-[60px]" />
+          <p className="text-[10px] font-black uppercase tracking-widest text-emerald mb-2">Monthly Revenue</p>
+          <div className="flex items-center justify-between">
+            <h2 className="text-4xl font-black text-foreground">$14,250.00</h2>
+            <div className="w-12 h-12 rounded-2xl bg-emerald/10 flex items-center justify-center text-emerald">
+              <ArrowUpRight className="w-6 h-6" />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate">{tx.description}</p>
-              <p className="text-xs text-muted-foreground">{tx.category} · {tx.date} · <span className="font-mono">{tx.reference}</span></p>
+          </div>
+        </div>
+        <div className="bg-muted/40 backdrop-blur-md rounded-[2.5rem] border border-border/10 p-8 relative overflow-hidden group">
+          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">Expenses</p>
+          <div className="flex items-center justify-between">
+            <h2 className="text-4xl font-black text-foreground">$4,120.50</h2>
+            <div className="w-12 h-12 rounded-2xl bg-muted/40 flex items-center justify-center text-red-400">
+              <ArrowDownLeft className="w-6 h-6" />
             </div>
-            <p className={`text-sm font-bold tabular-nums shrink-0 ${tx.type === "incoming" ? "text-emerald" : "text-coral"}`}>
-              {tx.type === "incoming" ? "+" : "-"}${tx.amount.toLocaleString()}
-            </p>
-          </motion.div>
-        ))}
-      </motion.div>
+          </div>
+        </div>
+        <div className="bg-muted/40 backdrop-blur-md rounded-[2.5rem] border border-border/10 p-8 relative overflow-hidden group">
+          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">Profit Projection</p>
+          <div className="flex items-center justify-between">
+            <h2 className="text-4xl font-black text-foreground">$10,129.50</h2>
+            <div className="w-12 h-12 rounded-2xl bg-muted/40 flex items-center justify-center text-blue-400">
+              <DollarSign className="w-6 h-6" />
+            </div>
+          </div>
+        </div>
+      </div>
 
-      <AnimatePresence>
-        {showAdd && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-background/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowAdd(false)}>
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="glass-card p-6 w-full max-w-lg space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold">Record Transaction</h3>
-                <button onClick={() => setShowAdd(false)} className="p-1.5 rounded-lg hover:bg-muted"><X className="w-4 h-4" /></button>
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row items-center gap-4">
+        <div className="relative group flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-emerald transition-colors" />
+          <Input
+            placeholder="Search transactions by client, ID or category..."
+            className="pl-12 h-14 bg-muted/40 border-border/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
+          />
+        </div>
+        <Button variant="ghost" className="h-14 px-8 rounded-xl font-black text-xs uppercase tracking-widest bg-muted/40 border border-border/10 hover:bg-muted/50">
+          Download Ledger
+        </Button>
+      </div>
+
+      {/* Table Item */}
+      <div className="relative group">
+        <div className="absolute -inset-0.5 bg-gradient-to-br from-emerald/10 to-transparent rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
+        <div className="relative bg-muted/40 backdrop-blur-md rounded-[2rem] border border-border/10 overflow-hidden shadow-2xl">
+          <Table>
+            <TableHeader className="bg-muted/40">
+              <TableRow className="border-b border-border/10 hover:bg-transparent">
+                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">Tx ID & Client</TableHead>
+                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">Category</TableHead>
+                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">Amount</TableHead>
+                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">Status</TableHead>
+                <TableHead className="py-6 px-8 text-right"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {mockTransactions.map((tx) => (
+                <TableRow key={tx.id} className="border-b border-border/10 hover:bg-muted/40 transition-colors group/row">
+                  <TableCell className="py-6 px-8">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-black tracking-widest text-emerald bg-emerald/5 w-fit px-2 py-0.5 rounded-md uppercase">
+                        {tx.id}
+                      </span>
+                      <span className="font-black text-foreground group-hover/row:text-emerald transition-colors tracking-tight">
+                        {tx.client}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-6 px-8">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-bold text-foreground/80 leading-none">
+                        {tx.category}
+                      </span>
+                      <span className="text-xs text-muted-foreground/40 font-bold">
+                        {tx.date}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-6 px-8">
+                    <span className={cn(
+                      "text-lg font-black tracking-tight",
+                      tx.amount > 0 ? "text-emerald" : "text-white/80"
+                    )}>
+                      {tx.amount > 0 ? `+ $${tx.amount}` : `- $${Math.abs(tx.amount)}`}
+                    </span>
+                  </TableCell>
+                  <TableCell className="py-6 px-8">
+                    <Badge className={cn(
+                      "rounded-full px-4 py-1 text-[10px] font-black uppercase tracking-widest border-none",
+                      tx.status === "Paid" ? "bg-emerald/10 text-emerald" : "bg-orange-500/10 text-orange-400"
+                    )}>
+                      {tx.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="py-6 px-8 text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="group-hover/row:bg-muted/50 rounded-xl h-10 w-10">
+                          <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover/95 backdrop-blur-xl border-border/10 rounded-2xl p-2 w-56 shadow-2xl">
+                        <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">Treasury Actions</DropdownMenuLabel>
+                        <DropdownMenuItem className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2">
+                          <Receipt className="w-4 h-4" /> View Invoice
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2">
+                          <Download className="w-4 h-4" /> Export Ledger
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-muted/40 mx-2" />
+                        <DropdownMenuItem className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold">Void Transaction</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      <DashboardForm
+        title="Create Final Invoice"
+        description="Select clinical activity and items to generate a billing invoice."
+        isOpen={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        onSubmit={handleSubmit}
+        submitLabel="Generate Invoice"
+      >
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Client Search</Label>
+            <div className="relative group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-emerald transition-colors" />
+              <Input placeholder="Search client profile..." className="pl-12 h-14 bg-muted/40 border-border/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold" />
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-4 border-t border-border/10">
+            <Label className="text-sm font-black uppercase tracking-widest text-emerald ml-1">Billing Items</Label>
+            <div className="space-y-4 mt-2">
+              <div className="flex items-center justify-between p-4 bg-muted/40 rounded-2xl border border-border/10">
+                <span className="text-sm font-bold text-foreground/80">Consultation Fee</span>
+                <span className="text-sm font-black text-foreground">$50.00</span>
               </div>
-              <div className="flex gap-2">
-                {(["incoming", "outgoing"] as const).map((t) => (
-                  <button key={t} onClick={() => setNewTx((p) => ({ ...p, type: t }))} className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase transition-all ${
-                    newTx.type === t ? (t === "incoming" ? "bg-emerald/15 text-emerald border border-emerald/30" : "bg-coral/15 text-coral border border-coral/30") : "bg-muted/30 border border-border/50 text-muted-foreground"
-                  }`}>{t}</button>
-                ))}
+              <div className="flex items-center justify-between p-4 bg-muted/40 rounded-2xl border border-border/10">
+                <span className="text-sm font-bold text-foreground/80">Amoxicillin 500mg</span>
+                <span className="text-sm font-black text-foreground">$25.00</span>
               </div>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Description *</label>
-                <input value={newTx.description} onChange={(e) => setNewTx((p) => ({ ...p, description: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none focus:border-emerald/30" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">Amount ($) *</label>
-                  <input type="number" step="0.01" value={newTx.amount} onChange={(e) => setNewTx((p) => ({ ...p, amount: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none focus:border-emerald/30" />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">Category</label>
-                  <input value={newTx.category} onChange={(e) => setNewTx((p) => ({ ...p, category: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none focus:border-emerald/30" />
-                </div>
-              </div>
-              <button onClick={handleAdd} className="w-full gradient-emerald-cyan text-primary-foreground py-3 rounded-xl text-sm font-bold glow-emerald">Record</button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+              <Button variant="ghost" className="w-full h-12 rounded-xl border border-dashed border-border/10 text-muted-foreground/60 hover:text-emerald hover:border-emerald/30 hover:bg-emerald/5 uppercase text-[10px] font-black tracking-widest">
+                + Add Billing Entry
+              </Button>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-border/10">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-black uppercase text-muted-foreground/60 tracking-widest">Subtotal</span>
+              <span className="text-sm font-black text-foreground">$75.00</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black uppercase text-emerald tracking-widest">Total Due</span>
+              <span className="text-2xl font-black text-foreground">$75.00</span>
+            </div>
+          </div>
+        </div>
+      </DashboardForm>
+    </div>
   );
 }

@@ -1,126 +1,161 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "@/app/_components/fast-motion";
-import { FileText, Plus, Download, Eye, X, Dog, Cat } from "lucide-react";
+import * as React from "react";
+import { BarChart3, TrendingUp, Users, DollarSign, Calendar, Download, Filter, ChevronRight } from "lucide-react";
+import { Button } from "@/app/_components/ui/button";
+import { 
+  ResponsiveContainer, 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  Tooltip, 
+  BarChart, 
+  Bar, 
+  Cell, 
+  PieChart, 
+  Pie 
+} from "recharts";
+import { cn } from "@/lib/utils";
 
-const fadeUp = {
-  initial: { opacity: 0, y: 16 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" as const } },
-};
+// Mock data for charts
+const growthData = [
+  { month: "Jan", patients: 65 },
+  { month: "Feb", patients: 85 },
+  { month: "Mar", patients: 120 },
+  { month: "Apr", patients: 110 },
+  { month: "May", patients: 160 },
+  { month: "Jun", patients: 195 },
+];
 
-interface Report {
-  id: string;
-  caseNumber: string;
-  title: string;
-  petName: string;
-  species: "dog" | "cat";
-  ownerName: string;
-  doctor: string;
-  date: string;
-  summary: string;
-  content: string;
-}
-
-const initialReports: Report[] = [
-  { id: "1", caseNumber: "VET-2024-0152", title: "ACL Repair Surgical Report", petName: "Bella", species: "dog", ownerName: "Sarah Mitchell", doctor: "Dr. Emily Chen", date: "2024-03-15", summary: "Left cruciate ligament repair via TPLO technique", content: "Patient: Bella (Golden Retriever, 4y, 28.5kg)\n\nProcedure: Tibial Plateau Leveling Osteotomy (TPLO)\n\nAnesthesia: General - Propofol induction, Isoflurane maintenance\n\nFindings: Complete rupture of left cranial cruciate ligament. Mild meniscal damage noted.\n\nProcedure Details: Standard lateral approach. TPLO plate (3.5mm) applied. Rotation angle: 24°. Meniscal inspection performed - partial meniscectomy of caudal horn.\n\nPost-op: Recovery uneventful. Pain management with Meloxicam and Tramadol.\n\nPrognosis: Good with appropriate rehabilitation protocol." },
-  { id: "2", caseNumber: "VET-2024-0153", title: "Dental Procedure Report", petName: "Max", species: "cat", ownerName: "Tom Parker", doctor: "Dr. Emily Chen", date: "2024-03-18", summary: "Stage 2 periodontal disease - dental cleaning and extractions", content: "Patient: Max (Persian Cat, 3y, 3.8kg)\n\nProcedure: Full dental cleaning, radiographs, and selective extractions\n\nFindings: Stage 2 periodontal disease. Two mandibular incisors with >50% bone loss.\n\nExtractions: #301, #302 (mandibular incisors)\n\nPost-op: Buprenorphine for pain management. Soft food for 14 days. Clindamycin antibiotics for 7 days.\n\nFollow-up: 2-week recheck recommended." },
-  { id: "3", caseNumber: "VET-2024-0149", title: "Emergency Urinary Obstruction Report", petName: "Shadow", species: "cat", ownerName: "Lisa Brown", doctor: "Dr. Aris Rahman", date: "2024-03-16", summary: "Emergency catheterization for urethral obstruction", content: "Patient: Shadow (DSH Cat, 5y, 5.2kg)\n\nPresentation: Straining to urinate x 24hrs. Distended, painful bladder on palpation.\n\nDiagnosis: Urethral obstruction (struvite crystals)\n\nTreatment: Sedation with Dexmedetomidine + Butorphanol. Urethral catheterization under aseptic technique. Approximately 180mL turbid urine drained.\n\nLab: BUN 42, Creatinine 3.8, K+ 7.2 (corrected with IV fluids + calcium gluconate)\n\nPlan: Indwelling catheter 48hrs. IV fluid diuresis. Switch to prescription urinary diet long-term." },
+const revenueData = [
+  { name: "Clinical", value: 45, color: "hsl(160, 84%, 39%)" },
+  { name: "Pharmacy", value: 30, color: "hsl(200, 80%, 50%)" },
+  { name: "Surgery", value: 20, color: "hsl(280, 70%, 60%)" },
+  { name: "Other", value: 5, color: "hsl(30, 80%, 50%)" },
 ];
 
 export default function ReportsPage() {
-  const [reports] = useState<Report[]>(initialReports);
-  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [newReport, setNewReport] = useState({ caseNumber: "", title: "", petName: "", summary: "", content: "" });
-
   return (
-    <motion.div variants={{ animate: { transition: { staggerChildren: 0.06 } } }} initial="initial" animate="animate" className="space-y-6 max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
-      <motion.div variants={fadeUp} className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold text-emerald uppercase tracking-widest mb-1">Documentation</p>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Medical Reports</h2>
-          <p className="text-sm text-muted-foreground mt-1">{reports.length} reports generated</p>
+    <div className="p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 mb-2">
+            <BarChart3 className="w-5 h-5 text-emerald" />
+            <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald">Intelligence Unit</span>
+          </div>
+          <h1 className="text-4xl font-black tracking-tight text-foreground">
+            Analytics & <span className="text-emerald">Reports</span>
+          </h1>
+          <p className="text-muted-foreground font-medium">
+            Strategic overview of clinic growth, revenue trends and patient demographics.
+          </p>
         </div>
-        <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setShowCreate(true)} className="flex items-center gap-2 gradient-emerald-cyan text-primary-foreground px-5 py-3 rounded-xl text-sm font-bold glow-emerald ripple">
-          <Plus className="w-4 h-4" /> Create Report
-        </motion.button>
-      </motion.div>
+        <div className="flex items-center gap-3">
+           <Button variant="ghost" className="h-12 px-6 rounded-xl font-black text-xs uppercase tracking-widest bg-muted/40 border border-border/10 hover:bg-muted/50">
+              <Filter className="w-4 h-4 mr-2" /> Custom Filter
+           </Button>
+           <Button className="h-12 px-6 bg-emerald text-white font-black rounded-xl shadow-xl shadow-emerald/20 flex items-center gap-2">
+              <Download className="w-4 h-4" /> Export Data
+           </Button>
+        </div>
+      </div>
 
-      <motion.div variants={fadeUp} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {reports.map((report, i) => {
-          return (
-            <motion.div key={report.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
-              className="glass-card p-5 card-hover border border-border/30 cursor-pointer group" onClick={() => setSelectedReport(report)}>
-              <div className="flex items-start gap-4">
-                <div className="w-11 h-11 rounded-xl bg-orange/10 flex items-center justify-center shrink-0">
-                  <FileText className="w-5 h-5 text-orange" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="font-mono text-[10px] text-muted-foreground">{report.caseNumber}</span>
-                  <p className="text-sm font-bold mt-0.5 group-hover:text-emerald transition-colors">{report.title}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{report.petName} · {report.ownerName}</p>
-                  <p className="text-xs text-muted-foreground/60 mt-0.5">{report.doctor} · {report.date}</p>
-                  <p className="text-xs text-foreground/70 mt-2 line-clamp-2">{report.summary}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 mt-4 pt-3 border-t border-border/20">
-                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-muted/30 hover:bg-emerald/10 hover:text-emerald transition-colors"><Eye className="w-3.5 h-3.5" /> View</button>
-                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-muted/30 hover:bg-cyan/10 hover:text-cyan transition-colors"><Download className="w-3.5 h-3.5" /> Export</button>
-              </div>
-            </motion.div>
-          );
-        })}
-      </motion.div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {[
+          { label: "Growth", value: "+24.5%", sub: "vs last month", icon: TrendingUp, color: "text-emerald" },
+          { label: "New Patients", value: "156", sub: "this month", icon: Users, color: "text-blue-400" },
+          { label: "Revenue", value: "$12.4k", sub: "7d forecast", icon: DollarSign, color: "text-emerald" },
+          { label: "Retention", value: "92%", sub: "annual rate", icon: Calendar, color: "text-purple-400" },
+        ].map((stat, i) => (
+          <div key={i} className="bg-muted/40 backdrop-blur-md rounded-[2rem] border border-border/10 p-6 relative group overflow-hidden">
+             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <stat.icon className="w-12 h-12" />
+             </div>
+             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-1">{stat.label}</p>
+             <div className="flex items-baseline gap-2">
+                <p className="text-2xl font-black text-foreground">{stat.value}</p>
+                <span className={cn("text-[10px] font-bold", stat.color)}>{stat.sub}</span>
+             </div>
+          </div>
+        ))}
+      </div>
 
-      {/* View Report Modal */}
-      <AnimatePresence>
-        {selectedReport && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-background/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedReport(null)}>
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="glass-card p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto custom-scrollbar space-y-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <span className="font-mono text-xs text-muted-foreground">{selectedReport.caseNumber}</span>
-                  <h3 className="text-xl font-bold mt-1">{selectedReport.title}</h3>
-                  <p className="text-sm text-muted-foreground">{selectedReport.petName} · {selectedReport.ownerName} · {selectedReport.doctor}</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">{selectedReport.date}</p>
-                </div>
-                <button onClick={() => setSelectedReport(null)} className="p-1.5 rounded-lg hover:bg-muted"><X className="w-4 h-4" /></button>
-              </div>
-              <div className="p-4 rounded-xl bg-muted/20 border border-border/30">
-                <p className="text-xs font-bold uppercase text-muted-foreground mb-2">Summary</p>
-                <p className="text-sm">{selectedReport.summary}</p>
-              </div>
-              <div>
-                <p className="text-xs font-bold uppercase text-muted-foreground mb-2">Full Report</p>
-                <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed text-foreground/85">{selectedReport.content}</pre>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Patient Growth Area Chart */}
+        <div className="bg-muted/40 backdrop-blur-md rounded-[2.5rem] border border-border/10 p-8 group">
+          <div className="flex items-center justify-between mb-8">
+             <h3 className="text-lg font-black text-foreground">Patient Growth</h3>
+             <span className="text-xs font-bold text-muted-foreground/40 uppercase tracking-widest">Last 6 Months</span>
+          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={growthData}>
+              <defs>
+                <linearGradient id="growthGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(215, 15%, 55%)" }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(215, 15%, 55%)" }} width={30} />
+              <Tooltip 
+                contentStyle={{ backgroundColor: "rgba(15, 23, 42, 0.9)", border: "1px solid rgba(255, 255, 255, 0.1)", borderRadius: "16px", backdropFilter: "blur(12px)" }}
+                itemStyle={{ color: "hsl(160, 84%, 39%)", fontWeight: "bold" }}
+              />
+              <Area type="monotone" dataKey="patients" stroke="hsl(160, 84%, 39%)" strokeWidth={3} fill="url(#growthGradient)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
 
-      {/* Create Report Modal */}
-      <AnimatePresence>
-        {showCreate && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-background/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowCreate(false)}>
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="glass-card p-6 w-full max-w-lg space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold">Create Medical Report</h3>
-                <button onClick={() => setShowCreate(false)} className="p-1.5 rounded-lg hover:bg-muted"><X className="w-4 h-4" /></button>
+        {/* Revenue Mix Pie Chart */}
+        <div className="bg-muted/40 backdrop-blur-md rounded-[2.5rem] border border-border/10 p-8">
+          <h3 className="text-lg font-black text-foreground mb-8">Revenue Distribution</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 items-center gap-8">
+              <ResponsiveContainer width="100%" height={240}>
+                <PieChart>
+                  <Pie data={revenueData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={85} stroke="none" paddingAngle={4}>
+                    {revenueData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: "rgba(15, 23, 42, 0.9)", border: "1px solid rgba(255, 255, 255, 0.1)", borderRadius: "16px" }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-4">
+                 {revenueData.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between group cursor-default">
+                       <div className="flex items-center gap-3">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                          <span className="text-sm font-bold text-muted-foreground/80 group-hover:text-foreground transition-colors">{item.name}</span>
+                       </div>
+                       <span className="text-sm font-black text-foreground">{item.value}%</span>
+                    </div>
+                 ))}
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs font-semibold text-muted-foreground mb-1 block">Case Number</label><input value={newReport.caseNumber} onChange={(e) => setNewReport((p) => ({ ...p, caseNumber: e.target.value }))} placeholder="VET-2024-XXXX" className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none focus:border-emerald/30" /></div>
-                <div><label className="text-xs font-semibold text-muted-foreground mb-1 block">Patient Name</label><input value={newReport.petName} onChange={(e) => setNewReport((p) => ({ ...p, petName: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none focus:border-emerald/30" /></div>
-              </div>
-              <div><label className="text-xs font-semibold text-muted-foreground mb-1 block">Report Title</label><input value={newReport.title} onChange={(e) => setNewReport((p) => ({ ...p, title: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none focus:border-emerald/30" /></div>
-              <div><label className="text-xs font-semibold text-muted-foreground mb-1 block">Summary</label><input value={newReport.summary} onChange={(e) => setNewReport((p) => ({ ...p, summary: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none focus:border-emerald/30" /></div>
-              <div><label className="text-xs font-semibold text-muted-foreground mb-1 block">Report Content</label><textarea value={newReport.content} onChange={(e) => setNewReport((p) => ({ ...p, content: e.target.value }))} rows={6} className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none focus:border-emerald/30 resize-none" /></div>
-              <button onClick={() => setShowCreate(false)} className="w-full gradient-emerald-cyan text-primary-foreground py-3 rounded-xl text-sm font-bold glow-emerald">Create Report</button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+          </div>
+        </div>
+      </div>
+
+      {/* Featured Performance Card */}
+      <div className="bg-gradient-to-br from-emerald/10 to-transparent backdrop-blur-xl border border-border/10 rounded-[3rem] p-10 flex flex-col md:flex-row items-center gap-12 group overflow-hidden relative">
+         <div className="absolute h-1 w-full top-0 left-0 bg-gradient-to-r from-emerald to-transparent opacity-50" />
+         <div className="flex-1 space-y-6">
+            <h2 className="text-3xl font-black text-foreground">Clinic Efficiency Score</h2>
+            <div className="flex items-center gap-6">
+               <div className="w-24 h-24 rounded-full border-8 border-border/10 flex items-center justify-center relative">
+                  <span className="text-2xl font-black text-emerald">88</span>
+                  <div className="absolute inset-0 rounded-full border-8 border-emerald border-t-transparent -rotate-45" />
+               </div>
+               <p className="text-muted-foreground font-medium max-w-sm">
+                 Your clinic is performing above the 85th percentile for patient retention and average visit value in your region.
+               </p>
+            </div>
+         </div>
+         <Button className="h-14 px-8 bg-muted/40 hover:bg-muted/50 text-foreground font-black rounded-2xl border border-border/10 group-hover:scale-105 transition-all">
+            Detailed Performance Audit <ChevronRight className="w-5 h-5 ml-2" />
+         </Button>
+      </div>
+    </div>
   );
 }

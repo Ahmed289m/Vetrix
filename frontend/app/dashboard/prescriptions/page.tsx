@@ -1,256 +1,236 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "@/app/_components/fast-motion";
-import { Pill, Plus, Search, X, Download, Clock, AlertTriangle } from "lucide-react";
+import * as React from "react";
+import { Plus, MoreHorizontal, FileText, User, Pill, Search, Download, Trash2, ShieldCheck } from "lucide-react";
+import { Button } from "@/app/_components/ui/button";
+import { Input } from "@/app/_components/ui/input";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/app/_components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/app/_components/ui/dropdown-menu";
+import { Badge } from "@/app/_components/ui/badge";
+import { DashboardForm } from "@/app/_components/ui/dashboard-form";
+import { Label } from "@/app/_components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/_components/ui/select";
+import { cn } from "@/lib/utils";
 
-const fadeUp = {
-  initial: { opacity: 0, y: 16 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" as const } },
-};
-
-interface Prescription {
-  id: string;
-  caseNumber: string;
-  petName: string;
-  species: "dog" | "cat";
-  ownerName: string;
-  date: string;
-  medications: { name: string; dosage: string; frequency: string; duration: string }[];
-  notes: string;
-  status: "active" | "completed";
-}
-
-const initialPrescriptions: Prescription[] = [
-  { id: "1", caseNumber: "VET-2024-0152", petName: "Bella", species: "dog", ownerName: "Sarah Mitchell", date: "2024-03-15", medications: [
-    { name: "Meloxicam", dosage: "0.1 mg/kg", frequency: "PO q24h", duration: "14 days" },
-    { name: "Amoxicillin", dosage: "22 mg/kg", frequency: "PO q12h", duration: "10 days" },
-    { name: "Tramadol", dosage: "3 mg/kg", frequency: "PO q8-12h PRN", duration: "7 days" },
-  ], notes: "Administer with food. Reassess pain at 7-day recheck.", status: "active" },
-  { id: "2", caseNumber: "VET-2024-0153", petName: "Max", species: "cat", ownerName: "Tom Parker", date: "2024-03-18", medications: [
-    { name: "Buprenorphine", dosage: "0.02 mg/kg", frequency: "SL q8h", duration: "3 days" },
-    { name: "Clindamycin", dosage: "11 mg/kg", frequency: "PO q12h", duration: "7 days" },
-  ], notes: "Soft food only for 14 days post dental procedure.", status: "active" },
-  { id: "3", caseNumber: "VET-2024-0150", petName: "Rocky", species: "dog", ownerName: "James Wilson", date: "2024-03-17", medications: [
-    { name: "Apoquel (oclacitinib)", dosage: "0.4 mg/kg", frequency: "PO q12h", duration: "14 days" },
-    { name: "Cephalexin", dosage: "22 mg/kg", frequency: "PO q12h", duration: "14 days" },
-  ], notes: "Reduce Apoquel to q24h after 14 days if improved.", status: "active" },
-  { id: "4", caseNumber: "VET-2024-0149", petName: "Shadow", species: "cat", ownerName: "Lisa Brown", date: "2024-03-16", medications: [
-    { name: "Prazosin", dosage: "0.25 mg", frequency: "PO q12h", duration: "30 days" },
-    { name: "Buprenorphine", dosage: "0.02 mg/kg", frequency: "SL q8h", duration: "3 days" },
-  ], notes: "Prescription urinary diet long-term.", status: "completed" },
+const mockPrescriptions = [
+  { id: "RX-9901", petName: "Max", doctorName: "Dr. Sarah", date: "2024-03-27", medication: "Amoxicillin", status: "Active" },
+  { id: "RX-9902", petName: "Luna", doctorName: "Dr. Mike", date: "2024-03-25", medication: "Meloxicam", status: "Expired" },
+  { id: "RX-9903", petName: "Rocky", doctorName: "Dr. Sarah", date: "2024-03-27", medication: "Prednisone", status: "Active" },
 ];
 
-const drugInteractions: Record<string, { conflicts: string[]; warning: string }> = {
-  "Meloxicam": { conflicts: ["Prednisolone", "Furosemide", "Other NSAIDs"], warning: "NSAID — avoid with corticosteroids. GI ulceration risk." },
-  "Amoxicillin": { conflicts: ["Methotrexate", "Warfarin"], warning: "May increase anticoagulant effect." },
-  "Tramadol": { conflicts: ["SSRIs", "MAOIs", "Sedatives", "Gabapentin"], warning: "Serotonin syndrome risk. Additive sedation." },
-  "Cephalexin": { conflicts: ["Aminoglycosides"], warning: "Nephrotoxicity risk with aminoglycosides." },
-  "Apoquel (oclacitinib)": { conflicts: ["Immunosuppressants", "Live vaccines"], warning: "Do not combine with other immunosuppressive drugs." },
-  "Prazosin": { conflicts: ["Other antihypertensives", "PDE5 inhibitors"], warning: "Hypotension risk." },
-  "Buprenorphine": { conflicts: ["Full opioid agonists", "CNS depressants"], warning: "Partial agonist — may reduce efficacy of full agonists." },
-  "Clindamycin": { conflicts: ["Erythromycin", "Neuromuscular blockers"], warning: "May potentiate neuromuscular blockade." },
-};
-
-function checkInteractions(meds: { name: string }[]): { drug1: string; drug2: string; warning: string }[] {
-  const results: { drug1: string; drug2: string; warning: string }[] = [];
-  for (let i = 0; i < meds.length; i++) {
-    for (let j = i + 1; j < meds.length; j++) {
-      const d1 = drugInteractions[meds[i].name];
-      const d2 = drugInteractions[meds[j].name];
-      if (d1?.conflicts.some((c) => meds[j].name.toLowerCase().includes(c.toLowerCase()) || c.toLowerCase().includes(meds[j].name.toLowerCase()))) {
-        results.push({ drug1: meds[i].name, drug2: meds[j].name, warning: d1.warning });
-      } else if (d2?.conflicts.some((c) => meds[i].name.toLowerCase().includes(c.toLowerCase()) || c.toLowerCase().includes(meds[i].name.toLowerCase()))) {
-        results.push({ drug1: meds[j].name, drug2: meds[i].name, warning: d2.warning });
-      }
-    }
-  }
-  return results;
-}
-
 export default function PrescriptionsPage() {
-  const [prescriptions] = useState<Prescription[]>(initialPrescriptions);
-  const [search, setSearch] = useState("");
-  const [showCreate, setShowCreate] = useState(false);
-  const [selectedRx, setSelectedRx] = useState<Prescription | null>(null);
-  const [newRx, setNewRx] = useState({ caseNumber: "", petName: "", ownerName: "", notes: "" });
-  const [newMeds, setNewMeds] = useState([{ name: "", dosage: "", frequency: "", duration: "" }]);
+  const [isFormOpen, setIsFormOpen] = React.useState(false);
+  const [selectedRx, setSelectedRx] = React.useState<any>(null);
 
-  const filtered = prescriptions.filter((p) => p.petName.toLowerCase().includes(search.toLowerCase()) || p.caseNumber.toLowerCase().includes(search.toLowerCase()));
-  const addMed = () => setNewMeds((prev) => [...prev, { name: "", dosage: "", frequency: "", duration: "" }]);
-  const newMedInteractions = checkInteractions(newMeds.filter((m) => m.name.trim()));
+  const handleOpenForm = (rx: any = null) => {
+    setSelectedRx(rx);
+    setIsFormOpen(true);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsFormOpen(false);
+  };
 
   return (
-    <motion.div variants={{ animate: { transition: { staggerChildren: 0.06 } } }} initial="initial" animate="animate" className="space-y-6 max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
-      <motion.div variants={fadeUp} className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold text-emerald uppercase tracking-widest mb-1">Pharmacy</p>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Prescriptions</h2>
-          <p className="text-sm text-muted-foreground mt-1">{prescriptions.filter((p) => p.status === "active").length} active prescriptions</p>
+    <div className="p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 mb-2">
+            <FileText className="w-5 h-5 text-emerald" />
+            <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald">Pharmacy Portal</span>
+          </div>
+          <h1 className="text-4xl font-black tracking-tight text-foreground">
+            Medical <span className="text-emerald">Prescriptions</span>
+          </h1>
+          <p className="text-muted-foreground font-medium">
+            Review patient medication history and issue new clinical prescriptions.
+          </p>
         </div>
-        <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setShowCreate(true)} className="flex items-center gap-2 gradient-emerald-cyan text-primary-foreground px-5 py-3 rounded-xl text-sm font-bold glow-emerald ripple">
-          <Plus className="w-4 h-4" /> New Prescription
-        </motion.button>
-      </motion.div>
+        <Button 
+          onClick={() => handleOpenForm()}
+          className="bg-emerald hover:bg-emerald/90 text-white font-black px-6 h-12 shadow-xl shadow-emerald/20 flex items-center gap-2 group transition-all duration-300"
+        >
+          <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+           New Prescription
+        </Button>
+      </div>
 
-      <motion.div variants={fadeUp}>
-        <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-muted/30 border border-border/50 max-w-md">
-          <Search className="w-4 h-4 text-muted-foreground" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search prescriptions..." className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60" />
+      {/* Filters */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="relative group md:col-span-2">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-emerald transition-colors" />
+          <Input 
+            placeholder="Search by Rx ID, patient or medication..." 
+            className="pl-12 h-14 bg-muted/40 border-border/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
+          />
         </div>
-      </motion.div>
+        <Select defaultValue="all">
+          <SelectTrigger className="h-14 bg-muted/40 border-border/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent className="bg-popover/95 backdrop-blur-xl border-border/10">
+            <SelectItem value="all">All Prescriptions</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="expired">Expired</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-      <motion.div variants={fadeUp} className="space-y-4">
-        {filtered.map((rx, i) => (
-          <motion.div key={rx.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-            className={`glass-card p-5 card-hover cursor-pointer border ${rx.status === "active" ? "border-emerald/20" : "border-border/30"}`} onClick={() => setSelectedRx(rx)}>
-            <div className="flex items-start gap-4">
-              <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${rx.status === "active" ? "bg-emerald/10" : "bg-muted/30"}`}>
-                <Pill className={`w-5 h-5 ${rx.status === "active" ? "text-emerald" : "text-muted-foreground"}`} />
+      {/* Table Item */}
+      <div className="relative group">
+        <div className="absolute -inset-0.5 bg-gradient-to-br from-emerald/10 to-transparent rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
+        <div className="relative bg-muted/40 backdrop-blur-md rounded-[2rem] border border-border/10 overflow-hidden shadow-2xl">
+          <Table>
+            <TableHeader className="bg-muted/40">
+              <TableRow className="border-b border-border/10 hover:bg-transparent">
+                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">Rx ID & Patient</TableHead>
+                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">Primary Medication</TableHead>
+                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">Doctor / Date</TableHead>
+                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">Status</TableHead>
+                <TableHead className="py-6 px-8 text-right"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {mockPrescriptions.map((rx) => (
+                <TableRow key={rx.id} className="border-b border-border/10 hover:bg-muted/40 transition-colors group/row">
+                  <TableCell className="py-6 px-8">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-black tracking-widest text-emerald bg-emerald/5 w-fit px-2 py-0.5 rounded-md uppercase">
+                        {rx.id}
+                      </span>
+                      <span className="font-black text-foreground group-hover/row:text-emerald transition-colors tracking-tight">
+                        {rx.petName}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-6 px-8">
+                    <div className="flex items-center gap-2">
+                       <Pill className="w-4 h-4 text-emerald" />
+                      <span className="text-sm font-black uppercase tracking-tight text-foreground/80">
+                        {rx.medication}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-6 px-8">
+                     <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-bold text-muted-foreground/80 leading-none">
+                        {rx.doctorName}
+                      </span>
+                      <span className="text-xs text-muted-foreground/40 font-bold">
+                        {rx.date}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-6 px-8">
+                    <Badge className={cn(
+                      "rounded-full px-4 py-1 text-[10px] font-black uppercase tracking-widest border-none",
+                      rx.status === "Active" ? "bg-emerald/10 text-emerald" : "bg-muted/40 text-muted-foreground"
+                    )}>
+                      {rx.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="py-6 px-8 text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="group-hover/row:bg-muted/50 rounded-xl h-10 w-10">
+                          <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover/95 backdrop-blur-xl border-border/10 rounded-2xl p-2 w-56 shadow-2xl">
+                        <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">Pharmacy Actions</DropdownMenuLabel>
+                        <DropdownMenuItem className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2">
+                          <Download className="w-4 h-4" /> Export PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2">
+                          <ShieldCheck className="w-4 h-4" /> Verify Signature
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-muted/40 mx-2" />
+                        <DropdownMenuItem className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold flex items-center gap-2">
+                          <Trash2 className="w-4 h-4" /> Revoke
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      {/* CRUD Form */}
+      <DashboardForm
+        title="Issue Prescription"
+        description="Select a patient and medications to generate a clinical prescription."
+        isOpen={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        onSubmit={handleSubmit}
+        submitLabel="Generate Rx"
+      >
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Patient</Label>
+            <Select defaultValue="max">
+              <SelectTrigger className="h-14 bg-muted/40 border-border/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-popover/95 backdrop-blur-xl border-border/10">
+                <SelectItem value="max">Max (Golden Retriever)</SelectItem>
+                <SelectItem value="luna">Luna (Persian Cat)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2 pt-4 border-t border-border/10">
+            <Label className="text-sm font-black uppercase tracking-widest text-emerald ml-1">Medication Details</Label>
+            <div className="grid gap-4 mt-2">
+               <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 px-1">Drug Name</Label>
+                <Input placeholder="e.g. Amoxicillin 500mg" className="h-14 bg-muted/40 border-border/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold" />
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-mono text-[10px] text-muted-foreground">{rx.caseNumber}</span>
-                  <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${rx.status === "active" ? "bg-emerald/15 text-emerald" : "bg-muted/40 text-muted-foreground"}`}>{rx.status}</span>
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 px-1">Dosage</Label>
+                  <Input placeholder="1 tablet" className="h-14 bg-muted/40 border-border/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold" />
                 </div>
-                <p className="text-sm font-bold mt-1">{rx.petName} — {rx.ownerName}</p>
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {rx.medications.map((med, j) => (
-                    <span key={j} className="px-2 py-1 rounded-lg bg-muted/20 border border-border/30 text-[11px] font-mono">{med.name} {med.dosage}</span>
-                  ))}
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 px-1">Frequency</Label>
+                  <Input placeholder="Twice daily" className="h-14 bg-muted/40 border-border/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold" />
                 </div>
-              </div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-                <Clock className="w-3.5 h-3.5" />{rx.date}
               </div>
             </div>
-          </motion.div>
-        ))}
-      </motion.div>
+          </div>
 
-      {/* View Rx Modal */}
-      <AnimatePresence>
-        {selectedRx && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-background/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedRx(null)}>
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="glass-card p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto custom-scrollbar space-y-5">
-              <div className="flex items-start justify-between">
-                <div>
-                  <span className="font-mono text-xs text-muted-foreground">{selectedRx.caseNumber}</span>
-                  <h3 className="text-xl font-bold mt-1">Prescription — {selectedRx.petName}</h3>
-                  <p className="text-sm text-muted-foreground">{selectedRx.ownerName} · {selectedRx.date}</p>
-                </div>
-                <button onClick={() => setSelectedRx(null)} className="p-1.5 rounded-lg hover:bg-muted"><X className="w-4 h-4" /></button>
-              </div>
-              {(() => {
-                const interactions = checkInteractions(selectedRx.medications);
-                return interactions.length > 0 && (
-                  <div className="space-y-2">
-                    {interactions.map((inter, i) => (
-                      <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
-                        className="p-3 rounded-xl border border-coral/20 bg-coral/5 flex items-start gap-2">
-                        <AlertTriangle className="w-4 h-4 text-coral shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-xs font-bold text-coral">⚠️ {inter.drug1} × {inter.drug2}</p>
-                          <p className="text-[11px] text-foreground/70 mt-0.5">{inter.warning}</p>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                );
-              })()}
-              <table className="w-full text-sm">
-                <thead><tr className="border-b border-border/30">
-                  <th className="text-left py-2 text-[10px] font-bold uppercase text-muted-foreground">Medications</th>
-                  <th className="text-left py-2 text-[10px] font-bold uppercase text-muted-foreground">Dosage</th>
-                  <th className="text-left py-2 text-[10px] font-bold uppercase text-muted-foreground">Frequency</th>
-                  <th className="text-left py-2 text-[10px] font-bold uppercase text-muted-foreground">Duration</th>
-                </tr></thead>
-                <tbody>
-                  {selectedRx.medications.map((med, j) => (
-                    <tr key={j} className="border-b border-border/20">
-                      <td className="py-2.5 font-semibold">{med.name}</td>
-                      <td className="py-2.5 font-mono text-xs">{med.dosage}</td>
-                      <td className="py-2.5 text-xs">{med.frequency}</td>
-                      <td className="py-2.5 text-xs">{med.duration}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {selectedRx.notes && (
-                <div className="p-4 rounded-xl bg-muted/20 border border-border/30">
-                  <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Notes</p>
-                  <p className="text-sm">{selectedRx.notes}</p>
-                </div>
-              )}
-              <button className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-muted/30 border border-border/50">
-                <Download className="w-3.5 h-3.5" /> Print / Export
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Create Rx Modal */}
-      <AnimatePresence>
-        {showCreate && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-background/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowCreate(false)}>
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="glass-card p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto custom-scrollbar space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold">Create Prescription</h3>
-                <button onClick={() => setShowCreate(false)} className="p-1.5 rounded-lg hover:bg-muted"><X className="w-4 h-4" /></button>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">Case Number</label>
-                  <input value={newRx.caseNumber} onChange={(e) => setNewRx((p) => ({ ...p, caseNumber: e.target.value }))} placeholder="VET-2024-XXXX" className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none focus:border-emerald/30" />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">Patient</label>
-                  <input value={newRx.petName} onChange={(e) => setNewRx((p) => ({ ...p, petName: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none focus:border-emerald/30" />
-                </div>
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold uppercase text-muted-foreground">Medications</span>
-                  <button onClick={addMed} className="text-xs font-semibold text-emerald hover:underline">+ Add</button>
-                </div>
-                {newMeds.map((med, j) => (
-                  <div key={j} className="grid grid-cols-4 gap-2 mb-2">
-                    <input placeholder="Drug" value={med.name} onChange={(e) => { const m = [...newMeds]; m[j].name = e.target.value; setNewMeds(m); }} className="px-2 py-2 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none" />
-                    <input placeholder="Dose" value={med.dosage} onChange={(e) => { const m = [...newMeds]; m[j].dosage = e.target.value; setNewMeds(m); }} className="px-2 py-2 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none" />
-                    <input placeholder="Freq" value={med.frequency} onChange={(e) => { const m = [...newMeds]; m[j].frequency = e.target.value; setNewMeds(m); }} className="px-2 py-2 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none" />
-                    <input placeholder="Days" value={med.duration} onChange={(e) => { const m = [...newMeds]; m[j].duration = e.target.value; setNewMeds(m); }} className="px-2 py-2 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none" />
-                  </div>
-                ))}
-              </div>
-              <AnimatePresence>
-                {newMedInteractions.length > 0 && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-2 overflow-hidden">
-                    <div className="flex items-center gap-2 mb-1">
-                      <AlertTriangle className="w-3.5 h-3.5 text-coral" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-coral">Drug Interaction Check</span>
-                    </div>
-                    {newMedInteractions.map((inter, i) => (
-                      <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="p-3 rounded-xl border border-coral/20 bg-coral/5 flex items-start gap-2">
-                        <AlertTriangle className="w-3.5 h-3.5 text-coral shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-xs font-bold text-coral">⚠️ {inter.drug1} × {inter.drug2}</p>
-                          <p className="text-[10px] text-foreground/70">{inter.warning}</p>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Notes</label>
-                <textarea value={newRx.notes} onChange={(e) => setNewRx((p) => ({ ...p, notes: e.target.value }))} rows={3} className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border/50 text-sm outline-none focus:border-emerald/30 resize-none" />
-              </div>
-              <button onClick={() => setShowCreate(false)} className="w-full gradient-emerald-cyan text-primary-foreground py-3 rounded-xl text-sm font-bold glow-emerald">Create Prescription</button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+          <div className="space-y-2 pt-4 border-t border-border/10">
+            <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Clinical Instructions</Label>
+            <textarea 
+              placeholder="Take with food, full 7 day course..." 
+              className="w-full min-h-[100px] p-4 bg-muted/40 border-border/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium outline-none transition-all"
+            />
+          </div>
+        </div>
+      </DashboardForm>
+    </div>
   );
 }

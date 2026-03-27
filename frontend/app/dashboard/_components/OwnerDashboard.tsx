@@ -12,7 +12,7 @@ export function OwnerDashboard() {
       <motion.div variants={fadeUp} className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <p className="text-xs font-semibold text-emerald uppercase tracking-widest mb-1">Clinic Performance</p>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Owner <span className="gradient-text">Dashboard</span></h2>
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-arabic">Owner <span className="gradient-text">Dashboard</span></h2>
           <p className="text-sm text-muted-foreground mt-1.5">Track revenue, appointments, and overall clinic health.</p>
         </div>
       </motion.div>
@@ -25,7 +25,7 @@ export function OwnerDashboard() {
             { label: "Staff Efficiency", value: "92%", icon: Activity, color: "text-orange", bg: "bg-orange/10", border: "border-orange/20" },
             { label: "Inventory Cost", value: "$8,400", icon: Package, color: "text-coral", bg: "bg-coral/10", border: "border-coral/20" },
           ].map((s, i) => (
-            <motion.div key={s.label} className={`rounded-xl p-5 border ${s.border} bg-card/50 backdrop-blur-sm card-hover cursor-default`}>
+            <motion.div key={s.label} className={`glass-card p-5 border ${s.border} card-hover cursor-default`}>
               <div className={`w-12 h-12 rounded-xl ${s.bg} flex items-center justify-center`}><s.icon className={`w-6 h-6 ${s.color}`} /></div>
               <motion.p className="text-3xl font-extrabold mt-4 tabular-nums" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}>{s.value}</motion.p>
               <p className="text-sm text-muted-foreground mt-1 font-medium">{s.label}</p>
