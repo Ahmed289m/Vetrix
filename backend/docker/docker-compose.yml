@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: vetrix-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  mongodb_data:
