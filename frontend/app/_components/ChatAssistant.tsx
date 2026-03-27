@@ -196,8 +196,8 @@ export function ChatAssistant({ role }: { role: "doctor" | "staff" | "admin" | "
             <div className="flex items-center gap-2 bg-muted/20 rounded-2xl px-4 py-3 border border-border/40 focus-within:border-emerald/30 focus-within:shadow-[0_0_20px_hsl(160,84%,39%,0.08)] transition-all duration-300">
               <input
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && handleSend()}
                 placeholder="Ask about patients, protocols, dosages..."
                 className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/40 min-w-0"
               />
@@ -205,7 +205,7 @@ export function ChatAssistant({ role }: { role: "doctor" | "staff" | "admin" | "
                 <Mic className="w-4 h-4" />
               </button>
               <button
-                onClick={() => handleSend()}
+                onClick={(e: React.MouseEvent) => handleSend()}
                 disabled={!input.trim()}
                 className="p-2.5 rounded-xl gradient-emerald-cyan text-primary-foreground hover:shadow-lg active:scale-95 transition-all disabled:opacity-20 disabled:hover:shadow-none shrink-0 glow-emerald"
               >

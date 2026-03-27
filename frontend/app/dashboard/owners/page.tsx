@@ -110,7 +110,7 @@ export default function OwnersPage() {
       <motion.div variants={fadeUp}>
         <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-muted/30 border border-border/50 max-w-md">
           <Search className="w-4 h-4 text-muted-foreground" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search owners..." className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60" />
+          <input value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)} placeholder="Search owners..." className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60" />
         </div>
       </motion.div>
 
@@ -240,7 +240,7 @@ export default function OwnersPage() {
           const isExpanded = expandedOwner === owner.id;
           return (
             <motion.div key={owner.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="glass-card overflow-hidden">
-              <div className="p-4 sm:p-5 flex items-center gap-4 cursor-pointer" onClick={() => setExpandedOwner(isExpanded ? null : owner.id)}>
+              <div className="p-4 sm:p-5 flex items-center gap-4 cursor-pointer" onClick={(e: React.MouseEvent) => setExpandedOwner(isExpanded ? null : owner.id)}>
                 <div className="w-12 h-12 rounded-2xl gradient-emerald-cyan flex items-center justify-center text-primary-foreground font-bold text-sm shrink-0">
                   {owner.firstName[0]}{owner.lastName[0]}
                 </div>

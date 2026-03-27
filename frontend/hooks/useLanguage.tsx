@@ -21,7 +21,6 @@ const translations: Translations = {
   "inventory": { en: "Inventory", ar: "المخزون" },
   "finances": { en: "Finances", ar: "المالية" },
   "reports": { en: "Reports", ar: "التقارير" },
-  "invoices": { en: "Invoices", ar: "الفواتير" },
   "navigation": { en: "Navigation", ar: "التنقل" },
   "switch_to_staff": { en: "Switch to Staff", ar: "التبديل للموظف" },
   "switch_to_doctor": { en: "Switch to Doctor", ar: "التبديل للطبيب" },

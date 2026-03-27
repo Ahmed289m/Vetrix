@@ -58,7 +58,7 @@ export default function FinancesPage() {
             Financial <span className="text-emerald">Overview</span>
           </h1>
           <p className="text-muted-foreground font-medium">
-            Track revenue streams, managed expenses and generate clinical invoices.
+            Track revenue streams, managed expenses and generate clinical receipts.
           </p>
         </div>
         <Button
@@ -66,7 +66,7 @@ export default function FinancesPage() {
           className="bg-emerald hover:bg-emerald/90 text-white font-black px-6 h-12 shadow-xl shadow-emerald/20 flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
-          Create Invoice
+          Create Bill
         </Button>
       </div>
 
@@ -179,7 +179,7 @@ export default function FinancesPage() {
                       <DropdownMenuContent align="end" className="bg-popover/95 backdrop-blur-xl border-border/10 rounded-2xl p-2 w-56 shadow-2xl">
                         <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">Treasury Actions</DropdownMenuLabel>
                         <DropdownMenuItem className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2">
-                          <Receipt className="w-4 h-4" /> View Invoice
+                          <Receipt className="w-4 h-4" /> View Receipt
                         </DropdownMenuItem>
                         <DropdownMenuItem className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2">
                           <Download className="w-4 h-4" /> Export Ledger
@@ -197,12 +197,12 @@ export default function FinancesPage() {
       </div>
 
       <DashboardForm
-        title="Create Final Invoice"
-        description="Select clinical activity and items to generate a billing invoice."
+        title="Create Final Bill"
+        description="Select clinical activity and items to generate a billing receipt."
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
         onSubmit={handleSubmit}
-        submitLabel="Generate Invoice"
+        submitLabel="Generate Bill"
       >
         <div className="space-y-6">
           <div className="space-y-2">
