@@ -18,7 +18,7 @@ export function AgencyModeToggle({ mode, onChange, compact = false }: AgencyMode
       <button
         type="button"
         onClick={() => onChange("agency")}
-        className={`relative inline-flex items-center gap-1.5 rounded-full font-black uppercase tracking-wider transition-all ${base} ${
+        className={`relative inline-flex items-center gap-1.5 rounded-full font-black uppercase tracking-wider transition-colors ${base} ${
           mode === "agency"
             ? "gradient-emerald-cyan text-primary-foreground shadow-[0_0_16px_hsl(var(--emerald)/0.35)]"
             : "text-muted-foreground hover:text-foreground"
@@ -31,7 +31,7 @@ export function AgencyModeToggle({ mode, onChange, compact = false }: AgencyMode
       <button
         type="button"
         onClick={() => onChange("normal")}
-        className={`relative inline-flex items-center gap-1.5 rounded-full font-black uppercase tracking-wider transition-all ${base} ${
+        className={`relative inline-flex items-center gap-1.5 rounded-full font-black uppercase tracking-wider transition-colors ${base} ${
           mode === "normal"
             ? "bg-white/10 text-foreground border border-white/10"
             : "text-muted-foreground hover:text-foreground"

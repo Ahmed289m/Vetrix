@@ -42,7 +42,7 @@ export function DashboardHeader({ role, uiMode, onUiModeChange }: DashboardHeade
             <TooltipTrigger asChild>
               <button
                 onClick={toggleTheme}
-                className="w-10 h-10 rounded-xl bg-muted/20 border border-border/10 flex items-center justify-center text-muted-foreground hover:text-emerald hover:bg-emerald/5 hover:border-emerald/20 transition-all duration-200 shadow-sm
+                className="w-10 h-10 rounded-xl bg-muted/20 border border-border/10 flex items-center justify-center text-muted-foreground hover:text-emerald hover:bg-emerald/5 hover:border-emerald/20 transition-colors duration-200 shadow-sm
                 transform hover:scale-[1.05] active:scale-[0.95]"
               >
                 {isDark ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
@@ -59,7 +59,7 @@ export function DashboardHeader({ role, uiMode, onUiModeChange }: DashboardHeade
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                className="w-10 h-10 rounded-xl bg-muted/20 border border-border/10 flex items-center justify-center text-muted-foreground hover:text-emerald hover:bg-emerald/5 hover:border-emerald/20 transition-all duration-300 shadow-sm hidden sm:flex"
+                className="w-10 h-10 rounded-xl bg-muted/20 border border-border/10 flex items-center justify-center text-muted-foreground hover:text-emerald hover:bg-emerald/5 hover:border-emerald/20 transition-colors duration-300 shadow-sm hidden sm:flex"
                 onClick={toggleLang}
               >
                 <Languages className="w-4.5 h-4.5" />

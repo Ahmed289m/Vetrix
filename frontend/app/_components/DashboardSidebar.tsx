@@ -158,7 +158,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
-                      className={`relative flex items-center gap-3.5 px-4 py-2.5 rounded-sm text-sm font-semibold transition-all duration-200 group overflow-hidden ${isActive
+                      className={`relative flex items-center gap-3.5 px-4 py-2.5 rounded-sm text-sm font-semibold transition-colors duration-200 group overflow-hidden ${isActive
                           ? "bg-emerald/10 text-emerald"
                           : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
                         }`}
@@ -186,7 +186,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="p-4 border-t border-border/10">
-        <div className="group flex items-center gap-3 px-3 py-3 rounded-2xl bg-muted/20 border border-border/10 cursor-pointer hover:border-emerald/20 transition-all duration-300 transition-transform duration-200 group-hover:scale-[1.02]">
+        <div className="group flex items-center gap-3 px-3 py-3 rounded-2xl bg-muted/20 border border-border/10 cursor-pointer hover:border-emerald/20 transition-colors duration-300 transform group-hover:scale-[1.02] transition-transform duration-200">
           <div className="relative">
             <div className="absolute -inset-0.5 bg-gradient-to-br from-emerald to-cyan rounded-lg blur-[2px] opacity-0 group-hover:opacity-40 transition duration-300" />
             <div className="relative w-9 h-9 rounded-lg gradient-emerald-cyan flex items-center justify-center text-xs font-black text-white uppercase shadow-md leading-none">

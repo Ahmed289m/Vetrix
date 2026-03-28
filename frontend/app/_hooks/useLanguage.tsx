@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 type Lang = "en" | "ar";
 
@@ -122,9 +123,19 @@ export function LangProvider({ children }: { children: ReactNode }) {
 
   return (
     <LangContext.Provider value={{ lang, setLang, t, dir }}>
-      <div dir={dir} className={lang === "ar" ? "font-arabic" : ""}>
-        {children}
-      </div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={lang}
+          initial={{ opacity: 0, scale: 0.99 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 1.01 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          dir={dir}
+          className={lang === "ar" ? "font-arabic h-full" : "h-full"}
+        >
+          {children}
+        </motion.div>
+      </AnimatePresence>
     </LangContext.Provider>
   );
 }

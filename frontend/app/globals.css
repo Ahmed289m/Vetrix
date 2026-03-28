@@ -306,12 +306,18 @@
 
   /* Smooth theme transition */
   html.theme-transitioning,
-  html.theme-transitioning * {
+  html.theme-transitioning body,
+  html.theme-transitioning .glass,
+  html.theme-transitioning .glass-card,
+  html.theme-transitioning .sidebar,
+  html.theme-transitioning .bg-card,
+  html.theme-transitioning .bg-background {
     /* Keep theme switching fast: don't animate every property everywhere. */
     transition:
       background-color 160ms ease,
       color 160ms ease,
-      border-color 160ms ease;
+      border-color 160ms ease,
+      box-shadow 160ms ease !important;
   }
 }
 
