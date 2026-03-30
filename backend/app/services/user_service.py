@@ -76,7 +76,12 @@ class UserService:
         
         # Prevent non-admin from creating admin/owner
         target_role = request.role
-        if not can_manage_user(current_user, target_role):
+        # STAFF is allowed to create CLIENT users only (per RBAC map).
+        staff_can_create_client = (
+            current_user.role == UserRole.STAFF and target_role == UserRole.CLIENT
+        )
+
+        if not can_manage_user(current_user, target_role) and not staff_can_create_client:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Not authorized to create user with role {target_role}",

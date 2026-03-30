@@ -20,6 +20,7 @@ import {
   setTokens,
 } from "@/app/_lib/axios";
 import type {
+  ApiResponse,
   LoginRequest,
   TokenPayload,
   UserRole,
@@ -88,51 +89,72 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
+  // Keep first render deterministic between SSR and client to avoid hydration mismatch.
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   /* Hydrate user from existing cookie on mount */
   useEffect(() => {
-    const token = getAccessToken();
-    if (token) {
+    let cancelled = false;
+
+    const hydrateAuth = async () => {
+      // Move state writes off the synchronous effect body.
+      await Promise.resolve();
+
+      const token = getAccessToken();
+      if (!token) {
+        if (!cancelled) setIsLoading(false);
+        return;
+      }
+
       const payload = decodeJwt(token);
       if (payload && !isTokenExpired(payload)) {
-        setUser({
-          userId: payload.sub,
-          email: payload.email,
-          role: payload.role,
-          clinicId: payload.clinic_id,
-          isSuperuser: payload.is_superuser,
-        });
-      } else {
-        // Try silent refresh
-        const refresh = getRefreshToken();
-        if (refresh) {
-          authApi
-            .refresh(refresh)
-            .then((res) => {
-              const { access_token, refresh_token } = res.data;
-              setTokens(access_token, refresh_token);
-              const newPayload = decodeJwt(access_token);
-              if (newPayload) {
-                setUser({
-                  userId: newPayload.sub,
-                  email: newPayload.email,
-                  role: newPayload.role,
-                  clinicId: newPayload.clinic_id,
-                  isSuperuser: newPayload.is_superuser,
-                });
-              }
-            })
-            .catch(() => {
-              clearTokens();
-            });
-        } else {
-          clearTokens();
+        if (!cancelled) {
+          setUser({
+            userId: payload.sub,
+            email: payload.email,
+            role: payload.role,
+            clinicId: payload.clinic_id,
+            isSuperuser: payload.is_superuser,
+          });
+          setIsLoading(false);
         }
+        return;
       }
-    }
-    setIsLoading(false);
+
+      const refresh = getRefreshToken();
+      if (!refresh) {
+        clearTokens();
+        if (!cancelled) setIsLoading(false);
+        return;
+      }
+
+      try {
+        const res = await authApi.refresh(refresh);
+        const { access_token, refresh_token } = res.data;
+        setTokens(access_token, refresh_token);
+        const newPayload = decodeJwt(access_token);
+        if (newPayload && !cancelled) {
+          setUser({
+            userId: newPayload.sub,
+            email: newPayload.email,
+            role: newPayload.role,
+            clinicId: newPayload.clinic_id,
+            isSuperuser: newPayload.is_superuser,
+          });
+        }
+      } catch {
+        clearTokens();
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    void hydrateAuth();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   /* Login mutation */
@@ -169,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.clear();
       router.push("/login");
     },
-    onError: (error) => {
+    onError: () => {
       // Even on error, clear local auth data for security
       clearTokens();
       setUser(null);
@@ -185,12 +207,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /* Derive login error message */
   const loginError = useMemo(() => {
     if (!loginMutation.error) return null;
-    const err = loginMutation.error as any;
-    return (
-      err?.response?.data?.message ||
-      err?.message ||
-      "Login failed. Please try again."
-    );
+    const err = loginMutation.error as {
+      response?: { data?: ApiResponse<unknown> | { message?: string } };
+      message?: string;
+    };
+    const responseMessage =
+      typeof err?.response?.data === "object" &&
+      err.response?.data !== null &&
+      "message" in err.response.data
+        ? (err.response.data as { message?: string }).message
+        : undefined;
+    return responseMessage || err?.message || "Login failed. Please try again.";
   }, [loginMutation.error]);
 
   const value = useMemo<AuthContextValue>(

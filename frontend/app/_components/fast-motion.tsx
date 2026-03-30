@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React from "react";
 
-type AnyProps = Record<string, any>;
+type AnyProps = Record<string, unknown>;
 
 const MOTION_KEYS_TO_STRIP = new Set([
   // animation state
@@ -38,14 +37,18 @@ function stripMotionProps(props: AnyProps) {
 // A lightweight replacement for `framer-motion` used only in dashboard routes.
 // It keeps the JSX structure but removes motion animation props so React hydration
 // stays stable and render cost is much lower.
-export const motion: any = new Proxy(
+export const motion: Record<string, React.ComponentType<AnyProps>> = new Proxy(
   {},
   {
     get(_target, tag: string) {
-      return React.forwardRef<HTMLElement, AnyProps>(({ ...props }, ref) => {
-        const cleaned = stripMotionProps(props);
-        return React.createElement(tag, { ...cleaned, ref });
-      });
+      const Comp = React.forwardRef<HTMLElement, AnyProps>(
+        ({ ...props }, ref) => {
+          const cleaned = stripMotionProps(props);
+          return React.createElement(tag, { ...cleaned, ref });
+        },
+      );
+      Comp.displayName = `FastMotion(${tag})`;
+      return Comp;
     },
   },
 );
@@ -53,4 +56,3 @@ export const motion: any = new Proxy(
 export function AnimatePresence({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
-

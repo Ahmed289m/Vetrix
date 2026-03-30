@@ -1,8 +1,9 @@
+import json
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from starlette.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
@@ -39,6 +40,44 @@ async def lifespan(_: FastAPI):
 # ── App ───────────────────────────────────────────────────────────────
 app = FastAPI(title=settings.app_name, debug=settings.app_debug, lifespan=lifespan)
 
+
+@app.middleware("http")
+async def add_status_to_json_response(request: Request, call_next):
+    response = await call_next(request)
+
+    content_type = response.headers.get("content-type", "")
+    if "application/json" not in content_type:
+        return response
+
+    # Preserve existing JSON responses and only inject status when missing.
+    body = b""
+    async for chunk in response.body_iterator:
+        body += chunk
+
+    if not body:
+        return response
+
+    try:
+        payload = json.loads(body)
+    except json.JSONDecodeError:
+        passthrough_headers = {
+            k: v for k, v in response.headers.items() if k.lower() not in {"content-length", "content-type"}
+        }
+        return Response(
+            content=body,
+            status_code=response.status_code,
+            media_type=content_type,
+            headers=passthrough_headers,
+        )
+
+    if isinstance(payload, dict) and "message" in payload and "status" not in payload:
+        payload["status"] = response.status_code
+
+    passthrough_headers = {
+        k: v for k, v in response.headers.items() if k.lower() not in {"content-length", "content-type"}
+    }
+    return JSONResponse(content=payload, status_code=response.status_code, headers=passthrough_headers)
+
 # CORS — allow the Next.js frontend
 app.add_middleware(
     CORSMiddleware,
@@ -71,6 +110,7 @@ async def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse
     return JSONResponse(
         status_code=exc.status_code,
         content={
+            "status": exc.status_code,
             "success": False,
             "message": exc.detail,
             "data": None,
@@ -83,8 +123,10 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError) 
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
+            "status": status.HTTP_422_UNPROCESSABLE_ENTITY,
             "success": False,
-            "message": exc.errors(),
+            "message": "Request validation failed.",
+            "errors": exc.errors(),
             "data": None,
         },
     )
@@ -95,8 +137,9 @@ async def unhandled_exception_handler(_: Request, exc: Exception) -> JSONRespons
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
             "success": False,
-            "message": str(exc),
+            "message": "An unexpected server error occurred.",
             "data": None,
         },
     )
@@ -105,6 +148,7 @@ async def unhandled_exception_handler(_: Request, exc: Exception) -> JSONRespons
 @app.get("/health")
 async def health() -> dict:
     return {
+        "status": status.HTTP_200_OK,
         "success": True,
         "message": "Health check successful.",
         "data": {"status": "ok", "environment": settings.app_env},

@@ -3,11 +3,16 @@ import { visitsApi } from "@/app/_lib/api/visits.api";
 import type { VisitCreate, VisitUpdate } from "@/app/_lib/types/models";
 
 export const VISITS_KEY = ["visits"] as const;
+const LIST_STALE_TIME = 1000 * 30;
+const DETAIL_STALE_TIME = 1000 * 15;
+const QUERY_GC_TIME = 1000 * 60 * 20;
 
 export function useVisits() {
   return useQuery({
     queryKey: VISITS_KEY,
     queryFn: () => visitsApi.list(),
+    staleTime: LIST_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -16,6 +21,8 @@ export function useVisit(id: string) {
     queryKey: [...VISITS_KEY, id],
     queryFn: () => visitsApi.get(id),
     enabled: !!id,
+    staleTime: DETAIL_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 

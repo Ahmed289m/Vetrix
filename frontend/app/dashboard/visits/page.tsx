@@ -1,21 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import type { MouseEvent } from "react";
 import { motion, AnimatePresence } from "@/app/_components/fast-motion";
-import {
-  CheckCircle2,
-  Dog,
-  Cat,
-  Eye,
-  X,
-  FileText,
-  Pill,
-  Stethoscope,
-  BriefcaseMedical
-} from "lucide-react";
+import { Dog, Cat, Eye, X, FileText, Pill } from "lucide-react";
 import { useLang } from "@/app/_hooks/useLanguage";
 
-import { useVisits, useUpdateVisit } from "@/app/_hooks/queries/use-visits";
+import { useVisits } from "@/app/_hooks/queries/use-visits";
 import { usePets } from "@/app/_hooks/queries/use-pets";
 import { useUsers } from "@/app/_hooks/queries/use-users";
 import { usePrescriptions } from "@/app/_hooks/queries/use-prescriptions";
@@ -32,8 +23,12 @@ const fadeUp = {
   },
 };
 
+const FILTER_OPTIONS = ["all", "completed"] as const;
+
 export default function VisitsPage() {
-  const [filter, setFilter] = useState<"all" | "in-progress" | "completed">("all");
+  const [filter, setFilter] = useState<"all" | "in-progress" | "completed">(
+    "all",
+  );
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const { t } = useLang();
 
@@ -44,8 +39,6 @@ export default function VisitsPage() {
   const { data: presItemsData } = usePrescriptionItems();
   const { data: drugsData } = useDrugs();
 
-  const updateVisit = useUpdateVisit();
-
   const visits = visitsData?.data || [];
   const petsList = petsData?.data || [];
   const usersList = usersData?.data || [];
@@ -53,26 +46,27 @@ export default function VisitsPage() {
   const presItemsList = presItemsData?.data || [];
   const drugsList = drugsData?.data || [];
 
-  const filtered = filter === "all" ? visits : visits.filter((v) => {
-    // Backend doesn't have native "status" in Visit model, assuming all are completed for now
-    // or simulate status if needed. We'll simulate by filtering all as "completed".
-    return filter === "completed";
-  });
-
-  const inProgressCount = 0; // Simulated
-
-  const handleComplete = (id: string) => {
-    // If backend supported status: updateVisit.mutate({ id, data: { status: 'completed' } })
-  };
+  const filtered =
+    filter === "all"
+      ? visits
+      : visits.filter(() => {
+          // Backend doesn't have native "status" in Visit model, assuming all are completed for now
+          // or simulate status if needed. We'll simulate by filtering all as "completed".
+          return filter === "completed";
+        });
 
   const getPet = (id: string) => petsList.find((p) => p.pet_id === id);
   const getUser = (id: string) => usersList.find((u) => u.user_id === id);
-  
+
   const getPrescriptionTextForVisit = (visit: Visit) => {
     if (!visit.prescription_id) return [];
-    const rx = prescriptionsList.find((p) => p.prescription_id === visit.prescription_id);
+    const rx = prescriptionsList.find(
+      (p) => p.prescription_id === visit.prescription_id,
+    );
     if (!rx) return [];
-    const item = presItemsList.find((pi) => pi.prescriptionItem_id === rx.prescriptionItem_id);
+    const item = presItemsList.find(
+      (pi) => pi.prescriptionItem_id === rx.prescriptionItem_id,
+    );
     if (!item) return [];
     const drug = drugsList.find((d) => d.drug_id === item.drug_id);
     return [`${drug?.drugName || "Unknown Drug"} - ${item.drugDose}`];
@@ -98,10 +92,10 @@ export default function VisitsPage() {
       </motion.div>
 
       <motion.div variants={fadeUp} className="flex gap-2">
-        {(["all", "completed"] as const).map((f) => (
+        {FILTER_OPTIONS.map((f) => (
           <button
             key={f}
-            onClick={() => setFilter(f as any)}
+            onClick={() => setFilter(f)}
             className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
               filter === f
                 ? "gradient-emerald-cyan text-primary-foreground glow-emerald"
@@ -115,16 +109,20 @@ export default function VisitsPage() {
 
       <motion.div variants={fadeUp} className="space-y-3">
         {visitsLoading ? (
-          <div className="text-center py-8 text-muted-foreground">Loading visits data...</div>
+          <div className="text-center py-8 text-muted-foreground">
+            Loading visits data...
+          </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">No visits found.</div>
+          <div className="text-center py-8 text-muted-foreground">
+            No visits found.
+          </div>
         ) : (
           filtered.map((visit, i) => {
             const pet = getPet(visit.pet_id);
             const owner = getUser(visit.client_id);
             const doctor = getUser(visit.doctor_id);
             const Icon = pet?.type.toLowerCase() === "cat" ? Cat : Dog;
-            const isInProgress = false; 
+            const isInProgress = false;
 
             return (
               <motion.div
@@ -146,7 +144,7 @@ export default function VisitsPage() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono text-[10px] text-muted-foreground">
-                          ID-{visit.visit_id.slice(0,8).toUpperCase()}
+                          ID-{visit.visit_id.slice(0, 8).toUpperCase()}
                         </span>
                         <span
                           className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${isInProgress ? "bg-cyan/15 text-cyan" : "bg-emerald/15 text-emerald"}`}
@@ -156,7 +154,9 @@ export default function VisitsPage() {
                       </div>
                       <p className="text-sm font-bold mt-0.5">Clinical Visit</p>
                       <p className="text-xs text-muted-foreground">
-                        {pet?.name || "Unknown Pet"} · {owner?.fullname || "Unknown Owner"} · {doctor?.fullname || "Unknown Doctor"}
+                        {pet?.name || "Unknown Pet"} ·{" "}
+                        {owner?.fullname || "Unknown Owner"} ·{" "}
+                        {doctor?.fullname || "Unknown Doctor"}
                       </p>
                     </div>
                   </div>
@@ -192,7 +192,7 @@ export default function VisitsPage() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()}
               className="glass-card p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto custom-scrollbar space-y-5 shadow-[0_0_50px_-12px_rgba(16,185,129,0.15)] rounded-[2.5rem]"
             >
               <div className="flex items-start justify-between">
@@ -204,7 +204,8 @@ export default function VisitsPage() {
                     Clinical Record Overview
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    {getPet(selectedVisit.pet_id)?.name} · {getUser(selectedVisit.client_id)?.fullname}
+                    {getPet(selectedVisit.pet_id)?.name} ·{" "}
+                    {getUser(selectedVisit.client_id)?.fullname}
                   </p>
                 </div>
                 <button
@@ -214,7 +215,7 @@ export default function VisitsPage() {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              
+
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
                   <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">
@@ -233,7 +234,8 @@ export default function VisitsPage() {
                     Doctor
                   </p>
                   <p className="text-sm font-semibold">
-                    {getUser(selectedVisit.doctor_id)?.fullname || "Dr. Assigned"}
+                    {getUser(selectedVisit.doctor_id)?.fullname ||
+                      "Dr. Assigned"}
                   </p>
                 </div>
                 <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
@@ -255,7 +257,8 @@ export default function VisitsPage() {
                     </span>
                   </div>
                   <p className="text-sm text-foreground/85 leading-relaxed bg-white/5 p-4 rounded-2xl border border-white/5">
-                    {selectedVisit.notes || "No additional clinical notes recorded for this visit session."}
+                    {selectedVisit.notes ||
+                      "No additional clinical notes recorded for this visit session."}
                   </p>
                 </div>
 
@@ -268,14 +271,16 @@ export default function VisitsPage() {
                       </span>
                     </div>
                     <ul className="space-y-2">
-                      {getPrescriptionTextForVisit(selectedVisit).map((rx, j) => (
-                        <li
-                          key={j}
-                          className="text-sm text-emerald font-semibold font-mono bg-emerald/5 px-4 py-3 rounded-xl border border-emerald/10 shadow-inner"
-                        >
-                          {rx}
-                        </li>
-                      ))}
+                      {getPrescriptionTextForVisit(selectedVisit).map(
+                        (rx, j) => (
+                          <li
+                            key={j}
+                            className="text-sm text-emerald font-semibold font-mono bg-emerald/5 px-4 py-3 rounded-xl border border-emerald/10 shadow-inner"
+                          >
+                            {rx}
+                          </li>
+                        ),
+                      )}
                     </ul>
                   </div>
                 )}

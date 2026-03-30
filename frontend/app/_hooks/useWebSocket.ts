@@ -49,48 +49,51 @@ const EVENT_TO_QUERY_KEYS: Record<string, string[]> = {
 export function useWebSocket() {
   const queryClient = useQueryClient();
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimer = useRef<ReturnType<typeof setTimeout>>();
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryDelay = useRef(1000);
   const isMountedRef = useRef(true);
 
-  const connect = useCallback(() => {
-    if (!isMountedRef.current) return;
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
-
-    const ws = new WebSocket(`${WS_URL}/ws`);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      retryDelay.current = 1000; // reset back-off on success
-    };
-
-    ws.onmessage = (evt) => {
-      try {
-        const msg = JSON.parse(evt.data) as { event: string; data?: unknown };
-        const keys = EVENT_TO_QUERY_KEYS[msg.event];
-        if (keys) {
-          keys.forEach((key) =>
-            queryClient.invalidateQueries({ queryKey: [key] }),
-          );
-        }
-      } catch {
-        // ignore malformed messages
-      }
-    };
-
-    ws.onclose = () => {
+  const connect = useCallback(
+    function connectSocket() {
       if (!isMountedRef.current) return;
-      // Exponential back-off reconnection (max 30 s)
-      reconnectTimer.current = setTimeout(() => {
-        retryDelay.current = Math.min(retryDelay.current * 2, 30_000);
-        connect();
-      }, retryDelay.current);
-    };
+      if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-    ws.onerror = () => {
-      ws.close();
-    };
-  }, [queryClient]);
+      const ws = new WebSocket(`${WS_URL}/ws`);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        retryDelay.current = 1000; // reset back-off on success
+      };
+
+      ws.onmessage = (evt) => {
+        try {
+          const msg = JSON.parse(evt.data) as { event: string; data?: unknown };
+          const keys = EVENT_TO_QUERY_KEYS[msg.event];
+          if (keys) {
+            keys.forEach((key) =>
+              queryClient.invalidateQueries({ queryKey: [key] }),
+            );
+          }
+        } catch {
+          // ignore malformed messages
+        }
+      };
+
+      ws.onclose = () => {
+        if (!isMountedRef.current) return;
+        // Exponential back-off reconnection (max 30 s)
+        reconnectTimer.current = setTimeout(() => {
+          retryDelay.current = Math.min(retryDelay.current * 2, 30_000);
+          connectSocket();
+        }, retryDelay.current);
+      };
+
+      ws.onerror = () => {
+        ws.close();
+      };
+    },
+    [queryClient],
+  );
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -106,7 +109,9 @@ export function useWebSocket() {
     return () => {
       isMountedRef.current = false;
       clearInterval(pingInterval);
-      clearTimeout(reconnectTimer.current);
+      if (reconnectTimer.current) {
+        clearTimeout(reconnectTimer.current);
+      }
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.close();
       }

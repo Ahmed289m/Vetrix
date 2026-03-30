@@ -28,25 +28,26 @@ class AppointmentService:
     async def create_appointment(self, request: AppointmentCreate, current_user: TokenData) -> dict:
         """
         Create an appointment with authorization.
-        
+
         - STAFF/OWNER can create appointments in their clinic
         - CLIENT can create appointments (auto-set as client)
         - ADMIN can create in any clinic
         """
-        clinic_id = request.clinic_id or current_user.clinic_id
+        requested_clinic_id = getattr(request, "clinic_id", None)
+        clinic_id = requested_clinic_id or current_user.clinic_id
         if not clinic_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="clinic_id is required",
             )
-        
+
         # Enforce clinic isolation
         if not current_user.is_superuser and current_user.clinic_id != clinic_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Cannot create appointments in other clinics",
             )
-        
+
         clinic = await self.clinic_repository.get_by_clinic_id(clinic_id)
         if not clinic:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Clinic not found.")
@@ -54,12 +55,22 @@ class AppointmentService:
         pet = await self.pet_repository.get_by_id(request.pet_id)
         if not pet:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pet not found.")
+        if pet.get("clinic_id") != clinic_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Pet belongs to a different clinic",
+            )
 
         # For CLIENT, auto-set client_id; otherwise validate
         client_id = current_user.user_id if current_user.role == UserRole.CLIENT else request.client_id
         client = await self.user_repository.get_by_user_id(client_id)
         if not client:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found.")
+        if client.get("clinic_id") != clinic_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Client belongs to a different clinic",
+            )
 
         appointment_id = generate_prefixed_id("appointment")
         appointment_model = Appointment(

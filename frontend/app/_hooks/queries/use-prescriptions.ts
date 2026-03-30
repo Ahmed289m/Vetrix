@@ -1,13 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { prescriptionsApi } from "@/app/_lib/api/prescriptions.api";
-import type { PrescriptionCreate, PrescriptionUpdate } from "@/app/_lib/types/models";
+import type {
+  PrescriptionCreate,
+  PrescriptionUpdate,
+} from "@/app/_lib/types/models";
 
 export const PRESCRIPTIONS_KEY = ["prescriptions"] as const;
+const LIST_STALE_TIME = 1000 * 60;
+const DETAIL_STALE_TIME = 1000 * 30;
+const QUERY_GC_TIME = 1000 * 60 * 30;
 
 export function usePrescriptions() {
   return useQuery({
     queryKey: PRESCRIPTIONS_KEY,
     queryFn: () => prescriptionsApi.list(),
+    staleTime: LIST_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -16,6 +24,8 @@ export function usePrescription(id: string) {
     queryKey: [...PRESCRIPTIONS_KEY, id],
     queryFn: () => prescriptionsApi.get(id),
     enabled: !!id,
+    staleTime: DETAIL_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 

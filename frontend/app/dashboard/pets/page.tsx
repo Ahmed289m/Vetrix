@@ -1,7 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { Plus, MoreHorizontal, User, Phone, Heart, Dog, Cat, Search } from "lucide-react";
+import {
+  Plus,
+  MoreHorizontal,
+  User,
+  Phone,
+  Heart,
+  Dog,
+  Cat,
+  Search,
+} from "lucide-react";
 import { useFormik } from "formik";
 import { Button } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
@@ -11,7 +20,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
 } from "@/app/_components/ui/table";
 import {
   DropdownMenu,
@@ -30,7 +39,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/app/_components/ui/select";
-import { usePets, useCreatePet, useUpdatePet, useDeletePet } from "@/app/_hooks/queries/use-pets";
+import {
+  usePets,
+  useCreatePet,
+  useUpdatePet,
+  useDeletePet,
+} from "@/app/_hooks/queries/use-pets";
 import { useUsers } from "@/app/_hooks/queries/use-users";
 import type { Pet, PetType } from "@/app/_lib/types/models";
 
@@ -46,7 +60,7 @@ export default function PetsPage() {
   const deletePet = useDeletePet();
 
   const pets = petsData?.data || [];
-  const clients = (usersData?.data || []).filter(u => u.role === "client");
+  const clients = (usersData?.data || []).filter((u) => u.role === "client");
 
   const formik = useFormik({
     initialValues: {
@@ -65,7 +79,7 @@ export default function PetsPage() {
               setSubmitting(false);
             },
             onError: () => setSubmitting(false),
-          }
+          },
         );
       } else {
         createPet.mutate(values, {
@@ -116,7 +130,9 @@ export default function PetsPage() {
         <div className="space-y-1.5">
           <div className="flex items-center gap-2 mb-2">
             <Heart className="w-5 h-5 text-emerald fill-emerald/20" />
-            <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald">Patient Portal</span>
+            <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald">
+              Patient Portal
+            </span>
           </div>
           <h1 className="text-4xl font-black tracking-tight text-foreground">
             Patient <span className="text-emerald">Records</span>
@@ -163,30 +179,53 @@ export default function PetsPage() {
           <Table>
             <TableHeader className="bg-white/5">
               <TableRow className="border-b border-white/5 hover:bg-transparent">
-                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">Patient & Owner</TableHead>
-                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">Species</TableHead>
-                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">Contact info</TableHead>
+                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
+                  Patient & Owner
+                </TableHead>
+                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
+                  Species
+                </TableHead>
+                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
+                  Contact info
+                </TableHead>
                 <TableHead className="py-6 px-8 text-right"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isPetsLoading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Loading patients...</TableCell>
+                  <TableCell
+                    colSpan={4}
+                    className="text-center py-8 text-muted-foreground"
+                  >
+                    Loading patients...
+                  </TableCell>
                 </TableRow>
               ) : pets.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No patients found. Add one to get started.</TableCell>
+                  <TableCell
+                    colSpan={4}
+                    className="text-center py-8 text-muted-foreground"
+                  >
+                    No patients found. Add one to get started.
+                  </TableCell>
                 </TableRow>
               ) : (
                 pets.map((pet) => {
                   const client = getClientDetails(pet.client_id);
                   return (
-                    <TableRow key={pet.pet_id} className="border-b border-white/5 hover:bg-white/5 transition-colors group/row">
+                    <TableRow
+                      key={pet.pet_id}
+                      className="border-b border-white/5 hover:bg-white/5 transition-colors group/row"
+                    >
                       <TableCell className="py-6 px-8">
                         <div className="flex items-center gap-4">
                           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald/20 to-cyan/20 flex items-center justify-center text-emerald font-black text-lg shadow-inner group-hover/row:scale-105 transition-transform duration-300">
-                            {pet.type.toLowerCase() === "cat" ? <Cat className="w-6 h-6" /> : <Dog className="w-6 h-6" />}
+                            {pet.type.toLowerCase() === "cat" ? (
+                              <Cat className="w-6 h-6" />
+                            ) : (
+                              <Dog className="w-6 h-6" />
+                            )}
                           </div>
                           <div className="flex flex-col gap-0.5">
                             <span className="font-black text-foreground group-hover/row:text-emerald transition-colors tracking-tight">
@@ -220,12 +259,21 @@ export default function PetsPage() {
                       <TableCell className="py-6 px-8 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="group-hover/row:bg-white/10 rounded-xl h-10 w-10">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="group-hover/row:bg-white/10 rounded-xl h-10 w-10"
+                            >
                               <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2 w-48 shadow-2xl">
-                            <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">Patient Actions</DropdownMenuLabel>
+                          <DropdownMenuContent
+                            align="end"
+                            className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2 w-48 shadow-2xl"
+                          >
+                            <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
+                              Patient Actions
+                            </DropdownMenuLabel>
                             <DropdownMenuItem
                               onClick={() => handleOpenForm(pet)}
                               className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold"
@@ -257,18 +305,32 @@ export default function PetsPage() {
       {/* CRUD Form */}
       <DashboardForm
         title={selectedPet ? "Update Patient Profile" : "Register New Patient"}
-        description={selectedPet ? `Modifying clinical records for ${selectedPet.name}` : "Enter patient details and link them to an existing clinical owner."}
+        description={
+          selectedPet
+            ? `Modifying clinical records for ${selectedPet.name}`
+            : "Enter patient details and link them to an existing clinical owner."
+        }
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
-        onSubmit={formik.handleSubmit}
-        submitLabel={formik.isSubmitting ? "Saving..." : selectedPet ? "Save Profile" : "Register Patient"}
+        onSubmit={(e) =>
+          formik.handleSubmit(e as React.FormEvent<HTMLFormElement>)
+        }
+        submitLabel={
+          formik.isSubmitting
+            ? "Saving..."
+            : selectedPet
+              ? "Save Profile"
+              : "Register Patient"
+        }
       >
         <div className="space-y-6">
           {/* Prominent Client Selection Box */}
           <div className="p-6 bg-emerald/5 border border-emerald/10 rounded-[2rem] space-y-4">
             <div className="flex items-center gap-2 px-2">
               <User className="w-4 h-4 text-emerald" />
-              <Label className="text-xs font-black uppercase tracking-[0.2em] text-emerald">Assigned Clinical Owner *</Label>
+              <Label className="text-xs font-black uppercase tracking-[0.2em] text-emerald">
+                Assigned Clinical Owner *
+              </Label>
             </div>
             <Select
               value={formik.values.client_id}
@@ -279,23 +341,34 @@ export default function PetsPage() {
               </SelectTrigger>
               <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2 max-h-[300px]">
                 {clients.map((client) => (
-                  <SelectItem key={client.user_id} value={client.user_id} className="rounded-xl py-4 cursor-pointer focus:bg-emerald/10 focus:text-emerald">
+                  <SelectItem
+                    key={client.user_id}
+                    value={client.user_id}
+                    className="rounded-xl py-4 cursor-pointer focus:bg-emerald/10 focus:text-emerald"
+                  >
                     <div className="flex flex-col text-left">
-                      <span className="font-black text-lg tracking-tight leading-none mb-1">{client.fullname}</span>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">{client.email} · {client.phone}</span>
+                      <span className="font-black text-lg tracking-tight leading-none mb-1">
+                        {client.fullname}
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                        {client.email} · {client.phone}
+                      </span>
                     </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <p className="px-2 text-[10px] font-black text-muted-foreground/40 italic flex items-center gap-1.5 uppercase tracking-widest">
-              <Plus className="w-3 h-3" /> Register new clients in the "Owners" section
+              <Plus className="w-3 h-3" /> Register new clients in the
+              &quot;Owners&quot; section
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-3 relative">
-              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 ml-1">Patient Identity</Label>
+              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 ml-1">
+                Patient Identity
+              </Label>
               <div className="relative group/field">
                 <Heart className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within/field:text-emerald transition-colors" />
                 <Input
@@ -309,7 +382,9 @@ export default function PetsPage() {
             </div>
 
             <div className="space-y-3">
-              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 ml-1">Species Type</Label>
+              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 ml-1">
+                Species Type
+              </Label>
               <Select
                 value={formik.values.type}
                 onValueChange={(val) => formik.setFieldValue("type", val)}
@@ -318,8 +393,12 @@ export default function PetsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
-                  <SelectItem value="dog" className="rounded-xl font-bold">Dog</SelectItem>
-                  <SelectItem value="cat" className="rounded-xl font-bold">Cat</SelectItem>
+                  <SelectItem value="dog" className="rounded-xl font-bold">
+                    Dog
+                  </SelectItem>
+                  <SelectItem value="cat" className="rounded-xl font-bold">
+                    Cat
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -327,7 +406,9 @@ export default function PetsPage() {
 
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-3">
-              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 ml-1">Weight (KG)</Label>
+              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 ml-1">
+                Weight (KG)
+              </Label>
               <Input
                 type="number"
                 step="0.1"

@@ -1,7 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Plus, MoreHorizontal, Calendar, Clock, User, Phone, Search, Bell, CheckCircle, Dog } from "lucide-react";
+import {
+  Plus,
+  MoreHorizontal,
+  Calendar,
+  Search,
+  CheckCircle,
+} from "lucide-react";
 import { useFormik } from "formik";
 import { Button } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
@@ -11,7 +17,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
 } from "@/app/_components/ui/table";
 import {
   DropdownMenu,
@@ -31,12 +37,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/app/_components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn } from "@/app/_lib/utils";
 
-import { useAppointments, useCreateAppointment, useDeleteAppointment } from "@/app/_hooks/queries/use-appointments";
+import {
+  useAppointments,
+  useCreateAppointment,
+  useDeleteAppointment,
+} from "@/app/_hooks/queries/use-appointments";
 import { usePets } from "@/app/_hooks/queries/use-pets";
 import { useUsers } from "@/app/_hooks/queries/use-users";
-import type { Appointment } from "@/app/_lib/types/models";
 
 export default function AppointmentsPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -50,7 +59,9 @@ export default function AppointmentsPage() {
 
   const appointments = appData?.data || [];
   const petsList = petsData?.data || [];
-  const clientsList = (usersData?.data || []).filter((u) => u.role === "client");
+  const clientsList = (usersData?.data || []).filter(
+    (u) => u.role === "client",
+  );
 
   const formik = useFormik({
     initialValues: {
@@ -79,8 +90,11 @@ export default function AppointmentsPage() {
     }
   };
 
-  const getPetName = (petId: string) => petsList.find((p) => p.pet_id === petId)?.name || "Unknown Pet";
-  const getClientName = (clientId: string) => clientsList.find((c) => c.user_id === clientId)?.fullname || "Unknown Owner";
+  const getPetName = (petId: string) =>
+    petsList.find((p) => p.pet_id === petId)?.name || "Unknown Pet";
+  const getClientName = (clientId: string) =>
+    clientsList.find((c) => c.user_id === clientId)?.fullname ||
+    "Unknown Owner";
 
   return (
     <div className="p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -88,13 +102,16 @@ export default function AppointmentsPage() {
         <div className="space-y-1.5">
           <div className="flex items-center gap-2 mb-2">
             <Calendar className="w-5 h-5 text-emerald" />
-            <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald">Scheduling Portal</span>
+            <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald">
+              Scheduling Portal
+            </span>
           </div>
           <h1 className="text-4xl font-black tracking-tight text-foreground">
             Bookings & <span className="text-emerald">Appointments</span>
           </h1>
           <p className="text-muted-foreground font-medium">
-            Manage your daily clinic schedule, patient arrivals and availability.
+            Manage your daily clinic schedule, patient arrivals and
+            availability.
           </p>
         </div>
         <Button
@@ -134,24 +151,43 @@ export default function AppointmentsPage() {
           <Table>
             <TableHeader className="bg-white/5">
               <TableRow className="border-b border-white/5 hover:bg-transparent">
-                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">Schedule ID & Pet</TableHead>
-                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">Owner</TableHead>
-                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">Status</TableHead>
+                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
+                  Schedule ID & Pet
+                </TableHead>
+                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
+                  Owner
+                </TableHead>
+                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
+                  Status
+                </TableHead>
                 <TableHead className="py-6 px-8 text-right"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {appLoading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Loading appointments...</TableCell>
+                  <TableCell
+                    colSpan={4}
+                    className="text-center py-8 text-muted-foreground"
+                  >
+                    Loading appointments...
+                  </TableCell>
                 </TableRow>
               ) : appointments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No appointments found.</TableCell>
+                  <TableCell
+                    colSpan={4}
+                    className="text-center py-8 text-muted-foreground"
+                  >
+                    No appointments found.
+                  </TableCell>
                 </TableRow>
               ) : (
                 appointments.map((app) => (
-                  <TableRow key={app.appointment_id} className="border-b border-white/5 hover:bg-white/5 transition-colors group/row">
+                  <TableRow
+                    key={app.appointment_id}
+                    className="border-b border-white/5 hover:bg-white/5 transition-colors group/row"
+                  >
                     <TableCell className="py-6 px-8">
                       <div className="flex items-center gap-4">
                         <div className="flex flex-col gap-0.5">
@@ -159,7 +195,7 @@ export default function AppointmentsPage() {
                             {getPetName(app.pet_id)}
                           </span>
                           <span className="text-[10px] text-muted-foreground font-black tracking-widest uppercase opacity-50">
-                            {app.appointment_id.slice(0,8)}...
+                            {app.appointment_id.slice(0, 8)}...
                           </span>
                         </div>
                       </div>
@@ -170,22 +206,35 @@ export default function AppointmentsPage() {
                       </span>
                     </TableCell>
                     <TableCell className="py-6 px-8">
-                      <Badge className={cn(
-                        "rounded-full px-4 py-1 text-[10px] font-black uppercase tracking-widest border-none",
-                        app.status === "confirmed" ? "bg-emerald/10 text-emerald" : "bg-orange-500/10 text-orange-400"
-                      )}>
+                      <Badge
+                        className={cn(
+                          "rounded-full px-4 py-1 text-[10px] font-black uppercase tracking-widest border-none",
+                          app.status === "confirmed"
+                            ? "bg-emerald/10 text-emerald"
+                            : "bg-orange-500/10 text-orange-400",
+                        )}
+                      >
                         {app.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="py-6 px-8 text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="group-hover/row:bg-white/10 rounded-xl h-10 w-10">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="group-hover/row:bg-white/10 rounded-xl h-10 w-10"
+                          >
                             <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2 w-56 shadow-2xl">
-                          <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">Operations</DropdownMenuLabel>
+                        <DropdownMenuContent
+                          align="end"
+                          className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2 w-56 shadow-2xl"
+                        >
+                          <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
+                            Operations
+                          </DropdownMenuLabel>
                           <DropdownMenuItem className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2">
                             <CheckCircle className="w-4 h-4" /> Check In Patient
                           </DropdownMenuItem>
@@ -213,12 +262,16 @@ export default function AppointmentsPage() {
         description="Schedule a new clinical session for a patient."
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
-        onSubmit={formik.handleSubmit}
+        onSubmit={(e) =>
+          formik.handleSubmit(e as React.FormEvent<HTMLFormElement>)
+        }
         submitLabel={formik.isSubmitting ? "Booking..." : "Confirm Booking"}
       >
         <div className="space-y-8">
           <div className="space-y-3">
-            <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Client Owner</Label>
+            <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
+              Client Owner
+            </Label>
             <Select
               value={formik.values.client_id}
               onValueChange={(val) => formik.setFieldValue("client_id", val)}
@@ -228,7 +281,11 @@ export default function AppointmentsPage() {
               </SelectTrigger>
               <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
                 {clientsList.map((client) => (
-                  <SelectItem key={client.user_id} value={client.user_id} className="rounded-xl font-bold">
+                  <SelectItem
+                    key={client.user_id}
+                    value={client.user_id}
+                    className="rounded-xl font-bold"
+                  >
                     {client.fullname}
                   </SelectItem>
                 ))}
@@ -237,7 +294,9 @@ export default function AppointmentsPage() {
           </div>
 
           <div className="space-y-3">
-            <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Select Pet</Label>
+            <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
+              Select Pet
+            </Label>
             <Select
               value={formik.values.pet_id}
               onValueChange={(val) => formik.setFieldValue("pet_id", val)}
@@ -250,7 +309,11 @@ export default function AppointmentsPage() {
                 {petsList
                   .filter((p) => p.client_id === formik.values.client_id)
                   .map((pet) => (
-                    <SelectItem key={pet.pet_id} value={pet.pet_id} className="rounded-xl font-bold">
+                    <SelectItem
+                      key={pet.pet_id}
+                      value={pet.pet_id}
+                      className="rounded-xl font-bold"
+                    >
                       {pet.name}
                     </SelectItem>
                   ))}

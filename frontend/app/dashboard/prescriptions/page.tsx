@@ -1,17 +1,25 @@
 "use client";
 
 import * as React from "react";
-import { Plus, MoreHorizontal, FileText, User, Pill, Search, Download, Trash2, ShieldCheck } from "lucide-react";
+import {
+  Plus,
+  MoreHorizontal,
+  FileText,
+  Pill,
+  Search,
+  Download,
+  Trash2,
+} from "lucide-react";
 import { useFormik } from "formik";
 import { Button } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/app/_components/ui/table";
 import {
   DropdownMenu,
@@ -31,9 +39,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/app/_components/ui/select";
-import { cn } from "@/lib/utils";
 
-import { usePrescriptions, useCreatePrescription, useDeletePrescription } from "@/app/_hooks/queries/use-prescriptions";
+import {
+  usePrescriptions,
+  useCreatePrescription,
+  useDeletePrescription,
+} from "@/app/_hooks/queries/use-prescriptions";
 import { usePrescriptionItems } from "@/app/_hooks/queries/use-prescription-items";
 import { useDrugs } from "@/app/_hooks/queries/use-drugs";
 import { usePets } from "@/app/_hooks/queries/use-pets";
@@ -55,7 +66,7 @@ export default function PrescriptionsPage() {
   const rxItems = rxItemsData?.data || [];
   const drugs = drugsData?.data || [];
   const pets = petsData?.data || [];
-  const clients = (usersData?.data || []).filter(u => u.role === "client");
+  const clients = (usersData?.data || []).filter((u) => u.role === "client");
 
   const formik = useFormik({
     initialValues: {
@@ -75,12 +86,14 @@ export default function PrescriptionsPage() {
     },
   });
 
-  const getPetName = (id: string) => pets.find(p => p.pet_id === id)?.name || "Unknown Pet";
-  const getClientName = (id: string) => clients.find(c => c.user_id === id)?.fullname || "Unknown Owner";
+  const getPetName = (id: string) =>
+    pets.find((p) => p.pet_id === id)?.name || "Unknown Pet";
+  const getClientName = (id: string) =>
+    clients.find((c) => c.user_id === id)?.fullname || "Unknown Owner";
   const getMedicationText = (rxItemId: string) => {
-    const rxItem = rxItems.find(r => r.prescriptionItem_id === rxItemId);
+    const rxItem = rxItems.find((r) => r.prescriptionItem_id === rxItemId);
     if (!rxItem) return "Unknown Formulation";
-    const drug = drugs.find(d => d.drug_id === rxItem.drug_id);
+    const drug = drugs.find((d) => d.drug_id === rxItem.drug_id);
     return `${drug?.drugName || "Unknown Drug"} (${rxItem.drugDose})`;
   };
 
@@ -101,29 +114,32 @@ export default function PrescriptionsPage() {
         <div className="space-y-1.5">
           <div className="flex items-center gap-2 mb-2">
             <FileText className="w-5 h-5 text-emerald" />
-            <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald">Pharmacy Portal</span>
+            <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald">
+              Pharmacy Portal
+            </span>
           </div>
           <h1 className="text-4xl font-black tracking-tight text-foreground">
             Medical <span className="text-emerald">Prescriptions</span>
           </h1>
           <p className="text-muted-foreground font-medium">
-            Review patient medication history and issue new clinical prescriptions.
+            Review patient medication history and issue new clinical
+            prescriptions.
           </p>
         </div>
-        <Button 
+        <Button
           onClick={handleOpenForm}
           className="bg-emerald hover:bg-emerald/90 text-white font-black px-6 h-12 shadow-xl shadow-emerald/20 flex items-center gap-2 group transition-all duration-300"
         >
           <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-           New Prescription
+          New Prescription
         </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="relative group md:col-span-2">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-emerald transition-colors" />
-          <Input 
-            placeholder="Search by Rx ID, patient or medication..." 
+          <Input
+            placeholder="Search by Rx ID, patient or medication..."
             className="pl-12 h-14 bg-muted/40 border-border/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
           />
         </div>
@@ -144,25 +160,46 @@ export default function PrescriptionsPage() {
           <Table>
             <TableHeader className="bg-muted/40">
               <TableRow className="border-b border-border/10 hover:bg-transparent">
-                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">Rx ID & Patient</TableHead>
-                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">Primary Medication</TableHead>
-                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">Details</TableHead>
-                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">Status</TableHead>
+                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
+                  Rx ID & Patient
+                </TableHead>
+                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
+                  Primary Medication
+                </TableHead>
+                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
+                  Details
+                </TableHead>
+                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
+                  Status
+                </TableHead>
                 <TableHead className="py-6 px-8 text-right"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rxLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Loading prescriptions...</TableCell>
+                  <TableCell
+                    colSpan={5}
+                    className="text-center py-8 text-muted-foreground"
+                  >
+                    Loading prescriptions...
+                  </TableCell>
                 </TableRow>
               ) : prescriptions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No prescriptions found.</TableCell>
+                  <TableCell
+                    colSpan={5}
+                    className="text-center py-8 text-muted-foreground"
+                  >
+                    No prescriptions found.
+                  </TableCell>
                 </TableRow>
               ) : (
                 prescriptions.map((rx) => (
-                  <TableRow key={rx.prescription_id} className="border-b border-border/10 hover:bg-muted/40 transition-colors group/row">
+                  <TableRow
+                    key={rx.prescription_id}
+                    className="border-b border-border/10 hover:bg-muted/40 transition-colors group/row"
+                  >
                     <TableCell className="py-6 px-8">
                       <div className="flex flex-col gap-1">
                         <span className="text-[10px] font-black tracking-widest text-emerald bg-emerald/5 w-fit px-2 py-0.5 rounded-md uppercase">
@@ -196,17 +233,26 @@ export default function PrescriptionsPage() {
                     <TableCell className="py-6 px-8 text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="group-hover/row:bg-muted/50 rounded-xl h-10 w-10">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="group-hover/row:bg-muted/50 rounded-xl h-10 w-10"
+                          >
                             <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-popover/95 backdrop-blur-xl border-border/10 rounded-2xl p-2 w-56 shadow-2xl">
-                          <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">Pharmacy Actions</DropdownMenuLabel>
+                        <DropdownMenuContent
+                          align="end"
+                          className="bg-popover/95 backdrop-blur-xl border-border/10 rounded-2xl p-2 w-56 shadow-2xl"
+                        >
+                          <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
+                            Pharmacy Actions
+                          </DropdownMenuLabel>
                           <DropdownMenuItem className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2">
                             <Download className="w-4 h-4" /> Export PDF
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="bg-muted/40 mx-2" />
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             onClick={() => handleDelete(rx.prescription_id)}
                             className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold flex items-center gap-2"
                           >
@@ -228,13 +274,17 @@ export default function PrescriptionsPage() {
         description="Select a patient and formulation to generate a clinical prescription."
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
-        onSubmit={formik.handleSubmit}
+        onSubmit={(e) =>
+          formik.handleSubmit(e as React.FormEvent<HTMLFormElement>)
+        }
         submitLabel={formik.isSubmitting ? "Generating..." : "Generate Rx"}
       >
         <div className="space-y-6">
           <div className="space-y-2">
-            <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Client</Label>
-            <Select 
+            <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
+              Client
+            </Label>
+            <Select
               value={formik.values.client_id}
               onValueChange={(val) => formik.setFieldValue("client_id", val)}
             >
@@ -242,16 +292,20 @@ export default function PrescriptionsPage() {
                 <SelectValue placeholder="Select Client" />
               </SelectTrigger>
               <SelectContent className="bg-popover/95 backdrop-blur-xl border-border/10">
-                {clients.map(c => (
-                  <SelectItem key={c.user_id} value={c.user_id}>{c.fullname}</SelectItem>
+                {clients.map((c) => (
+                  <SelectItem key={c.user_id} value={c.user_id}>
+                    {c.fullname}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Patient</Label>
-            <Select 
+            <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
+              Patient
+            </Label>
+            <Select
               value={formik.values.pet_id}
               onValueChange={(val) => formik.setFieldValue("pet_id", val)}
               disabled={!formik.values.client_id}
@@ -260,27 +314,38 @@ export default function PrescriptionsPage() {
                 <SelectValue placeholder="Select Pet" />
               </SelectTrigger>
               <SelectContent className="bg-popover/95 backdrop-blur-xl border-border/10">
-                {pets.filter(p => p.client_id === formik.values.client_id).map(p => (
-                  <SelectItem key={p.pet_id} value={p.pet_id}>{p.name}</SelectItem>
-                ))}
+                {pets
+                  .filter((p) => p.client_id === formik.values.client_id)
+                  .map((p) => (
+                    <SelectItem key={p.pet_id} value={p.pet_id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2 pt-4 border-t border-border/10">
-            <Label className="text-sm font-black uppercase tracking-widest text-emerald ml-1">Medication Formulation</Label>
-            <Select 
+            <Label className="text-sm font-black uppercase tracking-widest text-emerald ml-1">
+              Medication Formulation
+            </Label>
+            <Select
               value={formik.values.prescriptionItem_id}
-              onValueChange={(val) => formik.setFieldValue("prescriptionItem_id", val)}
+              onValueChange={(val) =>
+                formik.setFieldValue("prescriptionItem_id", val)
+              }
             >
               <SelectTrigger className="h-14 bg-muted/40 border-border/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold mt-2">
                 <SelectValue placeholder="Select Existing Formulation" />
               </SelectTrigger>
               <SelectContent className="bg-popover/95 backdrop-blur-xl border-border/10">
-                {rxItems.map(item => {
-                  const drug = drugs.find(d => d.drug_id === item.drug_id);
+                {rxItems.map((item) => {
+                  const drug = drugs.find((d) => d.drug_id === item.drug_id);
                   return (
-                    <SelectItem key={item.prescriptionItem_id} value={item.prescriptionItem_id}>
+                    <SelectItem
+                      key={item.prescriptionItem_id}
+                      value={item.prescriptionItem_id}
+                    >
                       {drug?.drugName || "Unknown Drug"} - {item.drugDose}
                     </SelectItem>
                   );

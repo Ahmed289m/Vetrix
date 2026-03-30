@@ -7,10 +7,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter
+  DialogFooter,
 } from "@/app/_components/ui/dialog";
 import { Button } from "@/app/_components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn } from "@/app/_lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface DashboardFormProps {
@@ -34,14 +34,14 @@ export function DashboardForm({
   children,
   submitLabel = "Save Changes",
   cancelLabel = "Cancel",
-  className
+  className,
 }: DashboardFormProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
           "max-w-xl bg-sidebar/60 backdrop-blur-3xl border border-white/10 p-0 overflow-hidden rounded-[2.5rem] shadow-[0_0_50px_-12px_rgba(16,185,129,0.15)]",
-          className
+          className,
         )}
       >
         <AnimatePresence>
@@ -65,7 +65,10 @@ export function DashboardForm({
                 )}
               </DialogHeader>
 
-              <form onSubmit={onSubmit} className="flex-1 flex flex-col overflow-hidden">
+              <form
+                onSubmit={onSubmit}
+                className="flex-1 flex flex-col overflow-hidden"
+              >
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-6">
                   {children}
                 </div>

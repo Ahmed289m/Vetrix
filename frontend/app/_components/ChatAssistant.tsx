@@ -1,7 +1,23 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Zap, FileText, Pill, Calendar, Mic, Bot, PawPrint } from "lucide-react";
+import {
+  Send,
+  Zap,
+  FileText,
+  Pill,
+  Calendar,
+  Mic,
+  Bot,
+  PawPrint,
+} from "lucide-react";
 import ReactMarkdown from "react-markdown";
+
+let nextMessageId = 2;
+
+function getNextMessageId(): string {
+  nextMessageId += 1;
+  return String(nextMessageId);
+}
 
 interface Message {
   id: string;
@@ -14,16 +30,21 @@ const initialMessages: Message[] = [
   {
     id: "1",
     role: "assistant",
-    content: "Hello! I'm **Vetrix AI**, your intelligent clinic assistant. I can help you with:\n\n- 🔍 Patient records & history\n- 💊 Drug dosages & interactions\n- 📅 Today's schedule\n- 🚨 Emergency protocols\n\nWhat would you like to know?",
+    content:
+      "Hello! I'm **Vetrix AI**, your intelligent clinic assistant. I can help you with:\n\n- 🔍 Patient records & history\n- 💊 Drug dosages & interactions\n- 📅 Today's schedule\n- 🚨 Emergency protocols\n\nWhat would you like to know?",
     timestamp: new Date(),
   },
 ];
 
 const sampleResponses: Record<string, string> = {
-  dosage: "**Meloxicam Dosage (Dogs)**\n\n| Parameter | Value |\n|-----------|-------|\n| Loading dose | `0.2 mg/kg` PO/SC |\n| Maintenance | `0.1 mg/kg` PO q24h |\n| Duration | As clinically indicated |\n\n⚠️ **Warning:** Contraindicated in cats under 6 months. Monitor renal function regularly.",
-  appointment: "📅 **Today's Schedule**\n\n| Time | Patient | Procedure |\n|------|---------|----------|\n| 9:00 | Bella (Golden Ret.) | Vaccination |\n| 9:30 | Max (Persian) | Dental Check |\n| 10:00 | Luna (Labrador) | Post-op F/U |\n| 10:30 | Rocky (G. Shepherd) | Skin Allergy |\n\nYou have **4 appointments** remaining today.",
-  protocol: "**🚨 Emergency Stabilization Protocol (Canine)**\n\n1. **Airway** — Intubate if GCS < 8\n2. **Breathing** — O₂ supplementation, SpO₂ target > 95%\n3. **Circulation** — IV catheter, crystalloid bolus `10-20 mL/kg`\n4. **Disability** — Neurological assessment\n5. **Exposure** — Full body examination\n\n> Escalate to surgery if internal hemorrhage suspected.",
-  patient: "**🐕 Patient: Bella**\n\n- **Breed:** Golden Retriever\n- **Age:** 4 years\n- **Weight:** 28.5 kg\n- **Owner:** Sarah Mitchell\n\n**Recent History:**\n- `Mar 10` — Cruciate ligament repair (left stifle)\n- `Mar 15` — Post-op check, healing well\n- `Mar 16` — Follow-up scheduled today\n\n**Active Medications:** Meloxicam 0.1mg/kg PO q24h",
+  dosage:
+    "**Meloxicam Dosage (Dogs)**\n\n| Parameter | Value |\n|-----------|-------|\n| Loading dose | `0.2 mg/kg` PO/SC |\n| Maintenance | `0.1 mg/kg` PO q24h |\n| Duration | As clinically indicated |\n\n⚠️ **Warning:** Contraindicated in cats under 6 months. Monitor renal function regularly.",
+  appointment:
+    "📅 **Today's Schedule**\n\n| Time | Patient | Procedure |\n|------|---------|----------|\n| 9:00 | Bella (Golden Ret.) | Vaccination |\n| 9:30 | Max (Persian) | Dental Check |\n| 10:00 | Luna (Labrador) | Post-op F/U |\n| 10:30 | Rocky (G. Shepherd) | Skin Allergy |\n\nYou have **4 appointments** remaining today.",
+  protocol:
+    "**🚨 Emergency Stabilization Protocol (Canine)**\n\n1. **Airway** — Intubate if GCS < 8\n2. **Breathing** — O₂ supplementation, SpO₂ target > 95%\n3. **Circulation** — IV catheter, crystalloid bolus `10-20 mL/kg`\n4. **Disability** — Neurological assessment\n5. **Exposure** — Full body examination\n\n> Escalate to surgery if internal hemorrhage suspected.",
+  patient:
+    "**🐕 Patient: Bella**\n\n- **Breed:** Golden Retriever\n- **Age:** 4 years\n- **Weight:** 28.5 kg\n- **Owner:** Sarah Mitchell\n\n**Recent History:**\n- `Mar 10` — Cruciate ligament repair (left stifle)\n- `Mar 15` — Post-op check, healing well\n- `Mar 16` — Follow-up scheduled today\n\n**Active Medications:** Meloxicam 0.1mg/kg PO q24h",
 };
 
 const quickPrompts = [
@@ -33,14 +54,21 @@ const quickPrompts = [
   { label: "Emergency protocol", icon: Zap },
 ];
 
-export function ChatAssistant({ role }: { role: "doctor" | "staff" | "admin" | "owner" | "client" }) {
+export function ChatAssistant({
+  role,
+}: {
+  role: "doctor" | "staff" | "admin" | "owner" | "client";
+}) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
   }, [messages, isTyping]);
 
   const handleSend = (text?: string) => {
@@ -48,7 +76,7 @@ export function ChatAssistant({ role }: { role: "doctor" | "staff" | "admin" | "
     if (!msg.trim()) return;
 
     const userMsg: Message = {
-      id: Date.now().toString(),
+      id: getNextMessageId(),
       role: "user",
       content: msg,
       timestamp: new Date(),
@@ -59,18 +87,44 @@ export function ChatAssistant({ role }: { role: "doctor" | "staff" | "admin" | "
 
     setTimeout(() => {
       const lower = msg.toLowerCase();
-      let response = "I found some relevant information in the clinic database. Based on the protocols and records available, I'd recommend consulting the specific patient file for detailed history. Would you like me to pull up a specific record?";
-      if (lower.includes("dos") || lower.includes("drug") || lower.includes("melox") || lower.includes("prescription")) response = sampleResponses.dosage;
-      else if (lower.includes("appointment") || lower.includes("schedule") || lower.includes("today")) response = sampleResponses.appointment;
-      else if (lower.includes("protocol") || lower.includes("emergency") || lower.includes("stabiliz")) response = sampleResponses.protocol;
-      else if (lower.includes("patient") || lower.includes("history") || lower.includes("bella") || lower.includes("find")) response = sampleResponses.patient;
+      let response =
+        "I found some relevant information in the clinic database. Based on the protocols and records available, I'd recommend consulting the specific patient file for detailed history. Would you like me to pull up a specific record?";
+      if (
+        lower.includes("dos") ||
+        lower.includes("drug") ||
+        lower.includes("melox") ||
+        lower.includes("prescription")
+      )
+        response = sampleResponses.dosage;
+      else if (
+        lower.includes("appointment") ||
+        lower.includes("schedule") ||
+        lower.includes("today")
+      )
+        response = sampleResponses.appointment;
+      else if (
+        lower.includes("protocol") ||
+        lower.includes("emergency") ||
+        lower.includes("stabiliz")
+      )
+        response = sampleResponses.protocol;
+      else if (
+        lower.includes("patient") ||
+        lower.includes("history") ||
+        lower.includes("bella") ||
+        lower.includes("find")
+      )
+        response = sampleResponses.patient;
 
-      setMessages((m) => [...m, {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: response,
-        timestamp: new Date(),
-      }]);
+      setMessages((m) => [
+        ...m,
+        {
+          id: getNextMessageId(),
+          role: "assistant",
+          content: response,
+          timestamp: new Date(),
+        },
+      ]);
       setIsTyping(false);
     }, 1400);
   };
@@ -91,7 +145,9 @@ export function ChatAssistant({ role }: { role: "doctor" | "staff" | "admin" | "
             <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald border-2 border-background animate-pulse" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-extrabold tracking-tight gradient-text">Vetrix AI Assistant</h3>
+            <h3 className="text-lg font-extrabold tracking-tight gradient-text">
+              Vetrix AI Assistant
+            </h3>
             <p className="text-xs text-muted-foreground">
               {role === "doctor"
                 ? "Clinical intelligence · Protocols · Patient records"
@@ -100,19 +156,28 @@ export function ChatAssistant({ role }: { role: "doctor" | "staff" | "admin" | "
           </div>
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald/10 border border-emerald/20">
             <div className="w-2 h-2 rounded-full bg-emerald animate-pulse" />
-            <span className="text-[10px] font-bold text-emerald uppercase tracking-wider">Online</span>
+            <span className="text-[10px] font-bold text-emerald uppercase tracking-wider">
+              Online
+            </span>
           </div>
         </motion.div>
 
         {/* Messages */}
         <div className="flex-1 min-h-0 glass-card overflow-hidden flex flex-col border-glow">
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 custom-scrollbar">
+          <div
+            ref={scrollRef}
+            className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 custom-scrollbar"
+          >
             {messages.map((msg, i) => (
               <motion.div
                 key={msg.id}
                 initial={{ opacity: 0, y: 12, scale: 0.97 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ delay: i === messages.length - 1 ? 0.1 : 0, duration: 0.3, ease: [0.2, 0, 0, 1] }}
+                transition={{
+                  delay: i === messages.length - 1 ? 0.1 : 0,
+                  duration: 0.3,
+                  ease: [0.2, 0, 0, 1],
+                }}
                 className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 {msg.role === "assistant" && (
@@ -134,8 +199,13 @@ export function ChatAssistant({ role }: { role: "doctor" | "staff" | "admin" | "
                   ) : (
                     <div className="whitespace-pre-wrap">{msg.content}</div>
                   )}
-                  <p className={`text-[10px] mt-2 ${msg.role === "user" ? "text-primary-foreground/50" : "text-muted-foreground/50"}`}>
-                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  <p
+                    className={`text-[10px] mt-2 ${msg.role === "user" ? "text-primary-foreground/50" : "text-muted-foreground/50"}`}
+                  >
+                    {msg.timestamp.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </p>
                 </div>
               </motion.div>
@@ -169,7 +239,9 @@ export function ChatAssistant({ role }: { role: "doctor" | "staff" | "admin" | "
                 exit={{ opacity: 0, y: 10 }}
                 className="px-4 pb-3"
               >
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40 mb-2 px-1">Suggested</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40 mb-2 px-1">
+                  Suggested
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {quickPrompts.map((p, i) => (
                     <motion.button
@@ -196,8 +268,12 @@ export function ChatAssistant({ role }: { role: "doctor" | "staff" | "admin" | "
             <div className="flex items-center gap-2 bg-muted/20 rounded-2xl px-4 py-3 border border-border/40 focus-within:border-emerald/30 focus-within:shadow-[0_0_20px_hsl(160,84%,39%,0.08)] transition-all duration-300">
               <input
                 value={input}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
-                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && handleSend()}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setInput(e.target.value)
+                }
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) =>
+                  e.key === "Enter" && handleSend()
+                }
                 placeholder="Ask about patients, protocols, dosages..."
                 className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/40 min-w-0"
               />
@@ -205,7 +281,7 @@ export function ChatAssistant({ role }: { role: "doctor" | "staff" | "admin" | "
                 <Mic className="w-4 h-4" />
               </button>
               <button
-                onClick={(e: React.MouseEvent) => handleSend()}
+                onClick={() => handleSend()}
                 disabled={!input.trim()}
                 className="p-2.5 rounded-xl gradient-emerald-cyan text-primary-foreground hover:shadow-lg active:scale-95 transition-all disabled:opacity-20 disabled:hover:shadow-none shrink-0 glow-emerald"
               >
@@ -213,7 +289,8 @@ export function ChatAssistant({ role }: { role: "doctor" | "staff" | "admin" | "
               </button>
             </div>
             <p className="text-[10px] text-muted-foreground/30 mt-2 text-center font-medium">
-              RAG-powered · Searches clinic protocols, patient records, and drug databases
+              RAG-powered · Searches clinic protocols, patient records, and drug
+              databases
             </p>
           </div>
         </div>

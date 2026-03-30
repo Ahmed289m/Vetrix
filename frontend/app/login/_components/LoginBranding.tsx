@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { PawPrint, Sparkles, Stethoscope } from "lucide-react";
+import Image from "next/image";
 
 export function LoginBranding() {
   return (
@@ -13,10 +14,13 @@ export function LoginBranding() {
       </div>
 
       <div className="relative z-10">
-        <img
+        <Image
           src="/logo.svg"
           alt="Vetrix logo"
+          width={176}
+          height={176}
           className="w-36 h-36 xl:w-44 xl:h-44 object-contain"
+          priority
         />
       </div>
 

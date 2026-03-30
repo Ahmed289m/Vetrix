@@ -44,7 +44,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/app/_components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn } from "@/app/_lib/utils";
+import { toast } from "sonner";
 
 import {
   useUsers,
@@ -97,19 +98,27 @@ export default function UsersPage() {
               setIsFormOpen(false);
               setSubmitting(false);
               setCreatedUser(null);
+              toast.success("User updated successfully.");
             },
-            onError: () => setSubmitting(false),
+            onError: () => {
+              setSubmitting(false);
+              toast.error("Failed to update user. Please try again.");
+            },
           },
         );
       } else {
         createUser.mutate(payload, {
-          onSuccess: (data: any) => {
+          onSuccess: (data: UserCreated) => {
             // Show the generated credentials
             setCreatedUser(data);
             setIsFormOpen(false);
             setSubmitting(false);
+            toast.success("User created successfully.");
           },
-          onError: () => setSubmitting(false),
+          onError: () => {
+            setSubmitting(false);
+            toast.error("Failed to create user. Please try again.");
+          },
         });
       }
     },
@@ -142,7 +151,11 @@ export default function UsersPage() {
 
   const handleDelete = (id: string) => {
     if (confirm("Are you sure you want to deactivate or delete this user?")) {
-      deleteUser.mutate(id);
+      deleteUser.mutate(id, {
+        onSuccess: () => toast.success("User deactivated successfully."),
+        onError: () =>
+          toast.error("Failed to deactivate user. Please try again."),
+      });
     }
   };
 
@@ -152,7 +165,9 @@ export default function UsersPage() {
         setResettedUser(response.data);
         setShowPassword(false);
         setCopied(false);
+        toast.success("Password loaded successfully.");
       },
+      onError: () => toast.error("Failed to load password. Please try again."),
     });
   };
 
@@ -358,7 +373,9 @@ export default function UsersPage() {
         }
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
-        onSubmit={formik.handleSubmit}
+        onSubmit={(e) =>
+          formik.handleSubmit(e as React.FormEvent<HTMLFormElement>)
+        }
         submitLabel={
           formik.isSubmitting
             ? "Saving..."
@@ -586,7 +603,7 @@ export default function UsersPage() {
                 🔐 Current Password
               </h2>
               <p className="text-sm text-muted-foreground">
-                Here's the current password for this user.
+                Here&apos;s the current password for this user.
               </p>
             </div>
 

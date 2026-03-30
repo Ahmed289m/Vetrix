@@ -1,4 +1,5 @@
 import type { UserRole } from "./api.types";
+export type { UserRole } from "./api.types";
 
 /* ── Pet ──────────────────────────────────────────────────────────── */
 

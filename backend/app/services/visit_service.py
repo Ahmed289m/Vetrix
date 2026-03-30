@@ -16,25 +16,28 @@ class VisitService:
     async def create_visit(self, request: VisitCreate, current_user: TokenData) -> dict:
         """
         Create a visit with authorization.
-        
+
         - DOCTOR/STAFF can create visits in their clinic
         - ADMIN can create in any clinic
         """
-        clinic_id = request.clinic_id or current_user.clinic_id
+        requested_clinic_id = getattr(request, "clinic_id", None)
+        clinic_id = requested_clinic_id or current_user.clinic_id
         if not clinic_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="clinic_id is required",
             )
-        
+
         # Enforce clinic isolation
         if not current_user.is_superuser and current_user.clinic_id != clinic_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Cannot create visits in other clinics",
             )
-        
-        return await self.crud.create(request)
+
+        payload = request.model_dump(exclude_none=True)
+        payload["clinic_id"] = clinic_id
+        return await self.crud.create(Visit(**payload))
 
     async def list_visits(self, current_user: TokenData) -> list[dict]:
         """

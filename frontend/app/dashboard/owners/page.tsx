@@ -11,9 +11,7 @@ import {
   MapPin,
   Dog,
   Cat,
-  Bird,
   ChevronRight,
-  Edit2,
   Trash2,
   Eye,
   EyeOff,
@@ -22,7 +20,9 @@ import {
 } from "lucide-react";
 import { useFormik } from "formik";
 import { DashboardForm } from "@/app/_components/ui/dashboard-form";
+import { Button } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
+import { Label } from "@/app/_components/ui/label";
 import {
   Select,
   SelectContent,
@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/app/_components/ui/select";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 import {
   useUsers,
@@ -82,13 +83,17 @@ export default function OwnersPage() {
     },
     onSubmit: (values, { setSubmitting, resetForm }) => {
       createUser.mutate(values, {
-        onSuccess: (data: any) => {
+        onSuccess: (data: UserCreated) => {
           setCreatedUser(data);
           setShowCreateOwner(false);
           setSubmitting(false);
           resetForm();
+          toast.success("Client created successfully.");
         },
-        onError: () => setSubmitting(false),
+        onError: () => {
+          setSubmitting(false);
+          toast.error("Failed to create client. Please try again.");
+        },
       });
     },
   });
@@ -106,8 +111,12 @@ export default function OwnersPage() {
           setShowAddPet(null);
           setSubmitting(false);
           resetForm();
+          toast.success("Pet added successfully.");
         },
-        onError: () => setSubmitting(false),
+        onError: () => {
+          setSubmitting(false);
+          toast.error("Failed to add pet. Please try again.");
+        },
       });
     },
   });
@@ -120,8 +129,19 @@ export default function OwnersPage() {
 
   const handleDeleteOwner = (ownerId: string) => {
     if (confirm("Are you sure you want to deactivate or remove this client?")) {
-      deleteUser.mutate(ownerId);
+      deleteUser.mutate(ownerId, {
+        onSuccess: () => toast.success("Client deactivated successfully."),
+        onError: () =>
+          toast.error("Failed to deactivate client. Please try again."),
+      });
     }
+  };
+
+  const handleCopyPassword = () => {
+    if (!createdUser) return;
+    navigator.clipboard.writeText(createdUser.password);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -174,7 +194,9 @@ export default function OwnersPage() {
         description="Register a new clinical owner to the system."
         isOpen={showCreateOwner}
         onOpenChange={setShowCreateOwner}
-        onSubmit={formikOwner.handleSubmit}
+        onSubmit={(e) =>
+          formikOwner.handleSubmit(e as React.FormEvent<HTMLFormElement>)
+        }
         submitLabel={formikOwner.isSubmitting ? "Creating..." : "Create Owner"}
       >
         <div className="space-y-6">
@@ -207,10 +229,11 @@ export default function OwnersPage() {
       {/* Add Pet Modal */}
       <DashboardForm
         title="Add New Pet"
-        description="Register a new patient for this owner."
         isOpen={!!showAddPet}
         onOpenChange={(open) => !open && setShowAddPet(null)}
-        onSubmit={formikPet.handleSubmit}
+        onSubmit={(e) =>
+          formikPet.handleSubmit(e as React.FormEvent<HTMLFormElement>)
+        }
         submitLabel={formikPet.isSubmitting ? "Registering..." : "Register Pet"}
       >
         <div className="space-y-6">
@@ -290,7 +313,7 @@ export default function OwnersPage() {
               >
                 <div
                   className="p-4 sm:p-5 flex items-center gap-4 cursor-pointer"
-                  onClick={(e) =>
+                  onClick={() =>
                     setExpandedOwner(isExpanded ? null : owner.user_id)
                   }
                 >

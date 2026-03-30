@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from starlette import status
 
 from app.controllers.auth_controller import AuthController
 from app.core.permission_checker import TokenData, get_current_user
@@ -16,6 +17,7 @@ async def login(
 ) -> dict:
     tokens = await controller.login(request)
     return {
+        "status": status.HTTP_200_OK,
         "success": True,
         "message": "Login successful.",
         "data": tokens.model_dump(),
@@ -29,6 +31,7 @@ async def refresh_token(
 ) -> dict:
     tokens = await controller.refresh(request.refresh_token)
     return {
+        "status": status.HTTP_200_OK,
         "success": True,
         "message": "Token refreshed successfully.",
         "data": tokens.model_dump(),
@@ -53,6 +56,7 @@ async def logout(
     })
     
     return {
+        "status": status.HTTP_200_OK,
         "success": True,
         "message": "Logged out successfully.",
         "data": None,

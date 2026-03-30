@@ -3,11 +3,16 @@ import { clinicsApi } from "@/app/_lib/api/clinics.api";
 import type { ClinicCreate, ClinicUpdate } from "@/app/_lib/types/models";
 
 export const CLINICS_KEY = ["clinics"] as const;
+const LIST_STALE_TIME = 1000 * 60 * 2;
+const DETAIL_STALE_TIME = 1000 * 60;
+const QUERY_GC_TIME = 1000 * 60 * 30;
 
 export function useClinics() {
   return useQuery({
     queryKey: CLINICS_KEY,
     queryFn: () => clinicsApi.list(),
+    staleTime: LIST_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -16,6 +21,8 @@ export function useClinic(id: string) {
     queryKey: [...CLINICS_KEY, id],
     queryFn: () => clinicsApi.get(id),
     enabled: !!id,
+    staleTime: DETAIL_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
