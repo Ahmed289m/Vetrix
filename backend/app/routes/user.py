@@ -4,29 +4,43 @@ from app.controllers.user_controller import UserController
 from app.core.permission_checker import TokenData, require_permission, require_clinic_id
 from app.core.permissions import Permissions
 from app.routes.dependencies import get_user_controller
-from app.schemas.user import UserCreate, UserUpdate
+from app.schemas.user import UserCreate, UserUpdate, UserCreatedResponse, UserResponse, CreateUserResponse
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.post("")
+@router.post("", response_model=CreateUserResponse)
 async def create_user(
     request: UserCreate,
     current_user: TokenData = Depends(require_permission(Permissions.USERS_CREATE)),
     clinic_check: TokenData = Depends(require_clinic_id()),
     controller: UserController = Depends(get_user_controller),
-) -> dict:
+) -> CreateUserResponse:
     """
-    Create a new user (OWNER/ADMIN only).
+    Create a new user with AUTO-GENERATED email and password.
     
+    **Request fields:**
+    - fullname (required): User's full name
+    - phone (required): User's phone number
+    - role (required): User role (admin, owner, doctor, staff, client)
+    - clinic_id (optional): Clinic ID. Defaults to current user's clinic
+    
+    **Auto-generated fields:**
+    - email: Generated as name.role@clinic.vetrix.local
+    - password: Generated as name@clinic#{user_id}
+    
+    **Response includes:**
+    - email: Generated email for this user
+    - password: Generated password (ONLY shown on creation, save it!)
+    
+    **Authorization:**
     - ADMIN can create users in any clinic
     - OWNER can create DOCTOR, STAFF, CLIENT in their clinic (not other OWNER)
-    - Current user's clinic_id is automatically assigned
     """
     created = await controller.create_user(request, current_user)
     return {
         "success": True,
-        "message": "User created successfully.",
+        "message": "User created successfully. Save the generated email and password!",
         "data": created,
     }
 
@@ -112,4 +126,26 @@ async def delete_user(
         "success": True,
         "message": "User deleted successfully.",
         "data": {"user_id": user_id},
+    }
+
+
+@router.post("/{user_id}/show-password", response_model=CreateUserResponse)
+async def show_password(
+    user_id: str,
+    current_user: TokenData = Depends(require_permission(Permissions.USERS_READ)),
+    controller: UserController = Depends(get_user_controller),
+) -> CreateUserResponse:
+    """
+    Show the current password for a user.
+    
+    - ADMIN can view any user's password
+    - OWNER can view DOCTOR, STAFF, CLIENT passwords in their clinic
+    
+    Returns the current user password (regenerated from user data).
+    """
+    result = await controller.get_user_password(user_id, current_user)
+    return {
+        "success": True,
+        "message": "Password retrieved successfully.",
+        "data": result,
     }

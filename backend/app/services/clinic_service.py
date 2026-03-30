@@ -5,6 +5,7 @@ from app.core.permission_checker import TokenData
 from app.models.clinic import Clinic
 from app.repositories.clinic_repository import ClinicRepository
 from app.schemas.clinic import ClinicCreate, ClinicUpdate
+from app.utils.ws import broadcast
 
 
 class ClinicService:
@@ -31,6 +32,7 @@ class ClinicService:
         clinic_model = Clinic(clinic_id=clinic_id, **request.model_dump())
         payload = clinic_model.model_dump()
         created = await self.clinic_repository.create_clinic(payload)
+        await broadcast("clinics:created", {"id": clinic_id})
         return self._serialize_clinic(created)
 
     async def list_clinics(self, current_user: TokenData) -> list[dict]:
@@ -74,6 +76,7 @@ class ClinicService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Clinic not found.",
             )
+        await broadcast("clinics:updated", {"id": clinic_id})
         return self._serialize_clinic(clinic)
 
     async def delete_clinic(self, clinic_id: str) -> None:
@@ -83,3 +86,4 @@ class ClinicService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Clinic not found.",
             )
+        await broadcast("clinics:deleted", {"id": clinic_id})

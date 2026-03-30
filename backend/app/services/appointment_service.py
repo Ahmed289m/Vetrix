@@ -9,6 +9,7 @@ from app.repositories.pet_repository import PetRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.appointment import AppointmentCreate, AppointmentUpdate
 from app.utils.mongo_helpers import generate_prefixed_id, normalize_for_mongo, serialize_mongo_doc
+from app.utils.ws import broadcast
 
 
 class AppointmentService:
@@ -70,6 +71,7 @@ class AppointmentService:
         )
         payload = normalize_for_mongo(appointment_model.model_dump())
         created = await self.appointment_repository.create(payload)
+        await broadcast("appointments:created", {"id": appointment_id})
         return serialize_mongo_doc(created, "appointment_id")  # type: ignore[arg-type]
 
     async def update_appointment(self, appointment_id: str, request: AppointmentUpdate, current_user: TokenData) -> dict:
@@ -121,6 +123,7 @@ class AppointmentService:
         if not updated:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found.")
 
+        await broadcast("appointments:updated", {"id": appointment_id})
         return serialize_mongo_doc(updated, "appointment_id")  # type: ignore[arg-type]
 
     async def delete_appointment(self, appointment_id: str, current_user: TokenData) -> None:
@@ -153,4 +156,5 @@ class AppointmentService:
         deleted = await self.appointment_repository.delete_by_id(appointment_id)
         if not deleted:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found.")
+        await broadcast("appointments:deleted", {"id": appointment_id})
 

@@ -28,7 +28,9 @@ import {
   BarChart3,
   Wallet,
   ChevronRight,
+  LogOut,
 } from "lucide-react";
+import { useAuth } from "@/app/_hooks/useAuth";
 
 type Role = "doctor" | "staff" | "admin" | "owner" | "client";
 
@@ -111,6 +113,7 @@ const navItems: NavItem[] = [
 export function DashboardSidebar({ role }: { role: Role }) {
   const pathname = usePathname();
   const { t } = useLang();
+  const { logout, isLoggingOut } = useAuth();
 
   const filtered = navItems.filter((item) => item.roles.includes(role));
 
@@ -158,10 +161,11 @@ export function DashboardSidebar({ role }: { role: Role }) {
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
-                      className={`relative flex items-center gap-3.5 px-4 py-2.5 rounded-sm text-sm font-semibold transition-colors duration-200 group overflow-hidden ${isActive
+                      className={`relative flex items-center gap-3.5 px-4 py-2.5 rounded-sm text-sm font-semibold transition-colors duration-200 group overflow-hidden ${
+                        isActive
                           ? "bg-emerald/10 text-emerald"
                           : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-                        }`}
+                      }`}
                     >
                       <Link href={item.href}>
                         {isActive && (
@@ -186,7 +190,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="p-4 border-t border-border/10">
-        <div className="group flex items-center gap-3 px-3 py-3 rounded-2xl bg-muted/20 border border-border/10 cursor-pointer hover:border-emerald/20 transition-colors duration-300 transform group-hover:scale-[1.02] transition-transform duration-200">
+        <div className="group flex items-center gap-3 px-3 py-3 rounded-2xl bg-muted/20 border border-border/10 hover:border-emerald/20 transition-colors duration-300 transform group-hover:scale-[1.02] transition-transform duration-200">
           <div className="relative">
             <div className="absolute -inset-0.5 bg-gradient-to-br from-emerald to-cyan rounded-lg blur-[2px] opacity-0 group-hover:opacity-40 transition duration-300" />
             <div className="relative w-9 h-9 rounded-lg gradient-emerald-cyan flex items-center justify-center text-xs font-black text-white uppercase shadow-md leading-none">
@@ -195,7 +199,8 @@ export function DashboardSidebar({ role }: { role: Role }) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-black capitalize tracking-tight truncate group-hover:text-emerald transition-colors">
-              {role === "doctor" ? "Dr. " : ""}{role}
+              {role === "doctor" ? "Dr. " : ""}
+              {role}
             </p>
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald shadow-[0_0_5px_rgba(16,185,129,0.5)]" />
@@ -204,7 +209,16 @@ export function DashboardSidebar({ role }: { role: Role }) {
               </p>
             </div>
           </div>
-          <ChevronRight className="w-4 h-4 text-muted-foreground/30 group-hover:text-emerald transition-colors" />
+          <button
+            type="button"
+            onClick={logout}
+            disabled={isLoggingOut}
+            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-red-500 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            aria-label="Sign out"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>{isLoggingOut ? "Signing out" : "Sign out"}</span>
+          </button>
         </div>
       </SidebarFooter>
     </Sidebar>

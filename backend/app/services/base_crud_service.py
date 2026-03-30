@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from app.repositories.base_repository import BaseMongoRepository
 from app.utils.mongo_helpers import generate_prefixed_id, normalize_for_mongo, serialize_mongo_doc
+from app.utils.ws import broadcast
 
 
 class BaseCrudService:
@@ -27,6 +28,13 @@ class BaseCrudService:
         entity = self.model_cls(**data, **{self.id_field: entity_id})
         payload = normalize_for_mongo(entity.model_dump())
         created = await self.repository.create(payload)
+        
+        # Determine ws namespace e.g. "pets", "prescription-items"
+        event_prefix = self.id_prefix + "s"
+        if self.id_prefix == "prescriptionItem":
+            event_prefix = "prescription-items"
+            
+        await broadcast(f"{event_prefix}:created", {"id": entity_id})
         return serialize_mongo_doc(created, self.id_field)  # type: ignore[arg-type]
 
     async def list(self) -> list[dict]:
@@ -47,10 +55,22 @@ class BaseCrudService:
         updated = await self.repository.update_by_id(entity_id, payload)
         if not updated:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found.")
+            
+        event_prefix = self.id_prefix + "s"
+        if self.id_prefix == "prescriptionItem":
+            event_prefix = "prescription-items"
+            
+        await broadcast(f"{event_prefix}:updated", {"id": entity_id})
         return serialize_mongo_doc(updated, self.id_field)  # type: ignore[arg-type]
 
     async def delete(self, entity_id: str) -> None:
         deleted = await self.repository.delete_by_id(entity_id)
         if not deleted:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found.")
+            
+        event_prefix = self.id_prefix + "s"
+        if self.id_prefix == "prescriptionItem":
+            event_prefix = "prescription-items"
+            
+        await broadcast(f"{event_prefix}:deleted", {"id": entity_id})
 

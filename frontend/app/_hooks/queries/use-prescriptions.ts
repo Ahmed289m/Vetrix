@@ -1,0 +1,45 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { prescriptionsApi } from "@/app/_lib/api/prescriptions.api";
+import type { PrescriptionCreate, PrescriptionUpdate } from "@/app/_lib/types/models";
+
+export const PRESCRIPTIONS_KEY = ["prescriptions"] as const;
+
+export function usePrescriptions() {
+  return useQuery({
+    queryKey: PRESCRIPTIONS_KEY,
+    queryFn: () => prescriptionsApi.list(),
+  });
+}
+
+export function usePrescription(id: string) {
+  return useQuery({
+    queryKey: [...PRESCRIPTIONS_KEY, id],
+    queryFn: () => prescriptionsApi.get(id),
+    enabled: !!id,
+  });
+}
+
+export function useCreatePrescription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: PrescriptionCreate) => prescriptionsApi.create(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: PRESCRIPTIONS_KEY }),
+  });
+}
+
+export function useUpdatePrescription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: PrescriptionUpdate }) =>
+      prescriptionsApi.update(id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: PRESCRIPTIONS_KEY }),
+  });
+}
+
+export function useDeletePrescription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => prescriptionsApi.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: PRESCRIPTIONS_KEY }),
+  });
+}

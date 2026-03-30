@@ -1,8 +1,12 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext } from "react";
+import { useAuth } from "@/app/_hooks/useAuth";
+import type { UserRole } from "@/app/_lib/types/api.types";
 
-export type Role = "doctor" | "staff" | "admin" | "owner" | "client";
+/* ── Types ────────────────────────────────────────────────────────── */
+
+export type Role = UserRole;
 
 interface RoleContextValue {
   role: Role;
@@ -14,49 +18,27 @@ const RoleContext = createContext<RoleContextValue>({
   setRole: () => {},
 });
 
-function parseToken(token: string): Role | null {
-  const valid: Role[] = ["admin", "owner", "staff", "doctor", "client"];
-  if (valid.includes(token as Role)) return token as Role;
-  try {
-    const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    const payload = JSON.parse(
-      decodeURIComponent(
-        atob(base64)
-          .split("")
-          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-          .join("")
-      )
-    );
-    return valid.includes(payload.role) ? payload.role : null;
-  } catch {
-    return null;
-  }
-}
+/* ── Provider ─────────────────────────────────────────────────────── */
 
 export function RoleProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRoleState] = useState<Role>("doctor");
+  const { role } = useAuth();
 
-  useEffect(() => {
-    const token = localStorage.getItem("vetrix_token");
-    if (!token) {
-      localStorage.setItem("vetrix_token", "doctor");
-    } else {
-      const decoded = parseToken(token);
-      if (decoded) setRoleState(decoded);
-    }
-  }, []);
-
-  const setRole = (newRole: Role) => {
-    localStorage.setItem("vetrix_token", newRole);
-    setRoleState(newRole);
+  // setRole is kept for dev/simulation mode — in production the role
+  // is always derived from the JWT and cannot be changed client-side.
+  const setRole = () => {
+    console.warn(
+      "[RoleContext] setRole() is a no-op in production. Role is read from the JWT.",
+    );
   };
 
   return (
-    <RoleContext.Provider value={{ role, setRole }}>
+    <RoleContext.Provider value={{ role: role ?? "doctor", setRole }}>
       {children}
     </RoleContext.Provider>
   );
 }
+
+/* ── Hook ─────────────────────────────────────────────────────────── */
 
 export function useRole() {
   return useContext(RoleContext);

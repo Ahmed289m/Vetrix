@@ -21,3 +21,6 @@ class UserController:
 
     async def delete_user(self, user_id: str, current_user: TokenData) -> None:
         await self.user_service.delete_user(user_id, current_user)
+
+    async def get_user_password(self, user_id: str, current_user: TokenData) -> dict:
+        return await self.user_service.get_user_password(user_id, current_user)

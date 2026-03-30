@@ -13,9 +13,10 @@ class CredentialService:
         name_slug = self._slug(fullname)
         role_slug = self._slug(role.value if hasattr(role, "value") else str(role))
         clinic_slug = self._slug(clinic_name)
-        return f"{name_slug}.{role_slug}@{clinic_slug}.vetrix.local"
+        return f"{name_slug}.{role_slug}@{clinic_slug}.vetrix.clinic"
 
     def generate_password(self, fullname: str, clinic_name: str, user_id: str) -> str:
+        """Generate a memorable password. Actual hashing uses SHA256 + bcrypt for security."""
         name_token = self._slug(fullname).replace(".", "")
         clinic_token = self._slug(clinic_name).replace(".", "")
         return f"{name_token}@{clinic_token}#{user_id}"

@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { PawPrint, Eye, EyeOff, AlertCircle, ArrowRight } from "lucide-react";
 import { useFormik } from "formik";
+import { useAuth } from "@/app/_hooks/useAuth";
 
 export function LoginForm() {
-  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-  const [genericError, setGenericError] = useState("");
+  const { login, isLoggingIn, loginError } = useAuth();
 
   const formik = useFormik({
     initialValues: {
@@ -17,11 +17,17 @@ export function LoginForm() {
       password: "",
       rememberMe: false,
     },
-    validate: (values: { email: string; password: string; rememberMe: boolean }) => {
+    validate: (values: {
+      email: string;
+      password: string;
+      rememberMe: boolean;
+    }) => {
       const errors: { email?: string; password?: string } = {};
       if (!values.email.trim()) {
         errors.email = "Email is required";
-      } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i.test(values.email)) {
+      } else if (
+        !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(values.email)
+      ) {
         errors.email = "Invalid email address";
       }
       if (!values.password.trim()) {
@@ -29,16 +35,8 @@ export function LoginForm() {
       }
       return errors;
     },
-    onSubmit: async (values, { setSubmitting }) => {
-      setGenericError("");
-      try {
-        // TODO: implement real login logic
-        router.push("/dashboard");
-      } catch (err) {
-        setGenericError("Invalid email or password");
-      } finally {
-        setSubmitting(false);
-      }
+    onSubmit: (values) => {
+      login({ email: values.email, password: values.password });
     },
   });
 
@@ -62,13 +60,17 @@ export function LoginForm() {
           className="w-full max-w-sm"
         >
           <div className="mb-8">
-            <h2 className="text-2xl font-extrabold tracking-tight">Welcome back</h2>
-            <p className="text-sm text-muted-foreground mt-2">Sign in to your clinic account</p>
+            <h2 className="text-2xl font-extrabold tracking-tight">
+              Welcome back
+            </h2>
+            <p className="text-sm text-muted-foreground mt-2">
+              Sign in to your clinic account
+            </p>
           </div>
 
           {/* Error */}
           <AnimatePresence>
-            {genericError && (
+            {loginError && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
@@ -77,7 +79,9 @@ export function LoginForm() {
               >
                 <div className="flex items-center gap-2 mb-4 px-3.5 py-3 rounded-xl bg-coral/10 border border-coral/20">
                   <AlertCircle className="w-4 h-4 text-coral shrink-0" />
-                  <span className="text-xs text-coral font-medium">{genericError}</span>
+                  <span className="text-xs text-coral font-medium">
+                    {loginError}
+                  </span>
                 </div>
               </motion.div>
             )}
@@ -85,7 +89,9 @@ export function LoginForm() {
 
           <form onSubmit={formik.handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2 text-muted-foreground">Email</label>
+              <label className="block text-sm font-medium mb-2 text-muted-foreground">
+                Email
+              </label>
               <input
                 type="email"
                 name="email"
@@ -100,12 +106,16 @@ export function LoginForm() {
                 }`}
               />
               {formik.touched.email && formik.errors.email && (
-                <p className="text-xs text-coral mt-1.5 ml-1">{formik.errors.email}</p>
+                <p className="text-xs text-coral mt-1.5 ml-1">
+                  {formik.errors.email}
+                </p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2 text-muted-foreground">Password</label>
+              <label className="block text-sm font-medium mb-2 text-muted-foreground">
+                Password
+              </label>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -125,11 +135,17 @@ export function LoginForm() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground/40 hover:text-foreground transition-colors"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
               </div>
               {formik.touched.password && formik.errors.password && (
-                <p className="text-xs text-coral mt-1.5 ml-1">{formik.errors.password}</p>
+                <p className="text-xs text-coral mt-1.5 ml-1">
+                  {formik.errors.password}
+                </p>
               )}
             </div>
 
@@ -142,23 +158,30 @@ export function LoginForm() {
                   onChange={formik.handleChange}
                   className="w-4 h-4 rounded border-border accent-emerald"
                 />
-                <span className="text-muted-foreground text-xs">Remember me</span>
+                <span className="text-muted-foreground text-xs">
+                  Remember me
+                </span>
               </label>
-              <button type="button" className="text-emerald hover:underline text-xs font-medium">
+              <button
+                type="button"
+                className="text-emerald hover:underline text-xs font-medium"
+              >
                 Forgot password?
               </button>
             </div>
 
             <motion.button
               type="submit"
-              disabled={formik.isSubmitting}
-              whileHover={formik.isSubmitting ? {} : { y: -1 }}
-              whileTap={formik.isSubmitting ? {} : { scale: 0.98 }}
+              disabled={isLoggingIn}
+              whileHover={isLoggingIn ? {} : { y: -1 }}
+              whileTap={isLoggingIn ? {} : { scale: 0.98 }}
               className={`w-full py-3.5 rounded-xl gradient-emerald-cyan text-primary-foreground text-sm font-bold transition-all glow-emerald flex items-center justify-center gap-2 ${
-                formik.isSubmitting ? "opacity-70 cursor-not-allowed" : "hover:shadow-lg"
+                isLoggingIn
+                  ? "opacity-70 cursor-not-allowed"
+                  : "hover:shadow-lg"
               }`}
             >
-              {formik.isSubmitting ? "Signing in..." : "Sign in"}
+              {isLoggingIn ? "Signing in..." : "Sign in"}
               <ArrowRight className="w-4 h-4" />
             </motion.button>
           </form>

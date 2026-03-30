@@ -3,7 +3,12 @@
 import { Sun, Moon, Languages } from "lucide-react";
 import { SidebarTrigger } from "@/app/_components/ui/sidebar";
 import { useLang } from "@/app/_hooks/useLanguage";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/_components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/app/_components/ui/tooltip";
 import { useTheme } from "@/app/_hooks/useTheme";
 import { AgencyModeToggle, UiMode } from "@/app/_components/AgencyModeToggle";
 
@@ -15,7 +20,11 @@ interface DashboardHeaderProps {
   onUiModeChange: (mode: UiMode) => void;
 }
 
-export function DashboardHeader({ role, uiMode, onUiModeChange }: DashboardHeaderProps) {
+export function DashboardHeader({
+  role,
+  uiMode,
+  onUiModeChange,
+}: DashboardHeaderProps) {
   const { isDark, toggle } = useTheme();
   const { t, lang, setLang } = useLang();
 
@@ -34,7 +43,6 @@ export function DashboardHeader({ role, uiMode, onUiModeChange }: DashboardHeade
         <SidebarTrigger className="w-10 h-10 rounded-xl bg-muted/20 border border-border/20 flex items-center justify-center text-foreground hover:bg-muted/30 transition-colors" />
       </div>
 
-
       <div className="flex items-center gap-2 sm:gap-3 ml-auto shrink-0">
         <TooltipProvider>
           {/* Theme toggle */}
@@ -45,7 +53,11 @@ export function DashboardHeader({ role, uiMode, onUiModeChange }: DashboardHeade
                 className="w-10 h-10 rounded-xl bg-muted/20 border border-border/10 flex items-center justify-center text-muted-foreground hover:text-emerald hover:bg-emerald/5 hover:border-emerald/20 transition-colors duration-200 shadow-sm
                 transform hover:scale-[1.05] active:scale-[0.95]"
               >
-                {isDark ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
+                {isDark ? (
+                  <Sun className="w-4.5 h-4.5" />
+                ) : (
+                  <Moon className="w-4.5 h-4.5" />
+                )}
               </button>
             </TooltipTrigger>
             <TooltipContent className="bg-popover border-border/10 text-xs font-bold px-3 py-1.5 rounded-lg shadow-xl">
@@ -77,7 +89,8 @@ export function DashboardHeader({ role, uiMode, onUiModeChange }: DashboardHeade
         <div className="flex items-center gap-2 sm:gap-3 pl-0 sm:pl-1 cursor-pointer group transition-transform duration-200 hover:translate-x-[2px]">
           <div className="hidden md:block text-right">
             <p className="text-xs font-black capitalize leading-none group-hover:text-emerald transition-colors">
-              {role === "doctor" ? "Dr. " : ""}{role}
+              {role === "doctor" ? "Dr. " : ""}
+              {role}
             </p>
             <p className="text-[10px] text-muted-foreground/60 mt-1 font-bold uppercase tracking-wider">
               {t(role === "doctor" ? "veterinarian" : "reception")}

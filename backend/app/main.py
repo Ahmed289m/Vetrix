@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.database import close_mongo_connection, connect_to_mongo, get_database
@@ -18,28 +19,38 @@ from app.routes.prescription_item import router as prescription_item_router
 from app.routes.visit import router as visit_router
 from app.routes.user import router as user_router
 from app.services.admin_bootstrap_service import AdminBootstrapService
+from app.websocket import router as ws_router
 
 
+# ── Lifespan ──────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    # Startup
     await connect_to_mongo()
     try:
-        # Bootstrap admin user
         db = get_database()
         user_repo = UserRepository(db)
         bootstrap_service = AdminBootstrapService(user_repo)
         await bootstrap_service.bootstrap_admin()
-        
         yield
     finally:
-        # Shutdown
         await close_mongo_connection()
 
 
+# ── App ───────────────────────────────────────────────────────────────
 app = FastAPI(title=settings.app_name, debug=settings.app_debug, lifespan=lifespan)
+
+# CORS — allow the Next.js frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.add_middleware(AuthMiddleware)
 
+# REST routes
 app.include_router(auth_router)
 app.include_router(clinic_router)
 app.include_router(user_router)
@@ -50,7 +61,11 @@ app.include_router(prescription_router)
 app.include_router(visit_router)
 app.include_router(appointment_router)
 
+# WebSocket routes
+app.include_router(ws_router)
 
+
+# ── Exception handlers ────────────────────────────────────────────────
 @app.exception_handler(HTTPException)
 async def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
     return JSONResponse(

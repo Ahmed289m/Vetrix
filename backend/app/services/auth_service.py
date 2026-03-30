@@ -1,8 +1,10 @@
 from fastapi import HTTPException, status
+from jose import JWTError
 
 from app.core.security import (
     create_access_token,
     create_refresh_token,
+    decode_token,
     verify_password,
 )
 from app.repositories.user_repository import UserRepository
@@ -30,13 +32,56 @@ class AuthService:
                 detail="Invalid email or password.",
             )
 
-        # Check if user is active
         if not user.get("is_active", True):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="User account is inactive.",
             )
 
+        return self._issue_tokens(user)
+
+    async def refresh(self, refresh_token: str) -> LoginResponse:
+        """Validate a refresh token and issue a new access + refresh pair."""
+        try:
+            payload = decode_token(refresh_token)
+        except JWTError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired refresh token.",
+            )
+
+        if payload.get("type") != "refresh":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token is not a refresh token.",
+            )
+
+        subject = payload.get("sub")
+        if not subject:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token payload.",
+            )
+
+        user = await self.user_repository.get_by_email(subject)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User no longer exists.",
+            )
+
+        if not user.get("is_active", True):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User account is inactive.",
+            )
+
+        return self._issue_tokens(user)
+
+    # ── private ────────────────────────────────────────────────────────
+    @staticmethod
+    def _issue_tokens(user: dict) -> LoginResponse:
+        """Create an access + refresh token pair for *user*."""
         subject = user.get("email")
         access_token = create_access_token(
             subject=subject,
@@ -48,5 +93,4 @@ class AuthService:
             },
         )
         refresh_token = create_refresh_token(subject=subject)
-
         return LoginResponse(access_token=access_token, refresh_token=refresh_token)

@@ -4,12 +4,11 @@ from app.models.enums.user_role import UserRole
 
 
 class UserCreate(BaseModel):
+    """Create user without email/password - they will be auto-generated"""
     fullname: str
     phone: str
     clinic_id: str | None = None  # Optional for ADMIN, required for others
     role: UserRole
-    email: EmailStr | None = None
-    password: str | None = Field(default=None, min_length=6)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -25,6 +24,11 @@ class UserResponse(BaseModel):
     is_superuser: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserCreatedResponse(UserResponse):
+    """Response when creating a new user - includes generated credentials"""
+    password: str  # Generated password - shown only on creation
 
 
 class UserUpdate(BaseModel):
@@ -53,3 +57,12 @@ class ClientResponse(UserResponse):
 
 class OwnerResponse(UserResponse):
     owner_id: str
+
+
+class CreateUserResponse(BaseModel):
+    """Response wrapper for successful user creation"""
+    success: bool
+    message: str
+    data: UserCreatedResponse
+
+    model_config = ConfigDict(from_attributes=True)
