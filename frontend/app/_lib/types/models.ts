@@ -14,6 +14,7 @@ export interface Pet {
   client_id: string;
   clinic_id: string;
   owner_id?: string;
+  is_active?: boolean;
 }
 
 export interface PetCreate {
@@ -162,6 +163,8 @@ export interface Drug {
   drug_id: string;
   drugName: string;
   clinic_id: string;
+  quantity?: number;
+  min_quantity?: number;
 }
 
 export interface DrugCreate {
@@ -180,6 +183,7 @@ export interface Prescription {
   client_id: string;
   pet_id: string;
   prescriptionItem_id: string;
+  status?: string;
 }
 
 export interface PrescriptionCreate {

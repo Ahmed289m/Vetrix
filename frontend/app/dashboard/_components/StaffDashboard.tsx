@@ -66,12 +66,12 @@ export function StaffDashboard() {
     const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
 
     const todayAppointments = appointments.filter((apt) => {
-      const aptDate = new Date(apt.date);
+      const aptDate = new Date(apt.appointment_date ?? "");
       return aptDate >= todayStart && aptDate < todayEnd;
     }).length;
 
     const upcomingAppointments = appointments.filter((apt) => {
-      const aptDate = new Date(apt.date);
+      const aptDate = new Date(apt.appointment_date ?? "");
       const normalized = apt.status.toLowerCase();
       return (
         aptDate >= now &&
@@ -80,7 +80,7 @@ export function StaffDashboard() {
     }).length;
 
     const pendingPrescriptions = prescriptions.filter((rx) => {
-      const normalized = rx.status.toLowerCase();
+      const normalized = rx.status?.toLowerCase() ?? "";
       return normalized === "pending" || normalized === "processing";
     }).length;
 
@@ -89,10 +89,12 @@ export function StaffDashboard() {
       return visitDate >= todayStart && visitDate < todayEnd;
     }).length;
 
-    const activePatients = pets.filter((pet) => pet.is_active).length;
+    const activePatients = pets.filter((pet) => pet.is_active ?? true).length;
 
     const lowStockDrugs = drugs.filter(
-      (drug) => drug.quantity && drug.quantity < (drug.min_quantity || 10),
+      (drug) =>
+        typeof drug.quantity === "number" &&
+        drug.quantity < (drug.min_quantity ?? 10),
     ).length;
 
     return {
@@ -283,7 +285,7 @@ export function StaffDashboard() {
           variants={fadeUp}
           className="rounded-xl border border-coral/20 bg-coral/5 p-4 flex items-start gap-3"
         >
-          <AlertCircle className="w-5 h-5 text-coral mt-0.5 flex-shrink-0" />
+          <AlertCircle className="w-5 h-5 text-coral mt-0.5 shrink-0" />
           <div>
             <p className="font-semibold text-sm">Pending Prescriptions</p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -300,7 +302,7 @@ export function StaffDashboard() {
           variants={fadeUp}
           className="rounded-xl border border-orange/20 bg-orange/5 p-4 flex items-start gap-3"
         >
-          <Pill className="w-5 h-5 text-orange mt-0.5 flex-shrink-0" />
+          <Pill className="w-5 h-5 text-orange mt-0.5 shrink-0" />
           <div>
             <p className="font-semibold text-sm">Low Drug Stock</p>
             <p className="text-xs text-muted-foreground mt-1">
