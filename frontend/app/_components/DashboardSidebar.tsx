@@ -132,7 +132,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
               alt="Vetrix logo"
               width={110}
               height={110}
-              className="relative w-[110px] h-[110px] object-contain transform group-hover:scale-105 transition-transform duration-300"
+              className="relative w-27.5 h-27.5 object-contain transform group-hover:scale-105 transition-transform duration-300"
             />
           </div>
           <div className="flex items-center gap-1.5 mt-2">
@@ -191,7 +191,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
       <SidebarFooter className="p-4 border-t border-border/10">
         <div className="group flex items-center gap-3 px-3 py-3 rounded-2xl bg-muted/20 border border-border/10 hover:border-emerald/20 transition-all duration-300 transform group-hover:scale-[1.02]">
           <div className="relative">
-            <div className="absolute -inset-0.5 bg-gradient-to-br from-emerald to-cyan rounded-lg blur-[2px] opacity-0 group-hover:opacity-40 transition duration-300" />
+            <div className="absolute -inset-0.5 bg-linear-to-br from-emerald to-cyan rounded-lg blur-[2px] opacity-0 group-hover:opacity-40 transition duration-300" />
             <div className="relative w-9 h-9 rounded-lg gradient-emerald-cyan flex items-center justify-center text-xs font-black text-white uppercase shadow-md leading-none">
               {role[0]}
             </div>

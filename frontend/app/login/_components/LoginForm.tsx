@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { PawPrint, Eye, EyeOff, AlertCircle, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, ArrowRight } from "lucide-react";
 import { useFormik } from "formik";
 import { useAuth } from "@/app/_hooks/useAuth";
+import Image from "next/image";
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -42,12 +43,25 @@ export function LoginForm() {
   return (
     <div className="flex-1 flex flex-col relative z-10">
       {/* Mobile logo */}
-      <div className="lg:hidden flex items-center justify-between p-5 border-b border-border/30">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl gradient-emerald-cyan flex items-center justify-center">
-            <PawPrint className="w-4 h-4 text-primary-foreground" />
+      <div className="lg:hidden flex items-center justify-between p-4 sm:p-5 border-b border-border/30 bg-card/20 backdrop-blur-sm">
+        <div className="flex items-center gap-3">
+          <div className="relative w-11 h-11 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden shadow-lg shadow-emerald/10">
+            <div className="absolute -inset-6 bg-radial from-emerald/25 to-transparent opacity-80" />
+            <Image
+              src="/logo.png"
+              alt="Vetrix logo"
+              width={42}
+              height={42}
+              className="relative w-9 h-9 object-contain"
+              priority
+            />
           </div>
-          <span className="text-lg font-extrabold tracking-tight">VETRIX</span>
+          <div>
+            <p className="text-base font-black tracking-[0.08em]">VETRIX</p>
+            <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70 font-bold">
+              Smart Vet Platform
+            </p>
+          </div>
         </div>
       </div>
 
