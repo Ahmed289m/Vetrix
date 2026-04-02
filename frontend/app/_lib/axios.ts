@@ -7,14 +7,20 @@ export const REFRESH_TOKEN_KEY = "vetrix_refresh_token";
 
 /* ── Cookie helpers ───────────────────────────────────────────────── */
 const COOKIE_OPTIONS: Cookies.CookieAttributes = {
-  secure: typeof window !== "undefined" ? window.location.protocol === "https:" : process.env.NODE_ENV === "production",
+  secure:
+    typeof window !== "undefined"
+      ? window.location.protocol === "https:"
+      : process.env.NODE_ENV === "production",
   sameSite: "strict",
   path: "/",
 };
 
 export function setTokens(accessToken: string, refreshToken: string) {
   Cookies.set(ACCESS_TOKEN_KEY, accessToken, { ...COOKIE_OPTIONS, expires: 1 }); // 1 day
-  Cookies.set(REFRESH_TOKEN_KEY, refreshToken, { ...COOKIE_OPTIONS, expires: 7 }); // 7 days
+  Cookies.set(REFRESH_TOKEN_KEY, refreshToken, {
+    ...COOKIE_OPTIONS,
+    expires: 7,
+  }); // 7 days
 }
 
 export function getAccessToken(): string | undefined {
@@ -31,7 +37,8 @@ export function clearTokens() {
 }
 
 /* ── Axios instance ───────────────────────────────────────────────── */
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://vetrix.up.railway.app/";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "https://vetrix.up.railway.app/";
 
 export const api = axios.create({
   baseURL: API_URL,
