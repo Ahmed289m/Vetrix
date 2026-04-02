@@ -72,6 +72,13 @@ export default function ClinicsPage() {
   const clinics = clinicsData?.data || [];
   const users = usersData?.data || [];
 
+  const getClinicOwner = (clinicId: string) => {
+    const owner = users.find(
+      (u) => u.clinic_id === clinicId && u.role === "owner",
+    );
+    return owner ? owner.fullname : t("no_owner_assigned");
+  };
+
   const filteredClinics = React.useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return clinics.filter((clinic) => {
@@ -138,13 +145,6 @@ export default function ClinicsPage() {
     if (confirm(t("confirm_delete_clinic"))) {
       deleteClinic.mutate(id);
     }
-  };
-
-  const getClinicOwner = (clinicId: string) => {
-    const owner = users.find(
-      (u) => u.clinic_id === clinicId && u.role === "owner",
-    );
-    return owner ? owner.fullname : t("no_owner_assigned");
   };
 
   return (

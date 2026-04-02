@@ -79,6 +79,12 @@ export default function AppointmentsPage() {
     [appointments],
   );
 
+  const getPetName = (petId: string) =>
+    petsList.find((p) => p.pet_id === petId)?.name || "Unknown Pet";
+  const getClientName = (clientId: string) =>
+    clientsList.find((c) => c.user_id === clientId)?.fullname ||
+    "Unknown Owner";
+
   const filteredAppointments = React.useMemo(() => {
     const byDate = filterByDateRange(
       sortedAppointments,
@@ -148,12 +154,6 @@ export default function AppointmentsPage() {
       },
     );
   };
-
-  const getPetName = (petId: string) =>
-    petsList.find((p) => p.pet_id === petId)?.name || "Unknown Pet";
-  const getClientName = (clientId: string) =>
-    clientsList.find((c) => c.user_id === clientId)?.fullname ||
-    "Unknown Owner";
 
   return (
     <div className="p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">

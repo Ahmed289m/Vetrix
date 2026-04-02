@@ -74,7 +74,7 @@ export function StaffDashboard() {
 
     const upcomingAppointments = appointments.filter((apt) => {
       const aptDate = new Date(apt.appointment_date ?? "");
-      const normalized = apt.status.toLowerCase();
+      const normalized = apt.status?.toLowerCase() ?? "";
       return (
         aptDate >= now &&
         (normalized === "scheduled" || normalized === "pending")

@@ -84,6 +84,14 @@ export default function UsersPage() {
   const users = (usersData?.data || []).filter((u) => u.role !== "client");
   const clinics = clinicsData?.data || [];
 
+  const getClinicName = (clinicId: string | null) => {
+    if (!clinicId) return t("global");
+    return (
+      clinics.find((c) => c.clinic_id === clinicId)?.clinicName ||
+      t("unknown_clinic")
+    );
+  };
+
   const filteredUsers = React.useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return users.filter((u) => {
@@ -186,14 +194,6 @@ export default function UsersPage() {
       },
       onError: () => toast.error(t("password_load_failed")),
     });
-  };
-
-  const getClinicName = (clinicId: string | null) => {
-    if (!clinicId) return t("global");
-    return (
-      clinics.find((c) => c.clinic_id === clinicId)?.clinicName ||
-      t("unknown_clinic")
-    );
   };
 
   return (

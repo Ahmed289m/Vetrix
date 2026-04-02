@@ -59,7 +59,7 @@ export function OwnerDashboard() {
     ).length;
 
     const completedAppointments = appointments.filter((appointment) => {
-      const normalized = appointment.status.toLowerCase();
+      const normalized = appointment.status?.toLowerCase() ?? "";
       return (
         normalized === "completed" ||
         normalized === "done" ||
