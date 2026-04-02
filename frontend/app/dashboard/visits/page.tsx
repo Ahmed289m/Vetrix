@@ -5,6 +5,8 @@ import type { MouseEvent } from "react";
 import { motion, AnimatePresence } from "@/app/_components/fast-motion";
 import { Dog, Cat, Eye, X, FileText, Pill } from "lucide-react";
 import { useLang } from "@/app/_hooks/useLanguage";
+import { sortByDate } from "@/app/_lib/utils/date-filter";
+import type { DateRangeFilter } from "@/app/_lib/utils/date-filter";
 
 import { useVisits } from "@/app/_hooks/queries/use-visits";
 import { usePets } from "@/app/_hooks/queries/use-pets";
@@ -29,6 +31,7 @@ export default function VisitsPage() {
   const [filter, setFilter] = useState<"all" | "in-progress" | "completed">(
     "all",
   );
+  const [dateFilter, setDateFilter] = useState<DateRangeFilter>("all");
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const { t } = useLang();
 
@@ -54,6 +57,9 @@ export default function VisitsPage() {
           // or simulate status if needed. We'll simulate by filtering all as "completed".
           return filter === "completed";
         });
+
+  // Sort by date
+  const sortedVisits = sortByDate(filtered, "date", "desc");
 
   const getPet = (id: string) => petsList.find((p) => p.pet_id === id);
   const getUser = (id: string) => usersList.find((u) => u.user_id === id);
@@ -117,7 +123,7 @@ export default function VisitsPage() {
             No visits found.
           </div>
         ) : (
-          filtered.map((visit, i) => {
+          sortedVisits.map((visit, i) => {
             const pet = getPet(visit.pet_id);
             const owner = getUser(visit.client_id);
             const doctor = getUser(visit.doctor_id);

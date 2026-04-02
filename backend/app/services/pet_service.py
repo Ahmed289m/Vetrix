@@ -6,6 +6,7 @@ from app.models.pet import Pet
 from app.repositories.pet_repository import PetRepository
 from app.schemas.pet import PetCreate, PetUpdate
 from app.services.base_crud_service import BaseCrudService
+from app.utils.mongo_helpers import serialize_mongo_doc
 
 
 class PetService:
@@ -67,7 +68,7 @@ class PetService:
                 return []
             pets = await self.repository.list_by_clinic(current_user.clinic_id)
         
-        return [self.crud._serialize(pet) for pet in pets]
+        return [serialize_mongo_doc(pet, "pet_id") for pet in pets]
 
     async def get_pet(self, pet_id: str, current_user: TokenData) -> dict:
         """

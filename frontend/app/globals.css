@@ -255,12 +255,11 @@
   html.theme-transitioning .sidebar,
   html.theme-transitioning .bg-card,
   html.theme-transitioning .bg-background {
-    /* Keep theme switching fast: don't animate every property everywhere. */
+    /* Keep theme switching fast: reduced duration and optimized properties */
     transition:
-      background-color 160ms ease,
-      color 160ms ease,
-      border-color 160ms ease,
-      box-shadow 160ms ease !important;
+      background-color 120ms ease,
+      color 120ms ease,
+      border-color 120ms ease !important;
   }
 }
 @layer utilities {

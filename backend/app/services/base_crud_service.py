@@ -25,6 +25,8 @@ class BaseCrudService:
     async def create(self, request: BaseModel) -> dict:
         entity_id = generate_prefixed_id(self.id_prefix)
         data = request.model_dump()
+        # Remove id_field if it exists to avoid duplicate keyword argument
+        data.pop(self.id_field, None)
         entity = self.model_cls(**data, **{self.id_field: entity_id})
         payload = normalize_for_mongo(entity.model_dump())
         created = await self.repository.create(payload)

@@ -7,6 +7,9 @@ class AppointmentController:
     def __init__(self, service: AppointmentService) -> None:
         self.service = service
 
+    async def get_appointments(self, current_user: TokenData) -> list:
+        return await self.service.get_appointments(current_user)
+
     async def create_appointment(self, request: AppointmentCreate, current_user: TokenData) -> dict:
         return await self.service.create_appointment(request, current_user)
 

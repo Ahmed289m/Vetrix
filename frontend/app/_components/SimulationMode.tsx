@@ -1,4 +1,6 @@
-import { useState } from "react";
+"use client";
+
+import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play,
@@ -8,12 +10,27 @@ import {
   Clock,
   Activity,
   ChevronRight,
+  Stethoscope,
+  Pill,
+  X,
 } from "lucide-react";
+import { useAppointments } from "@/app/_hooks/queries/use-appointments";
+import { useUpdateAppointment } from "@/app/_hooks/queries/use-appointments";
+import { usePets } from "@/app/_hooks/queries/use-pets";
+import { useUsers } from "@/app/_hooks/queries/use-users";
+import { useCreateVisit } from "@/app/_hooks/queries/use-visits";
+import { useCreatePrescription } from "@/app/_hooks/queries/use-prescriptions";
+import { useCreatePrescriptionItem } from "@/app/_hooks/queries/use-prescription-items";
+import { useDrugs } from "@/app/_hooks/queries/use-drugs";
+import { useWebSocket } from "@/app/_hooks/useWebSocket";
+import { useAuth } from "@/app/_hooks/useAuth";
 
 interface SimCase {
   id: string;
   caseNumber: string;
   petName: string;
+  petId: string;
+  clientId: string;
   species: "dog" | "cat";
   breed: string;
   ownerName: string;
@@ -22,57 +39,6 @@ interface SimCase {
   doctor: string;
   status: "waiting" | "in-progress" | "completed";
 }
-
-const mockCases: SimCase[] = [
-  {
-    id: "1",
-    caseNumber: "VET-2026-0142",
-    petName: "Bella",
-    species: "dog",
-    breed: "Golden Retriever",
-    ownerName: "Sarah Mitchell",
-    complaint: "Persistent vomiting, lethargy for 2 days",
-    severity: "urgent",
-    doctor: "Dr. Emily",
-    status: "waiting",
-  },
-  {
-    id: "2",
-    caseNumber: "VET-2026-0143",
-    petName: "Whiskers",
-    species: "cat",
-    breed: "Persian",
-    ownerName: "Tom Parker",
-    complaint: "Annual vaccination + dental check",
-    severity: "normal",
-    doctor: "Dr. Emily",
-    status: "waiting",
-  },
-  {
-    id: "3",
-    caseNumber: "VET-2026-0144",
-    petName: "Rocky",
-    species: "dog",
-    breed: "German Shepherd",
-    ownerName: "James Wilson",
-    complaint: "Acute limping, possible fracture",
-    severity: "emergency",
-    doctor: "Dr. Aris",
-    status: "waiting",
-  },
-  {
-    id: "4",
-    caseNumber: "VET-2026-0145",
-    petName: "Luna",
-    species: "cat",
-    breed: "Siamese",
-    ownerName: "Amy Chen",
-    complaint: "Skin rash, excessive scratching",
-    severity: "normal",
-    doctor: "Dr. Emily",
-    status: "waiting",
-  },
-];
 
 const severityConfig = {
   normal: {
@@ -100,14 +66,167 @@ interface Props {
 }
 
 export default function SimulationMode({ role }: Props) {
-  const [cases, setCases] = useState<SimCase[]>(
-    mockCases.map((c) => ({ ...c })),
-  );
+  const [cases, setCases] = useState<SimCase[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
+  const [showVisitModal, setShowVisitModal] = useState(false);
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+  const [visitNotes, setVisitNotes] = useState("");
+  const [selectedDrugId, setSelectedDrugId] = useState<string>("");
+  const [drugDose, setDrugDose] = useState("");
+  const wsRef = useRef<WebSocket | null>(null);
 
+  // Fetch real data
+  const { user } = useAuth();
+  const { data: appointmentsData, refetch: refetchAppointments } =
+    useAppointments();
+  const { data: petsData } = usePets();
+  const { data: usersData } = useUsers();
+  const { data: drugsData } = useDrugs();
+  const updateAppointment = useUpdateAppointment();
+  const createVisit = useCreateVisit();
+  const createPrescription = useCreatePrescription();
+  const createPrescriptionItem = useCreatePrescriptionItem();
+
+  // Initialize websocket connection for real-time updates
+  useWebSocket();
+
+  // Setup websocket listener for appointment updates
+  useEffect(() => {
+    const WS_URL =
+      process.env.NEXT_PUBLIC_API_URL?.replace(/^http/, "ws") ??
+      "ws://localhost:8000";
+
+    const connectWebSocket = () => {
+      try {
+        const ws = new WebSocket(`${WS_URL}/ws`);
+        wsRef.current = ws;
+
+        ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data) as {
+              event: string;
+              data?: unknown;
+            };
+
+            // Listen for appointment updates
+            if (
+              message.event === "appointments:updated" ||
+              message.event === "appointments:created" ||
+              message.event === "appointments:deleted"
+            ) {
+              console.log(
+                "[SimulationMode] Received websocket event:",
+                message.event,
+              );
+              // Trigger refetch to get updated data
+              refetchAppointments();
+            }
+          } catch (err) {
+            console.error(
+              "[SimulationMode] Error parsing websocket message:",
+              err,
+            );
+          }
+        };
+
+        ws.onerror = (error) => {
+          console.error("[SimulationMode] WebSocket error:", error);
+        };
+
+        ws.onclose = () => {
+          console.log("[SimulationMode] WebSocket connection closed");
+          // Attempt to reconnect after 3 seconds
+          setTimeout(connectWebSocket, 3000);
+        };
+      } catch (err) {
+        console.error("[SimulationMode] Failed to connect websocket:", err);
+      }
+    };
+
+    connectWebSocket();
+
+    return () => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.close();
+      }
+    };
+  }, [refetchAppointments]);
+
+  // Convert real appointments to simulation cases
+  const confirmedCases = useMemo(() => {
+    const appointments = appointmentsData?.data || [];
+    const pets = petsData?.data || [];
+    const users = usersData?.data || [];
+
+    console.log("[SimulationMode] Data loaded:", {
+      appointmentsCount: appointments.length,
+      petsCount: pets.length,
+      usersCount: users.length,
+      appointmentStatuses: appointments.map((apt: any) => apt.status),
+    });
+
+    // Filter for confirmed appointments (not pending or completed), sort by date
+    const confirmed = appointments
+      .filter((apt: any) => apt.status === "confirmed")
+      .sort((a: any, b: any) => {
+        const dateA = a.appointment_date
+          ? new Date(a.appointment_date).getTime()
+          : 0;
+        const dateB = b.appointment_date
+          ? new Date(b.appointment_date).getTime()
+          : 0;
+        return dateA - dateB;
+      })
+      .map((apt: any, index: number) => {
+        const pet = pets.find((p: any) => p.pet_id === apt.pet_id);
+        const doctor = apt.doctor_id
+          ? users.find((u: any) => u.user_id === apt.doctor_id)
+          : null;
+        const client = users.find((u: any) => u.user_id === apt.client_id);
+
+        return {
+          id: apt.appointment_id,
+          caseNumber: `APT-${String(index + 1).padStart(4, "0")}`,
+          petName: pet?.name || "Unknown Pet",
+          petId: apt.pet_id,
+          clientId: apt.client_id,
+          species: (pet?.type || "dog") as "dog" | "cat",
+          breed: pet?.breed || "Mixed",
+          ownerName: client?.fullname || "Unknown Owner",
+          complaint: apt.reason || "Regular checkup",
+          severity: "normal" as const,
+          doctor: doctor?.fullname || "Dr. Assigned",
+          status: "waiting" as const,
+        } as SimCase;
+      });
+
+    console.log("[SimulationMode] Confirmed cases:", confirmed.length, "cases");
+    return confirmed;
+  }, [appointmentsData, petsData, usersData]);
+
+  // Update local state when confirmed cases change
   const currentCase = cases[currentIdx];
   const nextCase = cases[currentIdx + 1] || null;
   const allDone = currentIdx >= cases.length;
+
+  // Initialize cases from confirmed appointments and re-sync when data changes
+  useEffect(() => {
+    if (confirmedCases.length > 0) {
+      // Keep current case status if it's in progress, otherwise reset
+      const newCases = confirmedCases.map((newCase) => {
+        const existingCase = cases.find((c) => c.id === newCase.id);
+        return existingCase?.status === "in-progress"
+          ? { ...newCase, status: "in-progress" }
+          : newCase;
+      });
+      setCases(newCases);
+
+      // Reset index if it exceeds the new cases length
+      if (currentIdx >= newCases.length && newCases.length > 0) {
+        setCurrentIdx(0);
+      }
+    }
+  }, [confirmedCases]);
 
   const handleStart = () => {
     setCases((prev) =>
@@ -118,12 +237,131 @@ export default function SimulationMode({ role }: Props) {
   };
 
   const handleComplete = () => {
-    setCases((prev) =>
-      prev.map((c, i) =>
-        i === currentIdx ? { ...c, status: "completed" } : c,
-      ),
+    const completeCase = cases[currentIdx];
+    if (!completeCase) return;
+
+    console.log(
+      "[SimulationMode] Completing case:",
+      completeCase.id,
+      "-",
+      completeCase.petName,
     );
-    setCurrentIdx((prev) => prev + 1);
+
+    // Update the appointment status to "completed" in the backend
+    updateAppointment.mutate(
+      {
+        id: completeCase.id,
+        data: { status: "completed" },
+      },
+      {
+        onSuccess: (data) => {
+          console.log(
+            "[SimulationMode] Case completed successfully:",
+            completeCase.id,
+          );
+          // Move to next case after successful update
+          setCases((prev) =>
+            prev.map((c, i) =>
+              i === currentIdx ? { ...c, status: "completed" } : c,
+            ),
+          );
+          setCurrentIdx((prev) => prev + 1);
+        },
+        onError: (error) => {
+          console.error("[SimulationMode] Failed to complete case:", error);
+        },
+      },
+    );
+  };
+
+  const handleCreateVisit = () => {
+    const currentCase = cases[currentIdx];
+    if (!currentCase || !user) return;
+
+    console.log("[SimulationMode] Creating visit for case:", currentCase.id);
+
+    createVisit.mutate(
+      {
+        pet_id: currentCase.petId,
+        client_id: currentCase.clientId,
+        doctor_id: user.user_id,
+        notes: visitNotes || "Visit created from simulation mode",
+        date: new Date().toISOString(),
+      } as any,
+      {
+        onSuccess: (data) => {
+          console.log("[SimulationMode] Visit created successfully:", data);
+          setShowVisitModal(false);
+          setVisitNotes("");
+        },
+        onError: (error) => {
+          console.error("[SimulationMode] Failed to create visit:", error);
+        },
+      },
+    );
+  };
+
+  const handleCreatePrescription = () => {
+    const currentCase = cases[currentIdx];
+    if (!currentCase || !selectedDrugId || !drugDose) {
+      console.warn("[SimulationMode] Missing required prescription fields");
+      return;
+    }
+
+    console.log(
+      "[SimulationMode] Creating prescription item for case:",
+      currentCase.id,
+    );
+
+    // First, create the prescription item with drug and dosage
+    createPrescriptionItem.mutate(
+      {
+        drug_id: selectedDrugId,
+        drugDose: drugDose,
+      } as any,
+      {
+        onSuccess: (itemData: any) => {
+          const prescriptionItemId =
+            itemData.data?.prescriptionItem_id || itemData.prescriptionItem_id;
+          console.log(
+            "[SimulationMode] Prescription item created:",
+            prescriptionItemId,
+          );
+
+          // Then, create the prescription with the item
+          createPrescription.mutate(
+            {
+              client_id: currentCase.clientId,
+              pet_id: currentCase.petId,
+              prescriptionItem_id: prescriptionItemId,
+            } as any,
+            {
+              onSuccess: (data) => {
+                console.log(
+                  "[SimulationMode] Prescription created successfully:",
+                  data,
+                );
+                setShowPrescriptionModal(false);
+                setSelectedDrugId("");
+                setDrugDose("");
+              },
+              onError: (error) => {
+                console.error(
+                  "[SimulationMode] Failed to create prescription:",
+                  error,
+                );
+              },
+            },
+          );
+        },
+        onError: (error) => {
+          console.error(
+            "[SimulationMode] Failed to create prescription item:",
+            error,
+          );
+        },
+      },
+    );
   };
 
   const isStaff = role === "staff";
@@ -182,7 +420,7 @@ export default function SimulationMode({ role }: Props) {
         </div>
       </div>
 
-      {/* All done state */}
+      {/* All done state OR no cases for doctor */}
       {allDone && (
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
@@ -197,8 +435,13 @@ export default function SimulationMode({ role }: Props) {
             <CheckCircle2 className="w-12 h-12 text-emerald mx-auto" />
           </motion.div>
           <p className="text-lg font-extrabold text-emerald">
-            All cases completed!
+            {isStaff ? "All cases completed!" : "No active cases"}
           </p>
+          {!isStaff && (
+            <p className="text-xs text-muted-foreground">
+              Waiting for confirmed appointments to appear in the queue
+            </p>
+          )}
         </motion.div>
       )}
 
@@ -308,6 +551,28 @@ export default function SimulationMode({ role }: Props) {
                 )}
               </div>
             )}
+
+            {/* Doctor controls */}
+            {!isStaff && (
+              <div className="flex items-center gap-3 pt-2 flex-wrap">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setShowVisitModal(true)}
+                  className="flex items-center gap-2 gradient-cyan-blue text-primary-foreground px-6 py-3 rounded-xl text-sm font-bold glow-cyan ripple"
+                >
+                  <Stethoscope className="w-4 h-4" /> Create Visit
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setShowPrescriptionModal(true)}
+                  className="flex items-center gap-2 gradient-emerald-cyan text-primary-foreground px-6 py-3 rounded-xl text-sm font-bold glow-emerald ripple"
+                >
+                  <Pill className="w-4 h-4" /> Prescribe
+                </motion.button>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -352,6 +617,212 @@ export default function SimulationMode({ role }: Props) {
                 {severityConfig[nextCase.severity].label}
               </span>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Visit Modal */}
+      <AnimatePresence>
+        {showVisitModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-xl"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Stethoscope className="w-5 h-5 text-cyan" />
+                  <h3 className="text-lg font-bold">Create Visit</h3>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowVisitModal(false);
+                    setVisitNotes("");
+                  }}
+                  className="p-1 hover:bg-muted rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground mb-2 block">
+                    Patient
+                  </label>
+                  <p className="text-sm font-semibold">
+                    {cases[currentIdx]?.petName} ({cases[currentIdx]?.ownerName}
+                    )
+                  </p>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="notes"
+                    className="text-xs font-bold text-muted-foreground mb-2 block"
+                  >
+                    Visit Notes
+                  </label>
+                  <textarea
+                    id="notes"
+                    value={visitNotes}
+                    onChange={(e) => setVisitNotes(e.target.value)}
+                    placeholder="Enter visit notes..."
+                    className="w-full px-3 py-2 rounded-lg bg-muted/30 border border-border text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan/50"
+                    rows={4}
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => {
+                      setShowVisitModal(false);
+                      setVisitNotes("");
+                    }}
+                    className="flex-1 px-4 py-2 rounded-lg bg-muted/30 hover:bg-muted/50 text-sm font-bold transition-colors"
+                  >
+                    Cancel
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={handleCreateVisit}
+                    disabled={createVisit.isPending}
+                    className="flex-1 px-4 py-2 rounded-lg gradient-cyan-blue text-primary-foreground text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {createVisit.isPending ? "Creating..." : "Create Visit"}
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Prescription Modal */}
+      <AnimatePresence>
+        {showPrescriptionModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-xl"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Pill className="w-5 h-5 text-emerald" />
+                  <h3 className="text-lg font-bold">Prescribe Medication</h3>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowPrescriptionModal(false);
+                    setSelectedDrugId("");
+                    setDrugDose("");
+                  }}
+                  className="p-1 hover:bg-muted rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground mb-2 block">
+                    Patient
+                  </label>
+                  <p className="text-sm font-semibold">
+                    {cases[currentIdx]?.petName} ({cases[currentIdx]?.ownerName}
+                    )
+                  </p>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="drug"
+                    className="text-xs font-bold text-muted-foreground mb-2 block"
+                  >
+                    Drug
+                  </label>
+                  <select
+                    id="drug"
+                    value={selectedDrugId}
+                    onChange={(e) => setSelectedDrugId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-muted/30 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50"
+                  >
+                    <option value="">Select a drug...</option>
+                    {(drugsData?.data || []).map((drug: any) => (
+                      <option key={drug.drug_id} value={drug.drug_id}>
+                        {drug.name} ({drug.dosage})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="dose"
+                    className="text-xs font-bold text-muted-foreground mb-2 block"
+                  >
+                    Dosage
+                  </label>
+                  <input
+                    id="dose"
+                    type="text"
+                    value={drugDose}
+                    onChange={(e) => setDrugDose(e.target.value)}
+                    placeholder="e.g., 5mg twice daily"
+                    className="w-full px-3 py-2 rounded-lg bg-muted/30 border border-border text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald/50"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => {
+                      setShowPrescriptionModal(false);
+                      setSelectedDrugId("");
+                      setDrugDose("");
+                    }}
+                    className="flex-1 px-4 py-2 rounded-lg bg-muted/30 hover:bg-muted/50 text-sm font-bold transition-colors"
+                  >
+                    Cancel
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={handleCreatePrescription}
+                    disabled={
+                      createPrescriptionItem.isPending ||
+                      createPrescription.isPending ||
+                      !selectedDrugId ||
+                      !drugDose
+                    }
+                    className="flex-1 px-4 py-2 rounded-lg gradient-emerald-cyan text-primary-foreground text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {createPrescriptionItem.isPending ||
+                    createPrescription.isPending
+                      ? "Prescribing..."
+                      : "Prescribe"}
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

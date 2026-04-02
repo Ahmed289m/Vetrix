@@ -5,6 +5,7 @@ from app.models.drug import Drug
 from app.repositories.drug_repository import DrugRepository
 from app.schemas.drug import DrugCreate, DrugUpdate
 from app.services.base_crud_service import BaseCrudService
+from app.utils.mongo_helpers import serialize_mongo_doc
 
 
 class DrugService:
@@ -51,7 +52,7 @@ class DrugService:
             return []
 
         drugs = await self.repository.list(clinic_id=current_user.clinic_id)
-        return [self.crud._serialize(drug) for drug in drugs]
+        return [serialize_mongo_doc(drug, "drug_id") for drug in drugs]
 
     async def get_drug(self, drug_id: str, current_user: TokenData) -> dict:
         """

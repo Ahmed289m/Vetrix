@@ -11,6 +11,7 @@ import {
 } from "@/app/_components/ui/tooltip";
 import { useTheme } from "@/app/_hooks/useTheme";
 import { AgencyModeToggle, UiMode } from "@/app/_components/AgencyModeToggle";
+import { useAuth } from "@/app/_hooks/useAuth";
 
 type Role = "doctor" | "staff" | "admin" | "owner" | "client";
 
@@ -27,6 +28,9 @@ export function DashboardHeader({
 }: DashboardHeaderProps) {
   const { isDark, toggle } = useTheme();
   const { t, lang, setLang } = useLang();
+  const { user } = useAuth();
+  const displayName = user?.fullname || user?.email?.split("@")[0] || "User";
+  const displayClinic = user?.clinicName || t("vet_clinic") || "Clinic";
 
   const toggleTheme = () => {
     toggle();
@@ -87,19 +91,18 @@ export function DashboardHeader({
 
         {/* User profile summary */}
         <div className="flex items-center gap-2 sm:gap-3 pl-0 sm:pl-1 cursor-pointer group transition-transform duration-200 hover:translate-x-[2px]">
-          <div className="hidden md:block text-right">
+          <div className="block text-right">
             <p className="text-xs font-black capitalize leading-none group-hover:text-emerald transition-colors">
-              {role === "doctor" ? "Dr. " : ""}
-              {role}
+              {displayName}
             </p>
             <p className="text-[10px] text-muted-foreground/60 mt-1 font-bold uppercase tracking-wider">
-              {t(role === "doctor" ? "veterinarian" : "reception")}
+              {displayClinic}
             </p>
           </div>
           <div className="relative">
             <div className="absolute -inset-0.5 bg-gradient-to-tr from-emerald to-cyan rounded-xl blur opacity-0 group-hover:opacity-40 transition duration-300" />
             <div className="relative w-9 h-9 rounded-xl gradient-emerald-cyan flex items-center justify-center text-[11px] font-black text-white uppercase shadow-md leading-none transform group-hover:scale-105 transition-transform">
-              {role[0]}
+              {(displayName[0] || "U").toUpperCase()}
             </div>
           </div>
         </div>

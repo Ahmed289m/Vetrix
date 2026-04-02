@@ -11,21 +11,25 @@ export function useTheme() {
 
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.add("theme-transitioning");
+    
+    // Use requestAnimationFrame for better performance
+    requestAnimationFrame(() => {
+      root.classList.add("theme-transitioning");
 
-    if (isDark) {
-      root.classList.remove("light-mode");
-      root.classList.add("dark");
-    } else {
-      root.classList.add("light-mode");
-      root.classList.remove("dark");
-    }
+      if (isDark) {
+        root.classList.remove("light-mode");
+        root.classList.add("dark");
+      } else {
+        root.classList.add("light-mode");
+        root.classList.remove("dark");
+      }
 
-    localStorage.setItem("vetrix-theme", isDark ? "dark" : "light");
+      localStorage.setItem("vetrix-theme", isDark ? "dark" : "light");
+    });
 
     const timer = setTimeout(() => {
       root.classList.remove("theme-transitioning");
-    }, 220);
+    }, 150); // Reduced from 220ms
 
     return () => clearTimeout(timer);
   }, [isDark]);

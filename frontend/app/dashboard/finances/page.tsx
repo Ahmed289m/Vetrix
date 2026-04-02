@@ -35,35 +35,8 @@ import { DashboardForm } from "@/app/_components/ui/dashboard-form";
 import { Label } from "@/app/_components/ui/label";
 import { cn } from "@/app/_lib/utils";
 
-const mockTransactions = [
-  {
-    id: "TX-5044",
-    client: "Ahmed",
-    date: "2024-03-27",
-    type: "Income",
-    category: "Clinical Visit",
-    amount: 120,
-    status: "Paid",
-  },
-  {
-    id: "TX-5045",
-    client: "Supplier X",
-    date: "2024-03-26",
-    type: "Expense",
-    category: "Medication Restock",
-    amount: -450,
-    status: "Paid",
-  },
-  {
-    id: "TX-5046",
-    client: "Sarah Connor",
-    date: "2024-03-27",
-    type: "Income",
-    category: "Surgery",
-    amount: 800,
-    status: "Pending",
-  },
-];
+// Real data will be fetched and displayed
+const transactions = [] as const;
 
 export default function FinancesPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -178,7 +151,8 @@ export default function FinancesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockTransactions.map((tx) => (
+              {transactions && transactions.length > 0 ? (
+                transactions.map((tx) => (
                 <TableRow
                   key={tx.id}
                   className="border-b border-border/10 hover:bg-muted/40 transition-colors group/row"
@@ -259,7 +233,16 @@ export default function FinancesPage() {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
+              ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-8 text-center">
+                    <p className="text-muted-foreground font-semibold">
+                      No transactions found
+                    </p>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>

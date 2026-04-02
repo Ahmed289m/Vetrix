@@ -25,6 +25,34 @@ class AppointmentService:
         self.pet_repository = pet_repository
         self.user_repository = user_repository
 
+    async def get_appointments(self, current_user: TokenData) -> list:
+        """
+        Get all appointments accessible to the current user.
+        
+        - ADMIN can see all appointments
+        - STAFF/OWNER/DOCTOR can see appointments in their clinic
+        - CLIENT can see only their appointments
+        """
+        if current_user.is_superuser:
+            # Admin can see all appointments
+            appointments = await self.appointment_repository.list()
+        elif current_user.role in [UserRole.STAFF, UserRole.OWNER, UserRole.DOCTOR]:
+            # Staff/Owner/Doctor can see appointments in their clinic
+            appointments = await self.appointment_repository.list(
+                clinic_id=current_user.clinic_id,
+                is_superuser=False
+            )
+        elif current_user.role == UserRole.CLIENT:
+            # CLIENT can see only their appointments
+            appointments = await self.appointment_repository.collection.find(
+                {"client_id": current_user.user_id}
+            ).to_list(length=None)
+        else:
+            appointments = []
+        
+        # Serialize all appointments
+        return [serialize_mongo_doc(apt, "appointment_id") for apt in appointments]  # type: ignore[misc]
+
     async def create_appointment(self, request: AppointmentCreate, current_user: TokenData) -> dict:
         """
         Create an appointment with authorization.
@@ -113,7 +141,9 @@ class AppointmentService:
                 )
         
         payload = normalize_for_mongo(request.model_dump(exclude_none=True))
-        payload["status"] = "confirmed"
+        # Set default status to "confirmed" only if not explicitly provided
+        if "status" not in payload:
+            payload["status"] = "confirmed"
 
         if payload.get("clinic_id"):
             clinic = await self.clinic_repository.get_by_clinic_id(payload["clinic_id"])

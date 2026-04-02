@@ -37,42 +37,58 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/app/_components/ui/select";
-// Mock data
-const mockCases = [
-  {
-    id: "CASE-001",
-    patientName: "Max",
-    ownerName: "Ahmed",
-    doctorName: "Dr. Sarah",
-    reason: "Annual Vaccination",
-    date: "2024-03-27",
-    status: "Ongoing",
-  },
-  {
-    id: "CASE-002",
-    patientName: "Luna",
-    ownerName: "Sarah Connor",
-    doctorName: "Dr. Mike",
-    reason: "Skin Allergy",
-    date: "2024-03-26",
-    status: "Completed",
-  },
-  {
-    id: "CASE-003",
-    patientName: "Rocky",
-    ownerName: "John Doe",
-    doctorName: "Dr. Sarah",
-    reason: "Post-surgery checkup",
-    date: "2024-03-27",
-    status: "Waiting",
-  },
-];
+import { useVisits } from "@/app/_hooks/queries/use-visits";
+import { usePets } from "@/app/_hooks/queries/use-pets";
+import { useUsers } from "@/app/_hooks/queries/use-users";
+import { useAuth } from "@/app/_hooks/useAuth";
 
-type CaseItem = (typeof mockCases)[number];
+type CaseItem = {
+  id: string;
+  patientName: string;
+  ownerName: string;
+  doctorName: string;
+  reason: string;
+  date: string;
+  status: string;
+};
 
 export default function CasesPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [selectedCase, setSelectedCase] = React.useState<CaseItem | null>(null);
+  const { user } = useAuth();
+
+  // Fetch real data
+  const { data: visitsData } = useVisits();
+  const { data: petsData } = usePets();
+  const { data: usersData } = useUsers();
+
+  // Convert visits to case items and sort by date
+  const cases: CaseItem[] = React.useMemo(() => {
+    const visits = visitsData?.data || [];
+    const pets = petsData?.data || [];
+    const users = usersData?.data || [];
+
+    return visits
+      .map((visit: any) => {
+        const pet = pets.find((p: any) => p.pet_id === visit.pet_id);
+        const doctor = users.find((u: any) => u.user_id === visit.doctor_id);
+        const owner = pets.find(
+          (p: any) => p.pet_id === visit.pet_id,
+        )?.owner_id;
+        const ownerUser = users.find((u: any) => u.user_id === owner);
+
+        return {
+          id: visit.visit_id,
+          patientName: pet?.name || "Unknown",
+          ownerName: ownerUser?.fullname || "Unknown",
+          doctorName: doctor?.fullname || "Unknown",
+          reason: visit.reason || "Clinical Visit",
+          date: visit.date || new Date().toISOString(),
+          status: "Completed",
+        };
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [visitsData, petsData, usersData]);
 
   const handleOpenForm = (caseItem: CaseItem | null = null) => {
     setSelectedCase(caseItem);
@@ -102,13 +118,15 @@ export default function CasesPage() {
             Monitor ongoing clinical cases, visit history and medical progress.
           </p>
         </div>
-        <Button
-          onClick={() => handleOpenForm()}
-          className="bg-emerald hover:bg-emerald/90 text-white font-black px-6 h-12 shadow-xl shadow-emerald/20 flex items-center gap-2 group transition-all duration-300"
-        >
-          <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-          Create New Case
-        </Button>
+        {user?.role === "doctor" && (
+          <Button
+            onClick={() => handleOpenForm()}
+            className="bg-emerald hover:bg-emerald/90 text-white font-black px-6 h-12 shadow-xl shadow-emerald/20 flex items-center gap-2 group transition-all duration-300"
+          >
+            <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+            Create New Case
+          </Button>
+        )}
       </div>
 
       {/* Filters & Search */}
@@ -152,7 +170,7 @@ export default function CasesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockCases.map((caseItem) => (
+              {cases.map((caseItem) => (
                 <TableRow
                   key={caseItem.id}
                   className="border-b border-white/5 hover:bg-white/5 transition-colors group/row"

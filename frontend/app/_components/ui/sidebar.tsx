@@ -240,7 +240,7 @@ const Sidebar = React.forwardRef<
                 ? "var(--sidebar-width-icon)"
                 : "var(--sidebar-width)",
           }}
-          transition={{ duration: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
+          transition={{ duration: 0.2, ease: "easeInOut" }}
           className={cn(
             "relative h-svh bg-transparent",
             "group-data-[collapsible=offcanvas]:w-0",
@@ -261,9 +261,9 @@ const Sidebar = React.forwardRef<
                   : "100%"
                 : 0,
           }}
-          transition={{ duration: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
+          transition={{ duration: 0.2, ease: "easeInOut" }}
           className={cn(
-            "fixed inset-y-0 z-30 h-svh transition-all shadow-2xl shadow-black/20 flex",
+            "fixed inset-y-0 z-30 h-svh transition-all shadow-2xl shadow-black/20 flex will-change-[width,transform]",
             side === "left" ? "left-0" : "right-0",
             className,
           )}

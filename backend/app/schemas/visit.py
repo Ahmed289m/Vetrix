@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class VisitCreate(BaseModel):
-    prescription_id: str
+    prescription_id: str | None = None
     client_id: str
     notes: str | None = None
     pet_id: str
@@ -25,7 +25,7 @@ class VisitUpdate(BaseModel):
 
 class VisitResponse(BaseModel):
     visit_id: str
-    prescription_id: str
+    prescription_id: str | None = None
     clinic_id: str
     client_id: str
     notes: str | None = None

@@ -124,7 +124,8 @@ class UserService:
         List users based on current user's role.
         
         - ADMIN sees all users
-        - OWNER/STAFF/DOCTOR see only users in their clinic
+        - OWNER/STAFF see only users in their clinic
+        - DOCTOR sees only CLIENT users in their clinic
         """
         if current_user.is_superuser:
             users = await self.user_repository.list_users()
@@ -133,6 +134,10 @@ class UserService:
             if not current_user.clinic_id:
                 return []
             users = await self.user_repository.list_users_by_clinic(current_user.clinic_id)
+            
+            # DOCTOR can only see CLIENT users
+            if current_user.role == UserRole.DOCTOR:
+                users = [u for u in users if u.get("role") == UserRole.CLIENT]
         
         return [self._sanitize(user) for user in users]
 
@@ -141,7 +146,8 @@ class UserService:
         Get a user with clinic isolation check.
         
         - ADMIN can read any user
-        - Others can read users in their clinic
+        - OWNER/STAFF can read users in their clinic
+        - DOCTOR can only read CLIENT users in their clinic
         - CLIENT can read only themselves
         """
         user = await self.user_repository.get_by_user_id(user_id)
@@ -151,6 +157,13 @@ class UserService:
         # Clinic isolation check
         if not current_user.is_superuser:
             if user.get("clinic_id") != current_user.clinic_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied",
+                )
+            
+            # DOCTOR can only read CLIENT users
+            if current_user.role == UserRole.DOCTOR and user.get("role") != UserRole.CLIENT:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Access denied",

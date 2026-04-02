@@ -36,17 +36,27 @@ export interface Appointment {
   clinic_id: string;
   pet_id: string;
   client_id: string;
+  doctor_id?: string;
+  appointment_date?: string;
+  reason?: string;
   status: string;
 }
 
 export interface AppointmentCreate {
   pet_id: string;
   client_id: string;
+  doctor_id?: string;
+  appointment_date?: string;
+  reason?: string;
 }
 
 export interface AppointmentUpdate {
   pet_id?: string;
   client_id?: string;
+  status?: string;
+  doctor_id?: string;
+  appointment_date?: string;
+  reason?: string;
 }
 
 /* ── User ─────────────────────────────────────────────────────────── */
@@ -118,7 +128,7 @@ export interface ClinicUpdate {
 
 export interface Visit {
   visit_id: string;
-  prescription_id: string;
+  prescription_id?: string;
   clinic_id: string;
   client_id: string;
   notes?: string;
@@ -128,7 +138,7 @@ export interface Visit {
 }
 
 export interface VisitCreate {
-  prescription_id: string;
+  prescription_id?: string;
   client_id: string;
   notes?: string;
   pet_id: string;

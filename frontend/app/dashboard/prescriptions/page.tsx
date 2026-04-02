@@ -49,9 +49,11 @@ import { usePrescriptionItems } from "@/app/_hooks/queries/use-prescription-item
 import { useDrugs } from "@/app/_hooks/queries/use-drugs";
 import { usePets } from "@/app/_hooks/queries/use-pets";
 import { useUsers } from "@/app/_hooks/queries/use-users";
+import { useAuth } from "@/app/_hooks/useAuth";
 
 export default function PrescriptionsPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
+  const { user } = useAuth();
 
   const { data: rxData, isLoading: rxLoading } = usePrescriptions();
   const { data: rxItemsData } = usePrescriptionItems();
@@ -126,13 +128,15 @@ export default function PrescriptionsPage() {
             prescriptions.
           </p>
         </div>
-        <Button
-          onClick={handleOpenForm}
-          className="bg-emerald hover:bg-emerald/90 text-white font-black px-6 h-12 shadow-xl shadow-emerald/20 flex items-center gap-2 group transition-all duration-300"
-        >
-          <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-          New Prescription
-        </Button>
+        {user?.role !== "staff" && (
+          <Button
+            onClick={handleOpenForm}
+            className="bg-emerald hover:bg-emerald/90 text-white font-black px-6 h-12 shadow-xl shadow-emerald/20 flex items-center gap-2 group transition-all duration-300"
+          >
+            <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+            New Prescription
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

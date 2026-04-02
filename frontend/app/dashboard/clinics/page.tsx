@@ -40,6 +40,7 @@ import {
   SelectValue,
 } from "@/app/_components/ui/select";
 import { cn } from "@/app/_lib/utils";
+import { useAuth } from "@/app/_hooks/useAuth";
 
 import {
   useClinics,
@@ -55,6 +56,7 @@ export default function ClinicsPage() {
   const [selectedClinic, setSelectedClinic] = React.useState<Clinic | null>(
     null,
   );
+  const { user } = useAuth();
 
   const { data: clinicsData, isLoading: clinicsLoading } = useClinics();
   const { data: usersData } = useUsers();
@@ -287,12 +289,14 @@ export default function ClinicsPage() {
                             Configure Details
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="bg-white/5 mx-2" />
-                          <DropdownMenuItem
-                            onClick={() => handleDelete(clinic.clinic_id)}
-                            className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
-                          >
-                            Delete Clinic
-                          </DropdownMenuItem>
+                          {user?.role !== "admin" && (
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(clinic.clinic_id)}
+                              className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
+                            >
+                              Delete Clinic
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

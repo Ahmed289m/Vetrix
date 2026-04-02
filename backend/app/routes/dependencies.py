@@ -31,7 +31,8 @@ from app.services.visit_service import VisitService
 def get_auth_controller() -> AuthController:
     db = get_database()
     user_repo = UserRepository(db)
-    auth_service = AuthService(user_repo)
+    clinic_repo = ClinicRepository(db)
+    auth_service = AuthService(user_repo, clinic_repo)
     return AuthController(auth_service)
 
 

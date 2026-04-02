@@ -46,11 +46,13 @@ import {
   useDeletePet,
 } from "@/app/_hooks/queries/use-pets";
 import { useUsers } from "@/app/_hooks/queries/use-users";
+import { useAuth } from "@/app/_hooks/useAuth";
 import type { Pet, PetType } from "@/app/_lib/types/models";
 
 export default function PetsPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [selectedPet, setSelectedPet] = React.useState<Pet | null>(null);
+  const { user } = useAuth();
 
   const { data: petsData, isLoading: isPetsLoading } = usePets();
   const { data: usersData } = useUsers();
@@ -141,13 +143,15 @@ export default function PetsPage() {
             Manage patient records, owner information, and clinical history.
           </p>
         </div>
-        <Button
-          onClick={() => handleOpenForm()}
-          className="bg-emerald hover:bg-emerald/90 text-white font-black px-6 h-12 shadow-xl shadow-emerald/20 flex items-center gap-2 group transition-all duration-300"
-        >
-          <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-          Add New Patient
-        </Button>
+        {user?.role !== "doctor" && (
+          <Button
+            onClick={() => handleOpenForm()}
+            className="bg-emerald hover:bg-emerald/90 text-white font-black px-6 h-12 shadow-xl shadow-emerald/20 flex items-center gap-2 group transition-all duration-300"
+          >
+            <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+            Add New Patient
+          </Button>
+        )}
       </div>
 
       {/* Filters & Search */}
@@ -284,12 +288,14 @@ export default function PetsPage() {
                               Create Visit
                             </DropdownMenuItem>
                             <DropdownMenuSeparator className="bg-white/5 mx-2" />
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(pet.pet_id)}
-                              className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
-                            >
-                              Delete Record
-                            </DropdownMenuItem>
+                            {user?.role !== "doctor" && (
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(pet.pet_id)}
+                                className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
+                              >
+                                Delete Record
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

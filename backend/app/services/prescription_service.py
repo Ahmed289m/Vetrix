@@ -6,6 +6,7 @@ from app.models.prescription import Prescription
 from app.repositories.prescription_repository import PrescriptionRepository
 from app.schemas.prescription import PrescriptionCreate, PrescriptionUpdate
 from app.services.base_crud_service import BaseCrudService
+from app.utils.mongo_helpers import serialize_mongo_doc
 
 
 class PrescriptionService:
@@ -66,7 +67,7 @@ class PrescriptionService:
                 return []
             prescriptions = await self.repository.list_by_clinic(current_user.clinic_id)
         
-        return [self.crud._serialize(p) for p in prescriptions]
+        return [serialize_mongo_doc(p, "prescription_id") for p in prescriptions]
 
     async def get_prescription(self, prescription_id: str, current_user: TokenData) -> dict:
         """

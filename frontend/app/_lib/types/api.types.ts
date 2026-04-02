@@ -32,6 +32,8 @@ export interface TokenPayload {
   clinic_id: string | null;
   email: string;
   is_superuser: boolean;
+  fullname: string;
+  clinic_name: string;
   exp: number;
   type?: string; // "refresh" on refresh tokens
 }

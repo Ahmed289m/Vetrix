@@ -9,6 +9,22 @@ from app.schemas.appointment import AppointmentCreate, AppointmentUpdate
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
 
+@router.get("")
+async def list_appointments(
+    current_user: TokenData = Depends(require_permission(Permissions.APPOINTMENTS_READ)),
+    controller: AppointmentController = Depends(get_appointment_controller),
+) -> dict:
+    """
+    Get all appointments accessible to the current user.
+    
+    - ADMIN can see all appointments
+    - STAFF/OWNER can see appointments in their clinic
+    - CLIENT can see only their appointments
+    """
+    appointments = await controller.get_appointments(current_user)
+    return {"success": True, "data": appointments}
+
+
 @router.post("")
 async def create_appointment(
     request: AppointmentCreate,

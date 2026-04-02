@@ -63,7 +63,7 @@ const navItems: NavItem[] = [
     href: "/dashboard/owners",
     labelKey: "clients",
     icon: UserPlus,
-    roles: ["staff", "doctor", "owner", "admin"],
+    roles: ["staff", "owner", "admin"],
   },
   {
     href: "/dashboard/pets",
@@ -87,7 +87,7 @@ const navItems: NavItem[] = [
     href: "/dashboard/prescriptions",
     labelKey: "prescriptions",
     icon: FileText,
-    roles: ["doctor", "owner"],
+    roles: ["doctor", "owner", "staff"],
   },
   {
     href: "/dashboard/calculators",

@@ -6,6 +6,7 @@ from app.models.visit import Visit
 from app.repositories.visit_repository import VisitRepository
 from app.schemas.visit import VisitCreate, VisitUpdate
 from app.services.base_crud_service import BaseCrudService
+from app.utils.mongo_helpers import serialize_mongo_doc
 
 
 class VisitService:
@@ -61,7 +62,7 @@ class VisitService:
                 return []
             visits = await self.repository.list_by_clinic(current_user.clinic_id)
         
-        return [self.crud._serialize(visit) for visit in visits]
+        return [serialize_mongo_doc(visit, "visit_id") for visit in visits]
 
     async def get_visit(self, visit_id: str, current_user: TokenData) -> dict:
         """

@@ -32,6 +32,7 @@ import {
 } from "@/app/_components/ui/select";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { useAuth } from "@/app/_hooks/useAuth";
 
 import {
   useUsers,
@@ -58,6 +59,7 @@ export default function OwnersPage() {
   const [createdUser, setCreatedUser] = useState<UserCreated | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
+  const { user } = useAuth();
 
   const { data: usersData, isLoading: usersLoading } = useUsers();
   const { data: petsData } = usePets();
@@ -415,12 +417,15 @@ export default function OwnersPage() {
                           )}
                         </div>
                         <div className="flex items-center gap-2 pt-2">
-                          <button
-                            onClick={() => handleDeleteOwner(owner.user_id)}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-coral/10 border border-coral/20 text-coral hover:bg-coral/20"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" /> Remove Owner
-                          </button>
+                          {(user?.role === "owner" ||
+                            user?.role === "admin") && (
+                            <button
+                              onClick={() => handleDeleteOwner(owner.user_id)}
+                              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-coral/10 border border-coral/20 text-coral hover:bg-coral/20"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Remove Owner
+                            </button>
+                          )}
                         </div>
                       </div>
                     </motion.div>

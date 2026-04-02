@@ -38,17 +38,23 @@ import {
   SelectValue,
 } from "@/app/_components/ui/select";
 import { cn } from "@/app/_lib/utils";
+import { sortByDate } from "@/app/_lib/utils/date-filter";
+import type { DateRangeFilter } from "@/app/_lib/utils/date-filter";
+import { useAuth } from "@/app/_hooks/useAuth";
 
 import {
   useAppointments,
   useCreateAppointment,
   useDeleteAppointment,
+  useUpdateAppointment,
 } from "@/app/_hooks/queries/use-appointments";
 import { usePets } from "@/app/_hooks/queries/use-pets";
 import { useUsers } from "@/app/_hooks/queries/use-users";
 
 export default function AppointmentsPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
+  const [dateFilter, setDateFilter] = React.useState<DateRangeFilter>("all");
+  const { user } = useAuth();
 
   const { data: appData, isLoading: appLoading } = useAppointments();
   const { data: petsData } = usePets();
@@ -56,11 +62,18 @@ export default function AppointmentsPage() {
 
   const createAppointment = useCreateAppointment();
   const deleteAppointment = useDeleteAppointment();
+  const updateAppointment = useUpdateAppointment();
 
   const appointments = appData?.data || [];
   const petsList = petsData?.data || [];
   const clientsList = (usersData?.data || []).filter(
     (u) => u.role === "client",
+  );
+
+  // Sort appointments by date
+  const sortedAppointments = React.useMemo(
+    () => sortByDate(appointments, "appointment_date", "desc"),
+    [appointments],
   );
 
   const formik = useFormik({
@@ -88,6 +101,20 @@ export default function AppointmentsPage() {
     if (confirm("Cancel this appointment?")) {
       deleteAppointment.mutate(id);
     }
+  };
+
+  const handleCheckIn = (appointmentId: string) => {
+    updateAppointment.mutate(
+      { id: appointmentId, data: { status: "confirmed" } },
+      {
+        onSuccess: () => {
+          // Toast notification is handled by the mutation
+        },
+        onError: () => {
+          // Error handling is done in the mutation
+        },
+      },
+    );
   };
 
   const getPetName = (petId: string) =>
@@ -124,7 +151,7 @@ export default function AppointmentsPage() {
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="relative group md:col-span-2">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-emerald transition-colors" />
           <Input
@@ -140,6 +167,20 @@ export default function AppointmentsPage() {
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="confirmed">Confirmed</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
+          value={dateFilter}
+          onValueChange={(v) => setDateFilter(v as DateRangeFilter)}
+        >
+          <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
+            <SelectValue placeholder="Date" />
+          </SelectTrigger>
+          <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5">
+            <SelectItem value="today">Today</SelectItem>
+            <SelectItem value="week">This Week</SelectItem>
+            <SelectItem value="month">This Month</SelectItem>
+            <SelectItem value="all">All Time</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -183,7 +224,7 @@ export default function AppointmentsPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                appointments.map((app) => (
+                sortedAppointments.map((app) => (
                   <TableRow
                     key={app.appointment_id}
                     className="border-b border-white/5 hover:bg-white/5 transition-colors group/row"
@@ -235,16 +276,23 @@ export default function AppointmentsPage() {
                           <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
                             Operations
                           </DropdownMenuLabel>
-                          <DropdownMenuItem className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2">
+                          <DropdownMenuItem
+                            onClick={() => handleCheckIn(app.appointment_id)}
+                            className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2"
+                          >
                             <CheckCircle className="w-4 h-4" /> Check In Patient
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="bg-white/5 mx-2" />
-                          <DropdownMenuItem
-                            onClick={() => handleDelete(app.appointment_id)}
-                            className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
-                          >
-                            Cancel
-                          </DropdownMenuItem>
+                          {(user?.role === "staff" ||
+                            user?.role === "owner" ||
+                            user?.role === "admin") && (
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(app.appointment_id)}
+                              className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
+                            >
+                              Cancel
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

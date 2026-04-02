@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.controllers.clinic_controller import ClinicController
 from app.core.permission_checker import TokenData, require_admin, require_permission, require_clinic_isolation

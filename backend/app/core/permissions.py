@@ -26,6 +26,7 @@ class Permissions:
     USERS_UPDATE = "users.update"
     USERS_DELETE = "users.delete"
     USERS_READ_OWN = "users.read.own"
+    USERS_UPDATE_OWN = "users.update.own"
 
     # Clinic management
     CLINICS_CREATE = "clinics.create"
@@ -130,6 +131,10 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
         Permissions.PETS_READ,
         # Drug management (read-only)
         Permissions.DRUGS_READ,
+        # Appointment management (for simulation mode)
+        Permissions.APPOINTMENTS_READ,
+        # User management (for viewing patient/client info)
+        Permissions.USERS_READ,
     },
     UserRole.STAFF: {
         # Appointment management
@@ -172,8 +177,9 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
         Permissions.PETS_READ_OWN,
         Permissions.PETS_UPDATE_OWN,
         Permissions.PETS_DELETE_OWN,
-        # User management - read own
+        # User management - read/update own
         Permissions.USERS_READ_OWN,
+        Permissions.USERS_UPDATE_OWN,
     },
 }
 
@@ -181,6 +187,9 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
 def has_permission(role: UserRole, permission: str, is_superuser: bool = False) -> bool:
     """
     Check if a role has a specific permission.
+    
+    Supports permission fallback: if exact permission is not found,
+    will check for .own variant (e.g., 'appointments.read' -> 'appointments.read.own')
     
     Args:
         role: The user's role
@@ -201,7 +210,13 @@ def has_permission(role: UserRole, permission: str, is_superuser: bool = False) 
     if "*" in role_permissions:
         return True
     
-    return permission in role_permissions
+    # Check exact permission
+    if permission in role_permissions:
+        return True
+    
+    # Fall back to .own variant (e.g., 'appointments.read' -> 'appointments.read.own')
+    own_permission = f"{permission}.own"
+    return own_permission in role_permissions
 
 
 def get_role_permissions(role: UserRole) -> set[str]:

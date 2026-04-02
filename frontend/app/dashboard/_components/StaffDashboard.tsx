@@ -1,23 +1,35 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "@/app/_components/fast-motion";
+import { useMemo, useState } from "react";
+import { motion } from "@/app/_components/fast-motion";
 import {
   CalendarCheck,
-  DollarSign,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  UserCheck,
-  Plus,
-  Dog,
-  Cat,
-  Timer,
-  TrendingUp,
+  FileText,
+  Heart,
+  Activity,
+  Pill,
+  AlertCircle,
   Play,
 } from "lucide-react";
-import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from "recharts";
-import SimulationMode from "../../_components/SimulationMode";
+import SimulationMode from "@/app/_components/SimulationMode";
+import { useAppointments } from "@/app/_hooks/queries/use-appointments";
+import { usePrescriptions } from "@/app/_hooks/queries/use-prescriptions";
+import { useVisits } from "@/app/_hooks/queries/use-visits";
+import { usePets } from "@/app/_hooks/queries/use-pets";
+import { useDrugs } from "@/app/_hooks/queries/use-drugs";
+import type {
+  Appointment,
+  Pet,
+  Prescription,
+  Visit,
+  Drug,
+} from "@/app/_lib/types/models";
+
+const EMPTY_APPOINTMENTS: Appointment[] = [];
+const EMPTY_PRESCRIPTIONS: Prescription[] = [];
+const EMPTY_VISITS: Visit[] = [];
+const EMPTY_PETS: Pet[] = [];
+const EMPTY_DRUGS: Drug[] = [];
 
 const stagger = { animate: { transition: { staggerChildren: 0.06 } } };
 const fadeUp = {
@@ -29,143 +41,114 @@ const fadeUp = {
   },
 };
 
-const stats = [
-  {
-    label: "Appointments",
-    value: "14",
-    icon: CalendarCheck,
-    change: "+2",
-    color: "text-emerald",
-    bg: "bg-emerald-50",
-    border: "border-emerald/20",
-  },
-  {
-    label: "Checked In",
-    value: "6",
-    icon: UserCheck,
-    change: "3 waiting",
-    color: "text-cyan",
-    bg: "bg-cyan-50",
-    border: "border-cyan/20",
-  },
-  {
-    label: "Unpaid",
-    value: "$2,340",
-    icon: DollarSign,
-    change: "5 pending",
-    color: "text-orange",
-    bg: "bg-orange-50",
-    border: "border-orange/20",
-  },
-  {
-    label: "Alerts",
-    value: "3",
-    icon: AlertTriangle,
-    change: "Action needed",
-    color: "text-coral",
-    bg: "bg-coral-50",
-    border: "border-coral/20",
-  },
-];
-
-const appointments = [
-  {
-    time: "09:00",
-    pet: "Bella",
-    breed: "Golden Retriever",
-    owner: "Sarah Mitchell",
-    type: "Post-op Follow-up",
-    status: "checked-in",
-    doctor: "Dr. Emily",
-    icon: Dog,
-  },
-  {
-    time: "09:30",
-    pet: "Max",
-    breed: "Persian Cat",
-    owner: "Tom Parker",
-    type: "Dental Cleaning",
-    status: "checked-in",
-    doctor: "Dr. Emily",
-    icon: Cat,
-  },
-  {
-    time: "10:00",
-    pet: "Luna",
-    breed: "Labrador",
-    owner: "Maria Garcia",
-    type: "Vaccination",
-    status: "waiting",
-    doctor: "Dr. Aris",
-    icon: Dog,
-  },
-  {
-    time: "10:30",
-    pet: "Rocky",
-    breed: "German Shepherd",
-    owner: "James Wilson",
-    type: "Skin Allergy",
-    status: "scheduled",
-    doctor: "Dr. Emily",
-    icon: Dog,
-  },
-  {
-    time: "11:00",
-    pet: "Mittens",
-    breed: "Siamese Cat",
-    owner: "Amy Chen",
-    type: "Annual Checkup",
-    status: "scheduled",
-    doctor: "Dr. Aris",
-    icon: Cat,
-  },
-];
-
-const billingQueue = [
-  {
-    invoice: "INV-2024-0847",
-    owner: "Sarah Mitchell",
-    amount: "$420.00",
-    status: "unpaid",
-  },
-  {
-    invoice: "INV-2024-0846",
-    owner: "Tom Parker",
-    amount: "$185.00",
-    status: "unpaid",
-  },
-  {
-    invoice: "INV-2024-0845",
-    owner: "Maria Garcia",
-    amount: "$95.00",
-    status: "partial",
-  },
-];
-
-const inventoryAlerts = [
-  { item: "Propofol 10mg/mL", stock: "2 vials", level: "critical" },
-  { item: "Meloxicam 1.5mg/mL", stock: "8 units", level: "low" },
-  { item: "Surgical Gloves (M)", stock: "1 box", level: "critical" },
-];
-
-const revenueData = [
-  { day: "Mon", rev: 2400 },
-  { day: "Tue", rev: 3200 },
-  { day: "Wed", rev: 2800 },
-  { day: "Thu", rev: 3600 },
-  { day: "Fri", rev: 4100 },
-  { day: "Sat", rev: 2900 },
-];
-
 export function StaffDashboard() {
   const [showSim, setShowSim] = useState(false);
+
+  const { data: appointmentsData } = useAppointments();
+  const { data: prescriptionsData } = usePrescriptions();
+  const { data: visitsData } = useVisits();
+  const { data: petsData } = usePets();
+  const { data: drugsData } = useDrugs();
+
+  const appointments = appointmentsData?.data ?? EMPTY_APPOINTMENTS;
+  const prescriptions = prescriptionsData?.data ?? EMPTY_PRESCRIPTIONS;
+  const visits = visitsData?.data ?? EMPTY_VISITS;
+  const pets = petsData?.data ?? EMPTY_PETS;
+  const drugs = drugsData?.data ?? EMPTY_DRUGS;
+
+  const staffStats = useMemo(() => {
+    const now = new Date();
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+
+    const todayAppointments = appointments.filter((apt) => {
+      const aptDate = new Date(apt.date);
+      return aptDate >= todayStart && aptDate < todayEnd;
+    }).length;
+
+    const upcomingAppointments = appointments.filter((apt) => {
+      const aptDate = new Date(apt.date);
+      const normalized = apt.status.toLowerCase();
+      return (
+        aptDate >= now &&
+        (normalized === "scheduled" || normalized === "pending")
+      );
+    }).length;
+
+    const pendingPrescriptions = prescriptions.filter((rx) => {
+      const normalized = rx.status.toLowerCase();
+      return normalized === "pending" || normalized === "processing";
+    }).length;
+
+    const todayVisits = visits.filter((visit) => {
+      const visitDate = new Date(visit.date);
+      return visitDate >= todayStart && visitDate < todayEnd;
+    }).length;
+
+    const activePatients = pets.filter((pet) => pet.is_active).length;
+
+    const lowStockDrugs = drugs.filter(
+      (drug) => drug.quantity && drug.quantity < (drug.min_quantity || 10),
+    ).length;
+
+    return {
+      todayAppointments,
+      upcomingAppointments,
+      pendingPrescriptions,
+      todayVisits,
+      activePatients,
+      lowStockDrugs,
+    };
+  }, [appointments, prescriptions, visits, pets, drugs]);
+
+  const statCards = [
+    {
+      label: "Today's Appointments",
+      value: staffStats.todayAppointments,
+      icon: CalendarCheck,
+      color: "text-emerald",
+      bg: "bg-emerald/10",
+      border: "border-emerald/20",
+    },
+    {
+      label: "Upcoming Appointments",
+      value: staffStats.upcomingAppointments,
+      icon: Activity,
+      color: "text-cyan",
+      bg: "bg-cyan/10",
+      border: "border-cyan/20",
+    },
+    {
+      label: "Pending Prescriptions",
+      value: staffStats.pendingPrescriptions,
+      icon: FileText,
+      color: staffStats.pendingPrescriptions > 0 ? "text-coral" : "text-orange",
+      bg: staffStats.pendingPrescriptions > 0 ? "bg-coral/10" : "bg-orange/10",
+      border:
+        staffStats.pendingPrescriptions > 0
+          ? "border-coral/20"
+          : "border-orange/20",
+    },
+    {
+      label: "Active Patients",
+      value: staffStats.activePatients,
+      icon: Heart,
+      color: "text-violet",
+      bg: "bg-violet/10",
+      border: "border-violet/20",
+    },
+  ];
 
   return (
     <motion.div
       variants={stagger}
       initial="initial"
       animate="animate"
-      className="space-y-5 sm:space-y-6 max-w-7xl mx-auto"
+      className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8"
     >
       <motion.div
         variants={fadeUp}
@@ -173,281 +156,161 @@ export function StaffDashboard() {
       >
         <div>
           <p className="text-xs font-semibold text-emerald uppercase tracking-widest mb-1">
-            Reception Desk
+            Clinic Operations
           </p>
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-arabic">
-            Good Morning, <span className="gradient-text">Sarah</span>
+            Staff <span className="gradient-text">Dashboard</span>
           </h2>
           <p className="text-sm text-muted-foreground mt-1.5">
-            <span className="font-semibold text-foreground">
-              14 appointments
-            </span>{" "}
-            today ·{" "}
-            <span className="font-semibold text-foreground">2 doctors</span> on
-            duty
+            Manage appointments, prescriptions, and patient care.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowSim(!showSim)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${showSim ? "bg-coral/10 border border-coral/30 text-coral" : "glass-card border border-border/50 text-muted-foreground hover:border-emerald/30"}`}
-          >
-            <Play className="w-3.5 h-3.5" />{" "}
-            {showSim ? "Exit Sim" : "Simulation"}
-          </motion.button>
-          <motion.button
-            whileHover={{ y: -1 }}
-            whileTap={{ scale: 0.97 }}
-            className="flex items-center gap-2 gradient-emerald-cyan text-primary-foreground px-4 sm:px-5 py-3 rounded-xl text-sm font-bold glow-emerald ripple"
-          >
-            <Plus className="w-4 h-4" /> New Appointment
-          </motion.button>
-        </div>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={() => setShowSim(!showSim)}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+            showSim
+              ? "bg-coral/10 border border-coral/30 text-coral"
+              : "gradient-emerald-cyan text-primary-foreground glow-emerald"
+          }`}
+        >
+          <Play className="w-4 h-4" />
+          {showSim ? "Exit Sim" : "Simulation"}
+        </motion.button>
       </motion.div>
 
-      <AnimatePresence>
-        {showSim && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="glass-card p-5 border-glow">
-              <SimulationMode role="staff" />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Simulation Mode */}
+      {showSim && (
+        <motion.div
+          variants={fadeUp}
+          className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-6"
+        >
+          <SimulationMode role="staff" />
+        </motion.div>
+      )}
 
       <motion.div variants={fadeUp}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-card-foreground">
-          {stats.map((s, i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {statCards.map((s) => (
             <motion.div
               key={s.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08 }}
-              className={`glass-card p-4 card-hover cursor-default border ${s.border}`}
+              className={`glass-card p-5 border ${s.border} card-hover cursor-default`}
             >
               <div
-                className={`w-10 h-10 rounded-xl ${s.bg} flex items-center justify-center`}
+                className={`w-12 h-12 rounded-xl ${s.bg} flex items-center justify-center`}
               >
-                <s.icon className={`w-5 h-5 ${s.color}`} />
+                <s.icon className={`w-6 h-6 ${s.color}`} />
               </div>
               <motion.p
-                className="text-3xl font-extrabold mt-3 tabular-nums"
+                className="text-3xl font-extrabold mt-4 tabular-nums"
                 initial={{ opacity: 0, scale: 0.5 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{
-                  delay: i * 0.1 + 0.2,
-                  type: "spring",
-                  stiffness: 200,
-                }}
+                transition={{ delay: 0.2 }}
               >
-                {s.value}
+                {typeof s.value === "number"
+                  ? s.value.toLocaleString()
+                  : s.value}
               </motion.p>
-              <p className="text-xs text-muted-foreground mt-1 font-medium">
+              <p className="text-sm text-muted-foreground mt-1 font-medium">
                 {s.label}
-              </p>
-              <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-                {s.change}
               </p>
             </motion.div>
           ))}
         </div>
       </motion.div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
-        <motion.div variants={fadeUp} className="xl:col-span-2">
-          <div className="glass-card p-5 border-glow text-card-foreground">
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-emerald" />
-                <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                  Today&apos;s Schedule
-                </h3>
-              </div>
-              <span className="text-xs font-bold text-emerald">
-                {appointments.length} Total
-              </span>
-            </div>
-            <div className="relative space-y-0">
-              <div className="absolute left-[50px] sm:left-[67px] top-0 bottom-0 w-px bg-border/50" />
-              {appointments.map((apt, i) => (
-                <motion.div
-                  key={apt.time}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.06 }}
-                  className="relative flex items-stretch gap-3 sm:gap-4 py-2.5 group cursor-pointer"
-                >
-                  <span className="text-[11px] sm:text-sm font-mono tabular-nums text-muted-foreground w-9 sm:w-12 shrink-0 pt-3 text-right">
-                    {apt.time}
-                  </span>
-                  <div className="relative z-10 flex flex-col items-center shrink-0 pt-3">
-                    <div
-                      className={`w-2.5 h-2.5 rounded-full ring-2 ring-background ${apt.status === "checked-in" ? "bg-emerald" : apt.status === "waiting" ? "bg-orange animate-pulse" : "bg-muted-foreground/30"}`}
-                    />
-                  </div>
-                  <div
-                    className={`flex-1 p-3 sm:p-4 rounded-xl border backdrop-blur-sm transition-all duration-300 group-hover:scale-[1.01] ${apt.status === "checked-in" ? "border-emerald/20 bg-emerald/5" : apt.status === "waiting" ? "border-orange/20 bg-orange/5" : "border-border/50 bg-muted/10"}`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-xl bg-muted/40 flex items-center justify-center shrink-0">
-                          <apt.icon className="w-5 h-5 text-muted-foreground" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold truncate">
-                            {apt.pet}{" "}
-                            <span className="font-normal text-muted-foreground">
-                              — {apt.owner}
-                            </span>
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {apt.type} · {apt.doctor}
-                          </p>
-                        </div>
-                      </div>
-                      {apt.status === "checked-in" ? (
-                        <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold uppercase bg-emerald/15 text-emerald shrink-0">
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span className="hidden sm:inline">In</span>
-                        </span>
-                      ) : apt.status === "waiting" ? (
-                        <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold uppercase bg-orange/15 text-orange shrink-0">
-                          <Timer className="w-3 h-3" />
-                          <span className="hidden sm:inline">Wait</span>
-                        </span>
-                      ) : (
-                        <button className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-muted/40 text-muted-foreground hover:bg-emerald hover:text-primary-foreground transition-all">
-                          Check In
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+      <motion.div
+        variants={fadeUp}
+        className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-8 mt-8"
+      >
+        <h3 className="text-lg font-bold mb-5">Staff Priority Summary</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+          <div className="rounded-xl border border-emerald/20 bg-emerald/5 p-4">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+              Today&apos;s Workload
+            </p>
+            <p className="mt-2 text-2xl font-extrabold tabular-nums text-emerald">
+              {staffStats.todayAppointments + staffStats.todayVisits}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {staffStats.todayAppointments} appointments,{" "}
+              {staffStats.todayVisits} visits
+            </p>
+          </div>
+          <div className="rounded-xl border border-cyan/20 bg-cyan/5 p-4">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+              Action Required
+            </p>
+            <p className="mt-2 text-2xl font-extrabold tabular-nums text-cyan">
+              {staffStats.pendingPrescriptions}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Prescriptions pending
+            </p>
+          </div>
+          <div
+            className={`rounded-xl border ${
+              staffStats.lowStockDrugs > 0
+                ? "border-coral/20 bg-coral/5"
+                : "border-orange/20 bg-orange/5"
+            } p-4`}
+          >
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+              Inventory Status
+            </p>
+            <p
+              className={`mt-2 text-2xl font-extrabold tabular-nums ${
+                staffStats.lowStockDrugs > 0 ? "text-coral" : "text-orange"
+              }`}
+            >
+              {staffStats.lowStockDrugs}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {staffStats.lowStockDrugs > 0 ? "Drugs low" : "Stock healthy"}
+            </p>
+          </div>
+        </div>
+        <div className="mt-6 inline-flex items-center gap-2 rounded-xl border border-border/40 px-3 py-2 text-xs text-muted-foreground">
+          <Activity className="w-3.5 h-3.5 text-emerald" />
+          Data is sourced from appointments, prescriptions, visits, pets, and
+          drugs.
+        </div>
+      </motion.div>
+
+      {staffStats.pendingPrescriptions > 0 && (
+        <motion.div
+          variants={fadeUp}
+          className="rounded-xl border border-coral/20 bg-coral/5 p-4 flex items-start gap-3"
+        >
+          <AlertCircle className="w-5 h-5 text-coral mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="font-semibold text-sm">Pending Prescriptions</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              You have {staffStats.pendingPrescriptions} prescription
+              {staffStats.pendingPrescriptions !== 1 ? "s" : ""} awaiting
+              processing. Please review and update their status.
+            </p>
           </div>
         </motion.div>
+      )}
 
-        <motion.div variants={fadeUp} className="space-y-6">
-          <div className="glass-card p-5 text-card-foreground">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                Weekly Revenue
-              </h3>
-              <span className="flex items-center gap-1 text-xs font-bold text-emerald">
-                <TrendingUp className="w-3.5 h-3.5" /> +18%
-              </span>
-            </div>
-            <ResponsiveContainer width="100%" height={150}>
-              <AreaChart data={revenueData}>
-                <defs>
-                  <linearGradient id="revGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="5%"
-                      stopColor="hsl(187, 92%, 42%)"
-                      stopOpacity={0.3}
-                    />
-                    <stop
-                      offset="95%"
-                      stopColor="hsl(187, 92%, 42%)"
-                      stopOpacity={0}
-                    />
-                  </linearGradient>
-                </defs>
-                <XAxis
-                  dataKey="day"
-                  tick={{ fontSize: 10, fill: "hsl(215, 15%, 55%)" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(217, 33%, 17%)",
-                    border: "1px solid hsl(217, 33%, 22%)",
-                    borderRadius: "12px",
-                    fontSize: "12px",
-                    color: "hsl(210, 20%, 92%)",
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="rev"
-                  stroke="hsl(187, 92%, 42%)"
-                  strokeWidth={2}
-                  fill="url(#revGradient)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="glass-card p-5 text-card-foreground">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
-              Billing Queue
-            </h3>
-            <div className="space-y-2.5">
-              {billingQueue.map((b) => (
-                <div
-                  key={b.invoice}
-                  className="flex items-center justify-between py-2 border-b border-border/30 last:border-0"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold truncate">{b.owner}</p>
-                    <p className="text-[10px] text-muted-foreground font-mono">
-                      {b.invoice}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0 ml-2">
-                    <p className="text-sm font-bold tabular-nums">{b.amount}</p>
-                    <span
-                      className={`text-[10px] font-bold uppercase ${b.status === "partial" ? "text-orange" : "text-coral"}`}
-                    >
-                      {b.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="glass-card p-5 text-card-foreground">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
-              <AlertTriangle className="w-3.5 h-3.5 text-coral" />
-              Inventory Alerts
-            </h3>
-            <div className="space-y-2.5">
-              {inventoryAlerts.map((item) => (
-                <div
-                  key={item.item}
-                  className={`p-3 rounded-xl border ${item.level === "critical" ? "border-coral/20 bg-coral/5" : "border-orange/20 bg-orange/5"}`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold truncate">
-                      {item.item}
-                    </p>
-                    <span
-                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${item.level === "critical" ? "bg-coral/15 text-coral" : "bg-orange/15 text-orange"}`}
-                    >
-                      {item.level}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1.5">
-                    Stock:{" "}
-                    <span className="font-mono font-semibold">
-                      {item.stock}
-                    </span>
-                  </p>
-                </div>
-              ))}
-            </div>
+      {staffStats.lowStockDrugs > 0 && (
+        <motion.div
+          variants={fadeUp}
+          className="rounded-xl border border-orange/20 bg-orange/5 p-4 flex items-start gap-3"
+        >
+          <Pill className="w-5 h-5 text-orange mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="font-semibold text-sm">Low Drug Stock</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {staffStats.lowStockDrugs} drug
+              {staffStats.lowStockDrugs !== 1 ? "s are" : " is"} running low on
+              stock. Consider ordering more supplies.
+            </p>
           </div>
         </motion.div>
-      </div>
+      )}
     </motion.div>
   );
 }
