@@ -52,6 +52,8 @@ function isTokenExpired(payload: TokenPayload): boolean {
 interface AuthUser {
   userId: string;
   email: string;
+  fullname: string;
+  clinicName: string;
   role: UserRole;
   clinicId: string | null;
   isSuperuser: boolean;
@@ -113,6 +115,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser({
             userId: payload.sub,
             email: payload.email,
+            fullname: payload.fullname,
+            clinicName: payload.clinic_name,
             role: payload.role,
             clinicId: payload.clinic_id,
             isSuperuser: payload.is_superuser,
@@ -138,6 +142,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser({
             userId: newPayload.sub,
             email: newPayload.email,
+            fullname: newPayload.fullname,
+            clinicName: newPayload.clinic_name,
             role: newPayload.role,
             clinicId: newPayload.clinic_id,
             isSuperuser: newPayload.is_superuser,
@@ -169,6 +175,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser({
           userId: payload.sub,
           email: payload.email,
+          fullname: payload.fullname,
+          clinicName: payload.clinic_name,
           role: payload.role,
           clinicId: payload.clinic_id,
           isSuperuser: payload.is_superuser,

@@ -75,7 +75,7 @@ export function DashboardHeader({
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                className="w-10 h-10 rounded-xl bg-muted/20 border border-border/10 flex items-center justify-center text-muted-foreground hover:text-emerald hover:bg-emerald/5 hover:border-emerald/20 transition-colors duration-300 shadow-sm hidden sm:flex"
+                className="w-10 h-10 rounded-xl bg-muted/20 border border-border/10 flex items-center justify-center text-muted-foreground hover:text-emerald hover:bg-emerald/5 hover:border-emerald/20 transition-colors duration-300 shadow-sm"
                 onClick={toggleLang}
               >
                 <Languages className="w-4.5 h-4.5" />
@@ -90,7 +90,7 @@ export function DashboardHeader({
         <div className="w-px h-6 bg-border/20 mx-0.5 hidden md:block" />
 
         {/* User profile summary */}
-        <div className="flex items-center gap-2 sm:gap-3 pl-0 sm:pl-1 cursor-pointer group transition-transform duration-200 hover:translate-x-[2px]">
+        <div className="flex items-center gap-2 sm:gap-3 pl-0 sm:pl-1 cursor-pointer group transition-transform duration-200 hover:translate-x-0.5">
           <div className="block text-right">
             <p className="text-xs font-black capitalize leading-none group-hover:text-emerald transition-colors">
               {displayName}
@@ -100,7 +100,7 @@ export function DashboardHeader({
             </p>
           </div>
           <div className="relative">
-            <div className="absolute -inset-0.5 bg-gradient-to-tr from-emerald to-cyan rounded-xl blur opacity-0 group-hover:opacity-40 transition duration-300" />
+            <div className="absolute -inset-0.5 bg-linear-to-tr from-emerald to-cyan rounded-xl blur opacity-0 group-hover:opacity-40 transition duration-300" />
             <div className="relative w-9 h-9 rounded-xl gradient-emerald-cyan flex items-center justify-center text-[11px] font-black text-white uppercase shadow-md leading-none transform group-hover:scale-105 transition-transform">
               {(displayName[0] || "U").toUpperCase()}
             </div>
