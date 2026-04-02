@@ -35,8 +35,17 @@ import { DashboardForm } from "@/app/_components/ui/dashboard-form";
 import { Label } from "@/app/_components/ui/label";
 import { cn } from "@/app/_lib/utils";
 
+interface Transaction {
+  id: string;
+  client: string;
+  category: string;
+  date: string;
+  amount: number;
+  status: "Paid" | "Pending" | "Voided";
+}
+
 // Real data will be fetched and displayed
-const transactions = [] as const;
+const transactions: Transaction[] = [];
 
 export default function FinancesPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -130,8 +139,8 @@ export default function FinancesPage() {
 
       {/* Table Item */}
       <div className="relative group">
-        <div className="absolute -inset-0.5 bg-gradient-to-br from-emerald/10 to-transparent rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
-        <div className="relative bg-muted/40 backdrop-blur-md rounded-[2rem] border border-border/10 overflow-hidden shadow-2xl">
+        <div className="absolute -inset-0.5 bg-linear-to-br from-emerald/10 to-transparent rounded-4xl blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
+        <div className="relative bg-muted/40 backdrop-blur-md rounded-4xl border border-border/10 overflow-hidden shadow-2xl">
           <Table>
             <TableHeader className="bg-muted/40">
               <TableRow className="border-b border-border/10 hover:bg-transparent">
