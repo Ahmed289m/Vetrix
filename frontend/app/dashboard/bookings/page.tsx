@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion } from "@/app/_components/fast-motion";
 import { Calendar, CheckCircle2, XCircle, Clock, Dog, Cat } from "lucide-react";
+import { useLang } from "@/app/_hooks/useLanguage";
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -40,6 +41,7 @@ const statusColors: Record<string, { bg: string; text: string; border: string }>
 };
 
 export default function BookingsPage() {
+  const { t } = useLang();
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "cancelled" | "completed">("all");
 
@@ -53,9 +55,9 @@ export default function BookingsPage() {
     <motion.div variants={{ animate: { transition: { staggerChildren: 0.06 } } }} initial="initial" animate="animate" className="space-y-6 max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
       <motion.div variants={fadeUp} className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold text-emerald uppercase tracking-widest mb-1">Scheduling</p>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Bookings</h2>
-          <p className="text-sm text-muted-foreground mt-1">{pendingCount} pending confirmations</p>
+          <p className="text-xs font-semibold text-emerald uppercase tracking-widest mb-1">{t("scheduling")}</p>
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">{t("bookings")}</h2>
+          <p className="text-sm text-muted-foreground mt-1">{pendingCount} {t("pending_confirmations")}</p>
         </div>
       </motion.div>
 
@@ -64,7 +66,7 @@ export default function BookingsPage() {
           <button key={f} onClick={() => setFilter(f)} className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
             filter === f ? "gradient-emerald-cyan text-primary-foreground glow-emerald" : "bg-muted/30 border border-border/50 text-muted-foreground hover:border-emerald/30"
           }`}>
-            {f} {f === "pending" && pendingCount > 0 && `(${pendingCount})`}
+            {t(f)} {f === "pending" && pendingCount > 0 && `(${pendingCount})`}
           </button>
         ))}
       </motion.div>
@@ -97,11 +99,11 @@ export default function BookingsPage() {
                 <div className="flex items-center gap-2 shrink-0">
                   <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleConfirm(booking.id)}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold gradient-emerald-cyan text-primary-foreground glow-emerald">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Confirm
+                    <CheckCircle2 className="w-3.5 h-3.5" /> {t("confirm")}
                   </motion.button>
                   <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleCancel(booking.id)}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-coral/10 border border-coral/20 text-coral hover:bg-coral/20">
-                    <XCircle className="w-3.5 h-3.5" /> Cancel
+                    <XCircle className="w-3.5 h-3.5" /> {t("cancel")}
                   </motion.button>
                 </div>
               )}

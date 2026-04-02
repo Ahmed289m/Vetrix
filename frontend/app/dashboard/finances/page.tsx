@@ -49,6 +49,20 @@ const transactions: Transaction[] = [];
 
 export default function FinancesPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+
+  const filteredTransactions = React.useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return transactions;
+    return transactions.filter((tx) => {
+      return (
+        tx.id.toLowerCase().includes(q) ||
+        tx.client.toLowerCase().includes(q) ||
+        tx.category.toLowerCase().includes(q) ||
+        tx.status.toLowerCase().includes(q)
+      );
+    });
+  }, [searchQuery]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,6 +140,8 @@ export default function FinancesPage() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-emerald transition-colors" />
           <Input
             placeholder="Search transactions by client, ID or category..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-12 h-14 bg-muted/40 border-border/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
           />
         </div>
@@ -160,8 +176,8 @@ export default function FinancesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transactions && transactions.length > 0 ? (
-                transactions.map((tx) => (
+              {filteredTransactions.length > 0 ? (
+                filteredTransactions.map((tx) => (
                   <TableRow
                     key={tx.id}
                     className="border-b border-border/10 hover:bg-muted/40 transition-colors group/row"

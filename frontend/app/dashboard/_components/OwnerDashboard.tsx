@@ -8,6 +8,7 @@ import { usePets } from "@/app/_hooks/queries/use-pets";
 import { useAppointments } from "@/app/_hooks/queries/use-appointments";
 import { usePrescriptions } from "@/app/_hooks/queries/use-prescriptions";
 import { useVisits } from "@/app/_hooks/queries/use-visits";
+import { useLang } from "@/app/_hooks/useLanguage";
 import type {
   Appointment,
   Pet,
@@ -33,6 +34,7 @@ const fadeUp = {
 };
 
 export function OwnerDashboard() {
+  const { t } = useLang();
   const { data: usersData } = useUsers();
   const { data: petsData } = usePets();
   const { data: appointmentsData } = useAppointments();
@@ -91,7 +93,7 @@ export function OwnerDashboard() {
 
   const statCards = [
     {
-      label: "Active Clients",
+      label: t("active_clients"),
       value: clinicStats.activeClients,
       icon: Users,
       color: "text-emerald",
@@ -99,7 +101,7 @@ export function OwnerDashboard() {
       border: "border-emerald/20",
     },
     {
-      label: "Registered Pets",
+      label: t("registered_pets"),
       value: pets.length,
       icon: Heart,
       color: "text-cyan",
@@ -137,13 +139,13 @@ export function OwnerDashboard() {
       >
         <div>
           <p className="text-xs font-semibold text-emerald uppercase tracking-widest mb-1">
-            Clinic Performance
+            {t("clinic_performance")}
           </p>
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-arabic">
-            Owner <span className="gradient-text">Dashboard</span>
+            {t("owner_dashboard")}
           </h2>
           <p className="text-sm text-muted-foreground mt-1.5">
-            Track revenue, appointments, and overall clinic health.
+            {t("track_revenue_appointments_and_overall_clinic_health")}
           </p>
         </div>
       </motion.div>
@@ -182,11 +184,11 @@ export function OwnerDashboard() {
         variants={fadeUp}
         className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-8 mt-8"
       >
-        <h3 className="text-lg font-bold mb-5">Clinic Snapshot</h3>
+        <h3 className="text-lg font-bold mb-5">{t("clinic_snapshot")}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
           <div className="rounded-xl border border-emerald/20 bg-emerald/5 p-4">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">
-              Visit Activity (This Month)
+              {t("visit_activity_this_month")}
             </p>
             <p className="mt-2 text-2xl font-extrabold tabular-nums text-emerald">
               {clinicStats.monthlyVisits}
@@ -194,7 +196,7 @@ export function OwnerDashboard() {
           </div>
           <div className="rounded-xl border border-cyan/20 bg-cyan/5 p-4">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">
-              Appointment Completion
+              {t("appointment_completion")}
             </p>
             <p className="mt-2 text-2xl font-extrabold tabular-nums text-cyan">
               {clinicStats.completionRate}%
@@ -202,21 +204,19 @@ export function OwnerDashboard() {
           </div>
           <div className="rounded-xl border border-orange/20 bg-orange/5 p-4">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">
-              Care Team Online
+              {t("care_team_online")}
             </p>
             <p className="mt-2 text-2xl font-extrabold tabular-nums text-orange">
               {clinicStats.doctorsOnTeam + clinicStats.staffOnTeam}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {clinicStats.doctorsOnTeam} doctors, {clinicStats.staffOnTeam}{" "}
-              staff
+              {clinicStats.doctorsOnTeam} {t("doctors")}, {clinicStats.staffOnTeam} {t("staff")}
             </p>
           </div>
         </div>
         <div className="mt-6 inline-flex items-center gap-2 rounded-xl border border-border/40 px-3 py-2 text-xs text-muted-foreground">
           <Activity className="w-3.5 h-3.5 text-emerald" />
-          Data is sourced from users, pets, appointments, prescriptions, and
-          visits.
+          {t("owner_data_source_summary")}
         </div>
       </motion.div>
     </motion.div>

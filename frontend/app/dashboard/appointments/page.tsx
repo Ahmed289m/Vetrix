@@ -40,6 +40,7 @@ import {
 import { cn } from "@/app/_lib/utils";
 import { sortByDate } from "@/app/_lib/utils/date-filter";
 import type { DateRangeFilter } from "@/app/_lib/utils/date-filter";
+import { filterByDateRange } from "@/app/_lib/utils/date-filter";
 import { useAuth } from "@/app/_hooks/useAuth";
 
 import {
@@ -53,6 +54,8 @@ import { useUsers } from "@/app/_hooks/queries/use-users";
 
 export default function AppointmentsPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState("all");
   const [dateFilter, setDateFilter] = React.useState<DateRangeFilter>("all");
   const { user } = useAuth();
 
@@ -75,6 +78,27 @@ export default function AppointmentsPage() {
     () => sortByDate(appointments, "appointment_date", "desc"),
     [appointments],
   );
+
+  const filteredAppointments = React.useMemo(() => {
+    const byDate = filterByDateRange(
+      sortedAppointments,
+      "appointment_date",
+      dateFilter,
+    );
+    const q = searchQuery.trim().toLowerCase();
+
+    return byDate.filter((app) => {
+      const petName = getPetName(app.pet_id).toLowerCase();
+      const clientName = getClientName(app.client_id).toLowerCase();
+      const matchesSearch =
+        q.length === 0 ||
+        app.appointment_id.toLowerCase().includes(q) ||
+        petName.includes(q) ||
+        clientName.includes(q);
+      const matchesStatus = statusFilter === "all" || app.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [sortedAppointments, dateFilter, searchQuery, statusFilter, petsList, clientsList]);
 
   const formik = useFormik({
     initialValues: {
@@ -156,10 +180,12 @@ export default function AppointmentsPage() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-emerald transition-colors" />
           <Input
             placeholder="Search by ID, pet or owner..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-12 h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
           />
         </div>
-        <Select defaultValue="all">
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -187,8 +213,8 @@ export default function AppointmentsPage() {
 
       {/* Table Item */}
       <div className="relative group">
-        <div className="absolute -inset-0.5 bg-gradient-to-br from-emerald/10 to-transparent rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
-        <div className="relative bg-white/5 backdrop-blur-md rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl">
+        <div className="absolute -inset-0.5 bg-linear-to-br from-emerald/10 to-transparent rounded-4xl blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
+        <div className="relative bg-white/5 backdrop-blur-md rounded-4xl border border-white/5 overflow-hidden shadow-2xl">
           <Table>
             <TableHeader className="bg-white/5">
               <TableRow className="border-b border-white/5 hover:bg-transparent">
@@ -214,7 +240,7 @@ export default function AppointmentsPage() {
                     Loading appointments...
                   </TableCell>
                 </TableRow>
-              ) : appointments.length === 0 ? (
+              ) : filteredAppointments.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={4}
@@ -224,7 +250,7 @@ export default function AppointmentsPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                sortedAppointments.map((app) => (
+                filteredAppointments.map((app) => (
                   <TableRow
                     key={app.appointment_id}
                     className="border-b border-white/5 hover:bg-white/5 transition-colors group/row"

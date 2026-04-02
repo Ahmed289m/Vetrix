@@ -12,6 +12,7 @@ import {
   Play,
 } from "lucide-react";
 import SimulationMode from "@/app/_components/SimulationMode";
+import { useLang } from "@/app/_hooks/useLanguage";
 import { useAppointments } from "@/app/_hooks/queries/use-appointments";
 import { usePrescriptions } from "@/app/_hooks/queries/use-prescriptions";
 import { useVisits } from "@/app/_hooks/queries/use-visits";
@@ -43,6 +44,7 @@ const fadeUp = {
 
 export function StaffDashboard() {
   const [showSim, setShowSim] = useState(false);
+  const { t } = useLang();
 
   const { data: appointmentsData } = useAppointments();
   const { data: prescriptionsData } = usePrescriptions();
@@ -109,7 +111,7 @@ export function StaffDashboard() {
 
   const statCards = [
     {
-      label: "Today's Appointments",
+      label: t("todays_appointments"),
       value: staffStats.todayAppointments,
       icon: CalendarCheck,
       color: "text-emerald",
@@ -117,7 +119,7 @@ export function StaffDashboard() {
       border: "border-emerald/20",
     },
     {
-      label: "Upcoming Appointments",
+      label: t("upcoming_appointments"),
       value: staffStats.upcomingAppointments,
       icon: Activity,
       color: "text-cyan",
@@ -125,7 +127,7 @@ export function StaffDashboard() {
       border: "border-cyan/20",
     },
     {
-      label: "Pending Prescriptions",
+      label: t("pending_prescriptions"),
       value: staffStats.pendingPrescriptions,
       icon: FileText,
       color: staffStats.pendingPrescriptions > 0 ? "text-coral" : "text-orange",
@@ -136,7 +138,7 @@ export function StaffDashboard() {
           : "border-orange/20",
     },
     {
-      label: "Active Patients",
+      label: t("active_patients"),
       value: staffStats.activePatients,
       icon: Heart,
       color: "text-violet",
@@ -158,13 +160,13 @@ export function StaffDashboard() {
       >
         <div>
           <p className="text-xs font-semibold text-emerald uppercase tracking-widest mb-1">
-            Clinic Operations
+            {t("clinic_operations")}
           </p>
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-arabic">
-            Staff <span className="gradient-text">Dashboard</span>
+            {t("staff_dashboard")}
           </h2>
           <p className="text-sm text-muted-foreground mt-1.5">
-            Manage appointments, prescriptions, and patient care.
+            {t("manage_appointments_prescriptions_and_patient_care")}
           </p>
         </div>
         <motion.button
@@ -178,7 +180,7 @@ export function StaffDashboard() {
           }`}
         >
           <Play className="w-4 h-4" />
-          {showSim ? "Exit Sim" : "Simulation"}
+          {showSim ? t("exit_sim") : t("simulation")}
         </motion.button>
       </motion.div>
 
@@ -226,29 +228,28 @@ export function StaffDashboard() {
         variants={fadeUp}
         className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-8 mt-8"
       >
-        <h3 className="text-lg font-bold mb-5">Staff Priority Summary</h3>
+        <h3 className="text-lg font-bold mb-5">{t("staff_priority_summary")}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
           <div className="rounded-xl border border-emerald/20 bg-emerald/5 p-4">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">
-              Today&apos;s Workload
+              {t("todays_workload")}
             </p>
             <p className="mt-2 text-2xl font-extrabold tabular-nums text-emerald">
               {staffStats.todayAppointments + staffStats.todayVisits}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {staffStats.todayAppointments} appointments,{" "}
-              {staffStats.todayVisits} visits
+              {staffStats.todayAppointments} {t("appointments")}, {staffStats.todayVisits} {t("visits")}
             </p>
           </div>
           <div className="rounded-xl border border-cyan/20 bg-cyan/5 p-4">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">
-              Action Required
+              {t("action_required")}
             </p>
             <p className="mt-2 text-2xl font-extrabold tabular-nums text-cyan">
               {staffStats.pendingPrescriptions}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Prescriptions pending
+              {t("prescriptions_pending")}
             </p>
           </div>
           <div
@@ -259,7 +260,7 @@ export function StaffDashboard() {
             } p-4`}
           >
             <p className="text-xs uppercase tracking-wider text-muted-foreground">
-              Inventory Status
+              {t("inventory_status")}
             </p>
             <p
               className={`mt-2 text-2xl font-extrabold tabular-nums ${
@@ -269,14 +270,13 @@ export function StaffDashboard() {
               {staffStats.lowStockDrugs}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {staffStats.lowStockDrugs > 0 ? "Drugs low" : "Stock healthy"}
+              {staffStats.lowStockDrugs > 0 ? t("drugs_low") : t("stock_healthy")}
             </p>
           </div>
         </div>
         <div className="mt-6 inline-flex items-center gap-2 rounded-xl border border-border/40 px-3 py-2 text-xs text-muted-foreground">
           <Activity className="w-3.5 h-3.5 text-emerald" />
-          Data is sourced from appointments, prescriptions, visits, pets, and
-          drugs.
+          {t("data_source_summary")}
         </div>
       </motion.div>
 
@@ -287,11 +287,9 @@ export function StaffDashboard() {
         >
           <AlertCircle className="w-5 h-5 text-coral mt-0.5 shrink-0" />
           <div>
-            <p className="font-semibold text-sm">Pending Prescriptions</p>
+            <p className="font-semibold text-sm">{t("pending_prescriptions")}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              You have {staffStats.pendingPrescriptions} prescription
-              {staffStats.pendingPrescriptions !== 1 ? "s" : ""} awaiting
-              processing. Please review and update their status.
+              {staffStats.pendingPrescriptions} - {t("pending_prescriptions_alert")}
             </p>
           </div>
         </motion.div>
@@ -304,11 +302,9 @@ export function StaffDashboard() {
         >
           <Pill className="w-5 h-5 text-orange mt-0.5 shrink-0" />
           <div>
-            <p className="font-semibold text-sm">Low Drug Stock</p>
+            <p className="font-semibold text-sm">{t("low_drug_stock")}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {staffStats.lowStockDrugs} drug
-              {staffStats.lowStockDrugs !== 1 ? "s are" : " is"} running low on
-              stock. Consider ordering more supplies.
+              {staffStats.lowStockDrugs} - {t("low_stock_alert")}
             </p>
           </div>
         </motion.div>

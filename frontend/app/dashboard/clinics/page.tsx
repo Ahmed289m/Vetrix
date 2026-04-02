@@ -41,6 +41,7 @@ import {
 } from "@/app/_components/ui/select";
 import { cn } from "@/app/_lib/utils";
 import { useAuth } from "@/app/_hooks/useAuth";
+import { useLang } from "@/app/_hooks/useLanguage";
 
 import {
   useClinics,
@@ -56,7 +57,10 @@ export default function ClinicsPage() {
   const [selectedClinic, setSelectedClinic] = React.useState<Clinic | null>(
     null,
   );
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState("all");
   const { user } = useAuth();
+  const { t } = useLang();
 
   const { data: clinicsData, isLoading: clinicsLoading } = useClinics();
   const { data: usersData } = useUsers();
@@ -67,6 +71,21 @@ export default function ClinicsPage() {
 
   const clinics = clinicsData?.data || [];
   const users = usersData?.data || [];
+
+  const filteredClinics = React.useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return clinics.filter((clinic) => {
+      const ownerName = getClinicOwner(clinic.clinic_id).toLowerCase();
+      const matchesSearch =
+        q.length === 0 ||
+        clinic.clinicName.toLowerCase().includes(q) ||
+        clinic.address.toLowerCase().includes(q) ||
+        ownerName.includes(q);
+      const matchesStatus =
+        statusFilter === "all" || clinic.subscriptionStatus === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [clinics, searchQuery, statusFilter, users]);
 
   const formik = useFormik({
     initialValues: {
@@ -116,7 +135,7 @@ export default function ClinicsPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this clinic?")) {
+    if (confirm(t("confirm_delete_clinic"))) {
       deleteClinic.mutate(id);
     }
   };
@@ -125,7 +144,7 @@ export default function ClinicsPage() {
     const owner = users.find(
       (u) => u.clinic_id === clinicId && u.role === "owner",
     );
-    return owner ? owner.fullname : "No Owner Assigned";
+    return owner ? owner.fullname : t("no_owner_assigned");
   };
 
   return (
@@ -135,14 +154,14 @@ export default function ClinicsPage() {
           <div className="flex items-center gap-2 mb-2">
             <Store className="w-5 h-5 text-emerald" />
             <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald">
-              Global Network
+              {t("global_network")}
             </span>
           </div>
           <h1 className="text-4xl font-black tracking-tight text-foreground">
-            Clinic <span className="text-emerald">Management</span>
+            {t("clinic_management")}
           </h1>
           <p className="text-muted-foreground font-medium">
-            Manage your veterinary clinic network, locations, and settings.
+            {t("manage_clinic_network")}
           </p>
         </div>
         <Button
@@ -150,7 +169,7 @@ export default function ClinicsPage() {
           className="bg-emerald hover:bg-emerald/90 text-white font-black px-6 h-12 shadow-xl shadow-emerald/20 flex items-center gap-2 group transition-all duration-300"
         >
           <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-          Add New Clinic
+          {t("add_new_clinic")}
         </Button>
       </div>
 
@@ -158,39 +177,41 @@ export default function ClinicsPage() {
         <div className="relative group md:col-span-2">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-emerald transition-colors" />
           <Input
-            placeholder="Search by clinic name or location..."
+            placeholder={t("search_clinics")}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-12 h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
           />
         </div>
-        <Select defaultValue="all">
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder={t("status")} />
           </SelectTrigger>
           <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5">
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="all">{t("all_statuses")}</SelectItem>
+            <SelectItem value="active">{t("active")}</SelectItem>
+            <SelectItem value="pending">{t("pending")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <div className="relative group">
-        <div className="absolute -inset-0.5 bg-gradient-to-br from-emerald/10 to-transparent rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
-        <div className="relative bg-white/5 backdrop-blur-md rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl">
+        <div className="absolute -inset-0.5 bg-linear-to-br from-emerald/10 to-transparent rounded-4xl blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
+        <div className="relative bg-white/5 backdrop-blur-md rounded-4xl border border-white/5 overflow-hidden shadow-2xl">
           <Table>
             <TableHeader className="bg-white/5">
               <TableRow className="border-b border-white/5 hover:bg-transparent">
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
-                  Clinic Info
+                  {t("clinic_info")}
                 </TableHead>
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
-                  Location
+                  {t("location")}
                 </TableHead>
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
-                  Owner
+                  {t("owner")}
                 </TableHead>
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
-                  Status
+                  {t("status")}
                 </TableHead>
                 <TableHead className="py-6 px-8 text-right"></TableHead>
               </TableRow>
@@ -202,20 +223,20 @@ export default function ClinicsPage() {
                     colSpan={5}
                     className="text-center py-8 text-muted-foreground"
                   >
-                    Loading clinics...
+                    {t("loading_clinics")}
                   </TableCell>
                 </TableRow>
-              ) : clinics.length === 0 ? (
+              ) : filteredClinics.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={5}
                     className="text-center py-8 text-muted-foreground"
                   >
-                    No clinics active context.
+                    {t("no_clinics_found")}
                   </TableCell>
                 </TableRow>
               ) : (
-                clinics.map((clinic) => (
+                filteredClinics.map((clinic) => (
                   <TableRow
                     key={clinic.clinic_id}
                     className="border-b border-white/5 hover:bg-white/5 transition-colors group/row"
@@ -260,7 +281,7 @@ export default function ClinicsPage() {
                             : "bg-orange-500/10 text-orange-400",
                         )}
                       >
-                        {clinic.subscriptionStatus}
+                        {t(clinic.subscriptionStatus)}
                       </Badge>
                     </TableCell>
                     <TableCell className="py-6 px-8 text-right">
@@ -279,22 +300,22 @@ export default function ClinicsPage() {
                           className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2 w-56 shadow-2xl"
                         >
                           <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
-                            Clinic Settings
+                            {t("clinic_settings")}
                           </DropdownMenuLabel>
                           <DropdownMenuItem
                             onClick={() => handleOpenForm(clinic)}
                             className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2"
                           >
                             <MoreHorizontal className="w-4 h-4" />
-                            Configure Details
+                            {t("configure_details")}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="bg-white/5 mx-2" />
-                          {user?.role !== "admin" && (
+                          {(user?.role === "admin" || user?.role === "owner") && (
                             <DropdownMenuItem
                               onClick={() => handleDelete(clinic.clinic_id)}
                               className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
                             >
-                              Delete Clinic
+                              {t("delete_clinic")}
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
@@ -310,11 +331,11 @@ export default function ClinicsPage() {
 
       {/* CRUD Form */}
       <DashboardForm
-        title={selectedClinic ? "Update Clinic Details" : "Register Branch"}
+        title={selectedClinic ? t("update_clinic_details") : t("register_branch")}
         description={
           selectedClinic
-            ? `Configuring settings for ${selectedClinic.clinicName}`
-            : "Connect a new veterinary branch to the Vetrix network."
+            ? `${t("configuring_settings_for")} ${selectedClinic.clinicName}`
+            : t("connect_new_branch")
         }
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
@@ -323,16 +344,16 @@ export default function ClinicsPage() {
         }
         submitLabel={
           formik.isSubmitting
-            ? "Saving..."
+            ? t("saving")
             : selectedClinic
-              ? "Save Settings"
-              : "Register Clinic"
+              ? t("save_settings")
+              : t("register_clinic")
         }
       >
         <div className="space-y-8">
           <div className="space-y-3">
             <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-              Clinic Name
+              {t("clinic_name")}
             </Label>
             <div className="relative group">
               <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-emerald transition-colors" />
@@ -340,7 +361,7 @@ export default function ClinicsPage() {
                 name="clinicName"
                 value={formik.values.clinicName}
                 onChange={formik.handleChange}
-                placeholder="Central Vet"
+                placeholder={t("central_vet")}
                 className="pl-12 h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
               />
             </div>
@@ -348,7 +369,7 @@ export default function ClinicsPage() {
 
           <div className="space-y-3">
             <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-              Address
+              {t("address")}
             </Label>
             <div className="relative group">
               <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-emerald transition-colors" />
@@ -356,7 +377,7 @@ export default function ClinicsPage() {
                 name="address"
                 value={formik.values.address}
                 onChange={formik.handleChange}
-                placeholder="City, Country"
+                placeholder={t("city_country")}
                 className="pl-12 h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
               />
             </div>
@@ -365,7 +386,7 @@ export default function ClinicsPage() {
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-3">
               <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-                Phone
+                {t("phone")}
               </Label>
               <Input
                 name="phone"
@@ -377,7 +398,7 @@ export default function ClinicsPage() {
             </div>
             <div className="space-y-3">
               <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-                Subscription
+                {t("subscription")}
               </Label>
               <Select
                 value={formik.values.subscriptionStatus}
@@ -390,13 +411,13 @@ export default function ClinicsPage() {
                 </SelectTrigger>
                 <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
                   <SelectItem value="active" className="rounded-xl font-bold">
-                    Active
+                    {t("active")}
                   </SelectItem>
                   <SelectItem value="trial" className="rounded-xl font-bold">
-                    Trial
+                    {t("trial")}
                   </SelectItem>
                   <SelectItem value="expired" className="rounded-xl font-bold">
-                    Expired
+                    {t("expired")}
                   </SelectItem>
                 </SelectContent>
               </Select>

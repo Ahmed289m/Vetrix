@@ -55,6 +55,8 @@ type CaseItem = {
 export default function CasesPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [selectedCase, setSelectedCase] = React.useState<CaseItem | null>(null);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [doctorFilter, setDoctorFilter] = React.useState("all");
   const { user } = useAuth();
 
   // Fetch real data
@@ -89,6 +91,26 @@ export default function CasesPage() {
       })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [visitsData, petsData, usersData]);
+
+  const doctors = React.useMemo(() => {
+    const users = usersData?.data || [];
+    return users.filter((u: any) => u.role === "doctor");
+  }, [usersData]);
+
+  const filteredCases = React.useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return cases.filter((caseItem) => {
+      const matchesDoctor =
+        doctorFilter === "all" || caseItem.doctorName === doctorFilter;
+      const matchesSearch =
+        q.length === 0 ||
+        caseItem.id.toLowerCase().includes(q) ||
+        caseItem.patientName.toLowerCase().includes(q) ||
+        caseItem.ownerName.toLowerCase().includes(q) ||
+        caseItem.reason.toLowerCase().includes(q);
+      return matchesDoctor && matchesSearch;
+    });
+  }, [cases, searchQuery, doctorFilter]);
 
   const handleOpenForm = (caseItem: CaseItem | null = null) => {
     setSelectedCase(caseItem);
@@ -135,25 +157,30 @@ export default function CasesPage() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-emerald transition-colors" />
           <Input
             placeholder="Search by case ID, patient or reason..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-12 h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
           />
         </div>
-        <Select defaultValue="all">
+        <Select value={doctorFilter} onValueChange={setDoctorFilter}>
           <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
             <SelectValue placeholder="Doctor" />
           </SelectTrigger>
           <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5">
             <SelectItem value="all">All Doctors</SelectItem>
-            <SelectItem value="sarah">Dr. Sarah</SelectItem>
-            <SelectItem value="mike">Dr. Mike</SelectItem>
+            {doctors.map((doc: any) => (
+              <SelectItem key={doc.user_id} value={doc.fullname}>
+                {doc.fullname}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
       {/* Table Container */}
       <div className="relative group">
-        <div className="absolute -inset-0.5 bg-gradient-to-br from-emerald/10 to-transparent rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
-        <div className="relative bg-white/5 backdrop-blur-md rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl">
+        <div className="absolute -inset-0.5 bg-linear-to-br from-emerald/10 to-transparent rounded-4xl blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
+        <div className="relative bg-white/5 backdrop-blur-md rounded-4xl border border-white/5 overflow-hidden shadow-2xl">
           <Table>
             <TableHeader className="bg-white/5">
               <TableRow className="border-b border-white/5 hover:bg-transparent">
@@ -170,84 +197,95 @@ export default function CasesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {cases.map((caseItem) => (
-                <TableRow
-                  key={caseItem.id}
-                  className="border-b border-white/5 hover:bg-white/5 transition-colors group/row"
-                >
-                  <TableCell className="py-6 px-8">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[10px] font-black tracking-widest text-emerald bg-emerald/5 w-fit px-2 py-0.5 rounded-md">
-                        {caseItem.id}
-                      </span>
-                      <span className="font-black text-foreground group-hover/row:text-emerald transition-colors tracking-tight">
-                        {caseItem.patientName}
-                        <span className="text-muted-foreground/50 font-medium text-xs ml-1.5">
-                          (Owner: {caseItem.ownerName})
-                        </span>
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-6 px-8">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-sm font-bold text-foreground/80 leading-none">
-                        {caseItem.reason}
-                      </span>
-                      <span className="text-xs text-muted-foreground/60 font-medium">
-                        Assigned: {caseItem.doctorName}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-6 px-8">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-muted-foreground/60" />
-                      <span className="text-sm font-bold text-muted-foreground/80">
-                        {new Date(caseItem.date).toLocaleDateString("en-GB", {
-                          day: "2-digit",
-                          month: "long",
-                          year: "numeric",
-                        })}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-6 px-8 text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="group-hover/row:bg-white/10 rounded-xl h-10 w-10"
-                        >
-                          <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        align="end"
-                        className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2 w-56 shadow-2xl"
-                      >
-                        <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
-                          Case Operations
-                        </DropdownMenuLabel>
-                        <DropdownMenuItem
-                          onClick={() => handleOpenForm(caseItem)}
-                          className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2"
-                        >
-                          <FileText className="w-4 h-4" />
-                          Clinical Notes
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4" />
-                          Mark Completed
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-white/5 mx-2" />
-                        <DropdownMenuItem className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold">
-                          Delete Record
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+              {filteredCases.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={4}
+                    className="text-center py-8 text-muted-foreground"
+                  >
+                    No cases found.
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredCases.map((caseItem) => (
+                  <TableRow
+                    key={caseItem.id}
+                    className="border-b border-white/5 hover:bg-white/5 transition-colors group/row"
+                  >
+                    <TableCell className="py-6 px-8">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-black tracking-widest text-emerald bg-emerald/5 w-fit px-2 py-0.5 rounded-md">
+                          {caseItem.id}
+                        </span>
+                        <span className="font-black text-foreground group-hover/row:text-emerald transition-colors tracking-tight">
+                          {caseItem.patientName}
+                          <span className="text-muted-foreground/50 font-medium text-xs ml-1.5">
+                            (Owner: {caseItem.ownerName})
+                          </span>
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-6 px-8">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm font-bold text-foreground/80 leading-none">
+                          {caseItem.reason}
+                        </span>
+                        <span className="text-xs text-muted-foreground/60 font-medium">
+                          Assigned: {caseItem.doctorName}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-6 px-8">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-muted-foreground/60" />
+                        <span className="text-sm font-bold text-muted-foreground/80">
+                          {new Date(caseItem.date).toLocaleDateString("en-GB", {
+                            day: "2-digit",
+                            month: "long",
+                            year: "numeric",
+                          })}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-6 px-8 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="group-hover/row:bg-white/10 rounded-xl h-10 w-10"
+                          >
+                            <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2 w-56 shadow-2xl"
+                        >
+                          <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
+                            Case Operations
+                          </DropdownMenuLabel>
+                          <DropdownMenuItem
+                            onClick={() => handleOpenForm(caseItem)}
+                            className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2"
+                          >
+                            <FileText className="w-4 h-4" />
+                            Clinical Notes
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4" />
+                            Mark Completed
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator className="bg-white/5 mx-2" />
+                          <DropdownMenuItem className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold">
+                            Delete Record
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>
@@ -331,7 +369,7 @@ export default function CasesPage() {
             <textarea
               placeholder="Detailed observations and findings..."
               defaultValue={selectedCase?.reason}
-              className="w-full min-h-[140px] p-5 bg-white/5 border border-white/5 focus:border-emerald/30 focus:ring-1 focus:ring-emerald/20 rounded-2xl font-medium outline-none transition-all"
+              className="w-full min-h-35 p-5 bg-white/5 border border-white/5 focus:border-emerald/30 focus:ring-1 focus:ring-emerald/20 rounded-2xl font-medium outline-none transition-all"
             />
           </div>
         </div>

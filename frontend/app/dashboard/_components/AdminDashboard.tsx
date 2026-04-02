@@ -2,6 +2,7 @@
 
 import { motion } from "@/app/_components/fast-motion";
 import { Activity, AlertTriangle, CheckCircle2, Users } from "lucide-react";
+import { useLang } from "@/app/_hooks/useLanguage";
 
 const stagger = { animate: { transition: { staggerChildren: 0.06 } } };
 const fadeUp = {
@@ -14,6 +15,7 @@ const fadeUp = {
 };
 
 export function AdminDashboard() {
+  const { t } = useLang();
   return (
     <motion.div
       variants={stagger}
@@ -27,13 +29,13 @@ export function AdminDashboard() {
       >
         <div>
           <p className="text-xs font-semibold text-emerald uppercase tracking-widest mb-1">
-            System Overview
+            {t("system_overview")}
           </p>
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-arabic">
-            Admin <span className="gradient-text">Dashboard</span>
+            {t("admin_dashboard")}
           </h2>
           <p className="text-sm text-muted-foreground mt-1.5">
-            Manage clinics, users, and platform settings.
+            {t("manage_clinics_users_and_platform_settings")}
           </p>
         </div>
       </motion.div>
@@ -42,7 +44,7 @@ export function AdminDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             {
-              label: "Total Clinics",
+              label: t("total_clinics"),
               value: 124,
               icon: Users,
               color: "text-emerald",
@@ -50,7 +52,7 @@ export function AdminDashboard() {
               border: "border-emerald/20",
             },
             {
-              label: "Active Subscriptions",
+              label: t("active_subscriptions"),
               value: 112,
               icon: CheckCircle2,
               color: "text-cyan",
@@ -58,7 +60,7 @@ export function AdminDashboard() {
               border: "border-cyan/20",
             },
             {
-              label: "Platform Uptime",
+              label: t("platform_uptime"),
               value: "99.9%",
               icon: Activity,
               color: "text-orange",
@@ -66,7 +68,7 @@ export function AdminDashboard() {
               border: "border-orange/20",
             },
             {
-              label: "System Alerts",
+              label: t("system_alerts"),
               value: 3,
               icon: AlertTriangle,
               color: "text-coral",
@@ -103,9 +105,9 @@ export function AdminDashboard() {
         variants={fadeUp}
         className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-8 text-center mt-8"
       >
-        <h3 className="text-lg font-bold">Admin Module (Placeholder)</h3>
+        <h3 className="text-lg font-bold">{t("admin_module_placeholder")}</h3>
         <p className="text-muted-foreground mt-2">
-          More administrative features will be implemented here.
+          {t("admin_features_coming")}
         </p>
       </motion.div>
     </motion.div>

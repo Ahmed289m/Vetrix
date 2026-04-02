@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/app/_components/ui/button";
 import { cn } from "@/app/_lib/utils";
+import { useLang } from "@/app/_hooks/useLanguage";
 
 const calculatorTools = [
   {
@@ -65,21 +66,21 @@ const calculatorTools = [
 ];
 
 export default function CalculatorsPage() {
+  const { t } = useLang();
   return (
     <div className="p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="space-y-1.5">
         <div className="flex items-center gap-2 mb-2">
           <Calculator className="w-5 h-5 text-emerald" />
           <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald">
-            Clinical Decision Support
+            {t("clinical_decision_support")}
           </span>
         </div>
         <h1 className="text-4xl font-black tracking-tight text-foreground">
-          Medical <span className="text-emerald">Calculators</span>
+          {t("medical_calculators_title")}
         </h1>
         <p className="text-muted-foreground font-medium max-w-2xl">
-          Access specialized veterinary tools for precise clinical calculations
-          and treatment planning.
+          {t("calculators_description")}
         </p>
       </div>
 
@@ -113,7 +114,7 @@ export default function CalculatorsPage() {
               variant="ghost"
               className="w-full h-14 rounded-2xl bg-muted/40 hover:bg-emerald/10 hover:text-emerald font-black text-xs uppercase tracking-widest transition-all"
             >
-              Open Calculator
+              {t("open_calculator")}
             </Button>
           </div>
         ))}

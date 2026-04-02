@@ -53,6 +53,8 @@ import { useAuth } from "@/app/_hooks/useAuth";
 
 export default function PrescriptionsPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState("all");
   const { user } = useAuth();
 
   const { data: rxData, isLoading: rxLoading } = usePrescriptions();
@@ -99,6 +101,22 @@ export default function PrescriptionsPage() {
     return `${drug?.drugName || "Unknown Drug"} (${rxItem.drugDose})`;
   };
 
+  const filteredPrescriptions = React.useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return prescriptions.filter((rx) => {
+      const effectiveStatus = (rx.status || "active").toLowerCase();
+      const matchesStatus =
+        statusFilter === "all" || effectiveStatus === statusFilter;
+      const matchesSearch =
+        q.length === 0 ||
+        rx.prescription_id.toLowerCase().includes(q) ||
+        getPetName(rx.pet_id).toLowerCase().includes(q) ||
+        getClientName(rx.client_id).toLowerCase().includes(q) ||
+        getMedicationText(rx.prescriptionItem_id).toLowerCase().includes(q);
+      return matchesStatus && matchesSearch;
+    });
+  }, [prescriptions, searchQuery, statusFilter, pets, clients, rxItems, drugs]);
+
   const handleOpenForm = () => {
     formik.resetForm();
     setIsFormOpen(true);
@@ -144,10 +162,12 @@ export default function PrescriptionsPage() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-emerald transition-colors" />
           <Input
             placeholder="Search by Rx ID, patient or medication..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-12 h-14 bg-muted/40 border-border/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
           />
         </div>
-        <Select defaultValue="all">
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="h-14 bg-muted/40 border-border/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -159,8 +179,8 @@ export default function PrescriptionsPage() {
       </div>
 
       <div className="relative group">
-        <div className="absolute -inset-0.5 bg-gradient-to-br from-emerald/10 to-transparent rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
-        <div className="relative bg-muted/40 backdrop-blur-md rounded-[2rem] border border-border/10 overflow-hidden shadow-2xl">
+        <div className="absolute -inset-0.5 bg-linear-to-br from-emerald/10 to-transparent rounded-4xl blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
+        <div className="relative bg-muted/40 backdrop-blur-md rounded-4xl border border-border/10 overflow-hidden shadow-2xl">
           <Table>
             <TableHeader className="bg-muted/40">
               <TableRow className="border-b border-border/10 hover:bg-transparent">
@@ -189,7 +209,7 @@ export default function PrescriptionsPage() {
                     Loading prescriptions...
                   </TableCell>
                 </TableRow>
-              ) : prescriptions.length === 0 ? (
+              ) : filteredPrescriptions.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={5}
@@ -199,7 +219,7 @@ export default function PrescriptionsPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                prescriptions.map((rx) => (
+                filteredPrescriptions.map((rx) => (
                   <TableRow
                     key={rx.prescription_id}
                     className="border-b border-border/10 hover:bg-muted/40 transition-colors group/row"
@@ -230,8 +250,14 @@ export default function PrescriptionsPage() {
                       </div>
                     </TableCell>
                     <TableCell className="py-6 px-8">
-                      <Badge className="rounded-full px-4 py-1 text-[10px] font-black uppercase tracking-widest border-none bg-emerald/10 text-emerald">
-                        Active
+                      <Badge
+                        className={
+                          (rx.status || "active") === "active"
+                            ? "rounded-full px-4 py-1 text-[10px] font-black uppercase tracking-widest border-none bg-emerald/10 text-emerald"
+                            : "rounded-full px-4 py-1 text-[10px] font-black uppercase tracking-widest border-none bg-orange-500/10 text-orange-400"
+                        }
+                      >
+                        {rx.status || "active"}
                       </Badge>
                     </TableCell>
                     <TableCell className="py-6 px-8 text-right">

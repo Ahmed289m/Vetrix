@@ -24,6 +24,7 @@ import { useCreatePrescriptionItem } from "@/app/_hooks/queries/use-prescription
 import { useDrugs } from "@/app/_hooks/queries/use-drugs";
 import { useWebSocket } from "@/app/_hooks/useWebSocket";
 import { useAuth } from "@/app/_hooks/useAuth";
+import { useLang } from "@/app/_hooks/useLanguage";
 import type {
   Appointment,
   Drug,
@@ -54,19 +55,19 @@ const severityConfig = {
     bg: "bg-emerald/10",
     border: "border-emerald/30",
     text: "text-emerald",
-    label: "Normal",
+    labelKey: "normal",
   },
   urgent: {
     bg: "bg-orange/10",
     border: "border-orange/30",
     text: "text-orange",
-    label: "Urgent",
+    labelKey: "urgent",
   },
   emergency: {
     bg: "bg-coral/10",
     border: "border-coral/30",
     text: "text-coral",
-    label: "Emergency",
+    labelKey: "emergency",
   },
 };
 
@@ -87,6 +88,7 @@ export default function SimulationMode({ role }: Props) {
   const wsRef = useRef<WebSocket | null>(null);
 
   // Fetch real data
+  const { t } = useLang();
   const { user } = useAuth();
   const { data: appointmentsData, refetch: refetchAppointments } =
     useAppointments();
@@ -198,22 +200,22 @@ export default function SimulationMode({ role }: Props) {
         return {
           id: apt.appointment_id,
           caseNumber: `APT-${String(index + 1).padStart(4, "0")}`,
-          petName: pet?.name || "Unknown Pet",
+          petName: pet?.name || t("unknown_pet"),
           petId: apt.pet_id,
           clientId: apt.client_id,
           species: (pet?.type || "dog") as "dog" | "cat",
-          breed: pet?.breed || "Mixed",
-          ownerName: client?.fullname || "Unknown Owner",
-          complaint: apt.reason || "Regular checkup",
+          breed: pet?.breed || t("mixed"),
+          ownerName: client?.fullname || t("unknown_owner"),
+          complaint: apt.reason || t("regular_checkup"),
           severity: "normal" as const,
-          doctor: doctor?.fullname || "Dr. Assigned",
+          doctor: doctor?.fullname || t("doctor_assigned"),
           status: "waiting" as const,
         } as SimCase;
       });
 
     console.log("[SimulationMode] Confirmed cases:", confirmed.length, "cases");
     return confirmed;
-  }, [appointmentsData, petsData, usersData]);
+  }, [appointmentsData, petsData, usersData, t]);
 
   const cases = useMemo(
     () =>
@@ -288,7 +290,7 @@ export default function SimulationMode({ role }: Props) {
         pet_id: currentCase.petId,
         client_id: currentCase.clientId,
         doctor_id: user.userId,
-        notes: visitNotes || "Visit created from simulation mode",
+        notes: visitNotes || t("visit_created_from_simulation_mode"),
         date: new Date().toISOString(),
       } satisfies VisitCreate,
       {
@@ -394,9 +396,9 @@ export default function SimulationMode({ role }: Props) {
             <Activity className="w-4 h-4 text-primary-foreground" />
           </motion.div>
           <div>
-            <h3 className="text-sm font-bold">Simulation Mode</h3>
+            <h3 className="text-sm font-bold">{t("simulation_mode")}</h3>
             <p className="text-[10px] text-muted-foreground">
-              {isStaff ? "Staff Controls" : "Doctor View"}
+              {isStaff ? t("staff_controls_short") : t("doctor_view_short")}
             </p>
           </div>
         </div>
@@ -440,11 +442,11 @@ export default function SimulationMode({ role }: Props) {
             <CheckCircle2 className="w-12 h-12 text-emerald mx-auto" />
           </motion.div>
           <p className="text-lg font-extrabold text-emerald">
-            {isStaff ? "All cases completed!" : "No active cases"}
+            {isStaff ? t("no_more_cases") : t("no_active_cases")}
           </p>
           {!isStaff && (
             <p className="text-xs text-muted-foreground">
-              Waiting for confirmed appointments to appear in the queue
+              {t("waiting_for_confirmed_appointments")}
             </p>
           )}
         </motion.div>
@@ -464,7 +466,7 @@ export default function SimulationMode({ role }: Props) {
             <div className="flex items-center gap-1.5 mb-1">
               <Clock className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Current Case
+                {t("current_case")}
               </span>
             </div>
             <div className="flex items-start justify-between gap-3">
@@ -500,7 +502,7 @@ export default function SimulationMode({ role }: Props) {
                 <span
                   className={`text-[10px] px-2 py-1 rounded-lg font-bold uppercase ${severityConfig[currentCase.severity].bg} ${severityConfig[currentCase.severity].text}`}
                 >
-                  {severityConfig[currentCase.severity].label}
+                  {t(severityConfig[currentCase.severity].labelKey)}
                 </span>
                 <p className="text-xs text-muted-foreground">
                   {currentCase.doctor}
@@ -527,7 +529,7 @@ export default function SimulationMode({ role }: Props) {
                     className="w-2 h-2 rounded-full bg-cyan"
                   />
                 )}
-                {currentCase.status === "waiting" ? "Waiting" : "In Progress"}
+                {currentCase.status === "waiting" ? t("waiting") : t("in_progress")}
               </span>
             </div>
 
@@ -541,7 +543,7 @@ export default function SimulationMode({ role }: Props) {
                     onClick={handleStart}
                     className="flex items-center gap-2 gradient-emerald-cyan text-primary-foreground px-6 py-3 rounded-xl text-sm font-bold glow-emerald ripple"
                   >
-                    <Play className="w-4 h-4" /> Start
+                    <Play className="w-4 h-4" /> {t("start")}
                   </motion.button>
                 )}
                 {currentCase.status === "in-progress" && (
@@ -551,7 +553,7 @@ export default function SimulationMode({ role }: Props) {
                     onClick={handleComplete}
                     className="flex items-center gap-2 bg-emerald text-primary-foreground px-6 py-3 rounded-xl text-sm font-bold glow-emerald ripple"
                   >
-                    <CheckCircle2 className="w-4 h-4" /> Complete
+                    <CheckCircle2 className="w-4 h-4" /> {t("complete")}
                   </motion.button>
                 )}
               </div>
@@ -566,7 +568,7 @@ export default function SimulationMode({ role }: Props) {
                   onClick={() => setShowVisitModal(true)}
                   className="flex items-center gap-2 gradient-cyan-blue text-primary-foreground px-6 py-3 rounded-xl text-sm font-bold glow-cyan ripple"
                 >
-                  <Stethoscope className="w-4 h-4" /> Create Visit
+                  <Stethoscope className="w-4 h-4" /> {t("create_visit")}
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
@@ -574,7 +576,7 @@ export default function SimulationMode({ role }: Props) {
                   onClick={() => setShowPrescriptionModal(true)}
                   className="flex items-center gap-2 gradient-emerald-cyan text-primary-foreground px-6 py-3 rounded-xl text-sm font-bold glow-emerald ripple"
                 >
-                  <Pill className="w-4 h-4" /> Prescribe
+                  <Pill className="w-4 h-4" /> {t("prescribe")}
                 </motion.button>
               </div>
             )}
@@ -594,7 +596,7 @@ export default function SimulationMode({ role }: Props) {
             <div className="flex items-center gap-2 mb-2">
               <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Next Case
+                {t("next_case_label")}
               </span>
             </div>
             <div className="flex items-center gap-3">
@@ -619,7 +621,7 @@ export default function SimulationMode({ role }: Props) {
               <span
                 className={`text-[10px] px-2 py-1 rounded-lg font-bold uppercase ${severityConfig[nextCase.severity].bg} ${severityConfig[nextCase.severity].text}`}
               >
-                {severityConfig[nextCase.severity].label}
+                  {t(severityConfig[nextCase.severity].labelKey)}
               </span>
             </div>
           </motion.div>
@@ -644,7 +646,7 @@ export default function SimulationMode({ role }: Props) {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Stethoscope className="w-5 h-5 text-cyan" />
-                  <h3 className="text-lg font-bold">Create Visit</h3>
+                  <h3 className="text-lg font-bold">{t("create_visit")}</h3>
                 </div>
                 <button
                   onClick={() => {
@@ -673,13 +675,13 @@ export default function SimulationMode({ role }: Props) {
                     htmlFor="notes"
                     className="text-xs font-bold text-muted-foreground mb-2 block"
                   >
-                    Visit Notes
+                    {t("visit_notes")}
                   </label>
                   <textarea
                     id="notes"
                     value={visitNotes}
                     onChange={(e) => setVisitNotes(e.target.value)}
-                    placeholder="Enter visit notes..."
+                    placeholder={t("enter_visit_notes")}
                     className="w-full px-3 py-2 rounded-lg bg-muted/30 border border-border text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan/50"
                     rows={4}
                   />
@@ -695,7 +697,7 @@ export default function SimulationMode({ role }: Props) {
                     }}
                     className="flex-1 px-4 py-2 rounded-lg bg-muted/30 hover:bg-muted/50 text-sm font-bold transition-colors"
                   >
-                    Cancel
+                    {t("cancel")}
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.02 }}
@@ -704,7 +706,7 @@ export default function SimulationMode({ role }: Props) {
                     disabled={createVisit.isPending}
                     className="flex-1 px-4 py-2 rounded-lg gradient-cyan-blue text-primary-foreground text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {createVisit.isPending ? "Creating..." : "Create Visit"}
+                    {createVisit.isPending ? t("creating") : t("create_visit")}
                   </motion.button>
                 </div>
               </div>
@@ -731,7 +733,7 @@ export default function SimulationMode({ role }: Props) {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Pill className="w-5 h-5 text-emerald" />
-                  <h3 className="text-lg font-bold">Prescribe Medication</h3>
+                  <h3 className="text-lg font-bold">{t("prescribe_medication")}</h3>
                 </div>
                 <button
                   onClick={() => {
@@ -761,7 +763,7 @@ export default function SimulationMode({ role }: Props) {
                     htmlFor="drug"
                     className="text-xs font-bold text-muted-foreground mb-2 block"
                   >
-                    Drug
+                    {t("drug")}
                   </label>
                   <select
                     id="drug"
@@ -769,7 +771,7 @@ export default function SimulationMode({ role }: Props) {
                     onChange={(e) => setSelectedDrugId(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg bg-muted/30 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50"
                   >
-                    <option value="">Select a drug...</option>
+                    <option value="">{t("select_a_drug")}</option>
                     {(drugsData?.data || []).map((drug: Drug) => (
                       <option key={drug.drug_id} value={drug.drug_id}>
                         {drug.drugName}
@@ -783,14 +785,14 @@ export default function SimulationMode({ role }: Props) {
                     htmlFor="dose"
                     className="text-xs font-bold text-muted-foreground mb-2 block"
                   >
-                    Dosage
+                    {t("dosage")}
                   </label>
                   <input
                     id="dose"
                     type="text"
                     value={drugDose}
                     onChange={(e) => setDrugDose(e.target.value)}
-                    placeholder="e.g., 5mg twice daily"
+                    placeholder={t("dosage_example")}
                     className="w-full px-3 py-2 rounded-lg bg-muted/30 border border-border text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald/50"
                   />
                 </div>
@@ -806,7 +808,7 @@ export default function SimulationMode({ role }: Props) {
                     }}
                     className="flex-1 px-4 py-2 rounded-lg bg-muted/30 hover:bg-muted/50 text-sm font-bold transition-colors"
                   >
-                    Cancel
+                    {t("cancel")}
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.02 }}
@@ -822,8 +824,8 @@ export default function SimulationMode({ role }: Props) {
                   >
                     {createPrescriptionItem.isPending ||
                     createPrescription.isPending
-                      ? "Prescribing..."
-                      : "Prescribe"}
+                      ? t("prescribing")
+                      : t("prescribe")}
                   </motion.button>
                 </div>
               </div>

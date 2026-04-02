@@ -24,6 +24,7 @@ import {
   Pie,
 } from "recharts";
 import { cn } from "@/app/_lib/utils";
+import { useLang } from "@/app/_hooks/useLanguage";
 
 // Mock data for charts
 const growthData = [
@@ -43,6 +44,7 @@ const revenueData = [
 ];
 
 export default function ReportsPage() {
+  const { t } = useLang();
   return (
     <div className="p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -50,15 +52,14 @@ export default function ReportsPage() {
           <div className="flex items-center gap-2 mb-2">
             <BarChart3 className="w-5 h-5 text-emerald" />
             <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald">
-              Intelligence Unit
+              {t("intelligence_unit")}
             </span>
           </div>
           <h1 className="text-4xl font-black tracking-tight text-foreground">
-            Analytics & <span className="text-emerald">Reports</span>
+            {t("analytics_and_reports_title")}
           </h1>
           <p className="text-muted-foreground font-medium">
-            Strategic overview of clinic growth, revenue trends and patient
-            demographics.
+            {t("reports_description")}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -66,10 +67,10 @@ export default function ReportsPage() {
             variant="ghost"
             className="h-12 px-6 rounded-xl font-black text-xs uppercase tracking-widest bg-muted/40 border border-border/10 hover:bg-muted/50"
           >
-            <Filter className="w-4 h-4 mr-2" /> Custom Filter
+            <Filter className="w-4 h-4 mr-2" /> {t("custom_filter")}
           </Button>
           <Button className="h-12 px-6 bg-emerald text-white font-black rounded-xl shadow-xl shadow-emerald/20 flex items-center gap-2">
-            <Download className="w-4 h-4" /> Export Data
+            <Download className="w-4 h-4" /> {t("export_data")}
           </Button>
         </div>
       </div>

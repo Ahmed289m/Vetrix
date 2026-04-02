@@ -143,12 +143,12 @@ export function DashboardSidebar({ role }: { role: Role }) {
           </div>
         </div>
       </SidebarHeader>
-      <SidebarContent className="custom-scrollbar px-2 py-1">
+      <SidebarContent className="custom-scrollbar px-2 py-2">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 px-4 mb-4">
+          <SidebarGroupLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 px-4 mb-3">
             {t("navigation")}
           </SidebarGroupLabel>
-          <SidebarMenu className="gap-1.5">
+          <SidebarMenu className="gap-2.5">
             {filtered.map((item) => {
               const isActive =
                 pathname === item.href ||
@@ -160,7 +160,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
-                      className={`relative flex items-center gap-3.5 px-4 py-2.5 rounded-sm text-sm font-semibold transition-colors duration-200 group overflow-hidden ${
+                      className={`relative flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-colors duration-200 group overflow-hidden ${
                         isActive
                           ? "bg-emerald/10 text-emerald"
                           : "text-muted-foreground hover:bg-white/5 hover:text-foreground"

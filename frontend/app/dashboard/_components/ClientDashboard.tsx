@@ -2,6 +2,7 @@
 
 import { motion } from "@/app/_components/fast-motion";
 import { Cat, Calendar, FileText, Bell } from "lucide-react";
+import { useLang } from "@/app/_hooks/useLanguage";
 
 const stagger = { animate: { transition: { staggerChildren: 0.06 } } };
 const fadeUp = {
@@ -14,6 +15,7 @@ const fadeUp = {
 };
 
 export function ClientDashboard() {
+  const { t } = useLang();
   return (
     <motion.div
       variants={stagger}
@@ -27,13 +29,13 @@ export function ClientDashboard() {
       >
         <div>
           <p className="text-xs font-semibold text-emerald uppercase tracking-widest mb-1">
-            My Pets
+            {t("my_pets")}
           </p>
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-arabic">
-            Client <span className="gradient-text">Portal</span>
+            {t("client_portal")}
           </h2>
           <p className="text-sm text-muted-foreground mt-1.5">
-            Manage your pets, appointments, and records.
+            {t("manage_your_pets_appointments_and_records")}
           </p>
         </div>
       </motion.div>
@@ -42,7 +44,7 @@ export function ClientDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             {
-              label: "My Pets",
+              label: t("my_pets"),
               value: 2,
               icon: Cat,
               color: "text-emerald",
@@ -50,7 +52,7 @@ export function ClientDashboard() {
               border: "border-emerald/20",
             },
             {
-              label: "Upcoming Appts",
+              label: t("upcoming_appts"),
               value: 1,
               icon: Calendar,
               color: "text-cyan",
@@ -58,7 +60,7 @@ export function ClientDashboard() {
               border: "border-cyan/20",
             },
             {
-              label: "Medical Records",
+              label: t("medical_records"),
               value: 14,
               icon: FileText,
               color: "text-orange",
@@ -103,10 +105,9 @@ export function ClientDashboard() {
         variants={fadeUp}
         className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-8 text-center mt-8"
       >
-        <h3 className="text-lg font-bold">Client Module (Placeholder)</h3>
+        <h3 className="text-lg font-bold">{t("client_module_placeholder")}</h3>
         <p className="text-muted-foreground mt-2">
-          Pet profiles, vaccination history, and appointment booking will be
-          implemented here.
+          {t("client_features_coming")}
         </p>
       </motion.div>
     </motion.div>

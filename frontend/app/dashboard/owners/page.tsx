@@ -33,6 +33,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { useAuth } from "@/app/_hooks/useAuth";
+import { useLang } from "@/app/_hooks/useLanguage";
 
 import {
   useUsers,
@@ -60,6 +61,7 @@ export default function OwnersPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
   const { user } = useAuth();
+  const { t } = useLang();
 
   const { data: usersData, isLoading: usersLoading } = useUsers();
   const { data: petsData } = usePets();
@@ -90,11 +92,11 @@ export default function OwnersPage() {
           setShowCreateOwner(false);
           setSubmitting(false);
           resetForm();
-          toast.success("Client created successfully.");
+          toast.success(t("client_created_success"));
         },
         onError: () => {
           setSubmitting(false);
-          toast.error("Failed to create client. Please try again.");
+          toast.error(t("client_create_failed"));
         },
       });
     },
@@ -113,11 +115,11 @@ export default function OwnersPage() {
           setShowAddPet(null);
           setSubmitting(false);
           resetForm();
-          toast.success("Pet added successfully.");
+          toast.success(t("pet_added_success"));
         },
         onError: () => {
           setSubmitting(false);
-          toast.error("Failed to add pet. Please try again.");
+          toast.error(t("pet_add_failed"));
         },
       });
     },
@@ -130,11 +132,11 @@ export default function OwnersPage() {
   };
 
   const handleDeleteOwner = (ownerId: string) => {
-    if (confirm("Are you sure you want to deactivate or remove this client?")) {
+    if (confirm(t("confirm_delete_client"))) {
       deleteUser.mutate(ownerId, {
-        onSuccess: () => toast.success("Client deactivated successfully."),
+        onSuccess: () => toast.success(t("client_deactivated_success")),
         onError: () =>
-          toast.error("Failed to deactivate client. Please try again."),
+          toast.error(t("client_deactivate_failed")),
       });
     }
   };
@@ -159,13 +161,13 @@ export default function OwnersPage() {
       >
         <div>
           <p className="text-xs font-semibold text-emerald uppercase tracking-widest mb-1">
-            Clinical Network
+            {t("clinical_network")}
           </p>
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Client <span className="text-emerald">Management</span>
+            {t("client_management")}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            {clients.length} registered owners
+            {clients.length} {t("registered_owners")}
           </p>
         </div>
         <motion.button
@@ -174,7 +176,7 @@ export default function OwnersPage() {
           onClick={() => setShowCreateOwner(true)}
           className="flex items-center gap-2 gradient-emerald-cyan text-primary-foreground px-5 py-3 rounded-xl text-sm font-bold glow-emerald ripple"
         >
-          <UserPlus className="w-4 h-4" /> New Owner
+          <UserPlus className="w-4 h-4" /> {t("new_owner")}
         </motion.button>
       </motion.div>
 
@@ -184,7 +186,7 @@ export default function OwnersPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search owners..."
+            placeholder={t("search_owners")}
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
           />
         </div>
@@ -192,19 +194,19 @@ export default function OwnersPage() {
 
       {/* Create Owner Modal */}
       <DashboardForm
-        title="Create Owner Profile"
-        description="Register a new clinical owner to the system."
+        title={t("create_owner_profile")}
+        description={t("register_clinical_owner")}
         isOpen={showCreateOwner}
         onOpenChange={setShowCreateOwner}
         onSubmit={(e) =>
           formikOwner.handleSubmit(e as React.FormEvent<HTMLFormElement>)
         }
-        submitLabel={formikOwner.isSubmitting ? "Creating..." : "Create Owner"}
+        submitLabel={formikOwner.isSubmitting ? t("creating") : t("create_owner")}
       >
         <div className="space-y-6">
           <div className="space-y-2">
             <label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-              Full Name *
+              {t("full_name_required")}
             </label>
             <Input
               name="fullname"
@@ -216,7 +218,7 @@ export default function OwnersPage() {
 
           <div className="space-y-2">
             <label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-              Phone
+              {t("phone")}
             </label>
             <Input
               name="phone"
@@ -230,18 +232,18 @@ export default function OwnersPage() {
 
       {/* Add Pet Modal */}
       <DashboardForm
-        title="Add New Pet"
+        title={t("add_new_pet")}
         isOpen={!!showAddPet}
         onOpenChange={(open) => !open && setShowAddPet(null)}
         onSubmit={(e) =>
           formikPet.handleSubmit(e as React.FormEvent<HTMLFormElement>)
         }
-        submitLabel={formikPet.isSubmitting ? "Registering..." : "Register Pet"}
+        submitLabel={formikPet.isSubmitting ? t("registering") : t("register_pet")}
       >
         <div className="space-y-6">
           <div className="space-y-2">
             <label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-              Pet Name *
+              {t("pet_name_required")}
             </label>
             <Input
               name="name"
@@ -253,7 +255,7 @@ export default function OwnersPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-                Species
+                {t("species")}
               </label>
               <Select
                 value={formikPet.values.type}
@@ -264,17 +266,17 @@ export default function OwnersPage() {
                 </SelectTrigger>
                 <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
                   <SelectItem value="dog" className="rounded-xl font-bold">
-                    Dog
+                    {t("dog")}
                   </SelectItem>
                   <SelectItem value="cat" className="rounded-xl font-bold">
-                    Cat
+                    {t("cat")}
                   </SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-                Weight (KG)
+                {t("weight_kg")}
               </label>
               <Input
                 type="number"
@@ -294,11 +296,11 @@ export default function OwnersPage() {
       <motion.div variants={fadeUp} className="space-y-3">
         {usersLoading ? (
           <div className="text-center py-8 text-muted-foreground">
-            Loading clients...
+            {t("loading_clients")}
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            No clients found. Add one to get started.
+            {t("no_clients_found")}
           </div>
         ) : (
           filtered.map((owner, i) => {
@@ -331,11 +333,11 @@ export default function OwnersPage() {
                       </p>
                       {owner.is_active ? (
                         <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase bg-emerald/15 text-emerald">
-                          Active
+                          {t("active")}
                         </span>
                       ) : (
                         <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase bg-orange/15 text-orange">
-                          Inactive
+                          {t("inactive")}
                         </span>
                       )}
                     </div>
@@ -346,7 +348,7 @@ export default function OwnersPage() {
                       </span>
                       <span className="flex items-center gap-1">
                         <PawPrint className="w-3 h-3" />
-                        {ownerPets.length} pets
+                        {ownerPets.length} {t("pets")}
                       </span>
                     </div>
                   </div>
@@ -366,28 +368,28 @@ export default function OwnersPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                           <div className="flex items-center gap-2 text-muted-foreground">
                             <Phone className="w-3.5 h-3.5" />
-                            {owner.phone || "No phone"}
+                            {owner.phone || t("no_phone")}
                           </div>
                           <div className="flex items-center gap-2 text-muted-foreground">
                             <MapPin className="w-3.5 h-3.5" />
-                            No address in model
+                            {t("no_address_in_model")}
                           </div>
                         </div>
                         <div>
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                              Pets
+                              {t("pets")}
                             </span>
                             <button
                               onClick={() => handleOpenAddPet(owner.user_id)}
                               className="flex items-center gap-1 text-xs font-semibold text-emerald hover:underline"
                             >
-                              <Plus className="w-3 h-3" /> Add Pet
+                              <Plus className="w-3 h-3" /> {t("add_pet")}
                             </button>
                           </div>
                           {ownerPets.length === 0 ? (
                             <p className="text-xs text-muted-foreground/50 italic">
-                              No pets registered
+                              {t("no_pets_registered")}
                             </p>
                           ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -423,7 +425,7 @@ export default function OwnersPage() {
                               onClick={() => handleDeleteOwner(owner.user_id)}
                               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-coral/10 border border-coral/20 text-coral hover:bg-coral/20"
                             >
-                              <Trash2 className="w-3.5 h-3.5" /> Remove Owner
+                              <Trash2 className="w-3.5 h-3.5" /> {t("remove_owner")}
                             </button>
                           )}
                         </div>
@@ -443,17 +445,17 @@ export default function OwnersPage() {
           <div className="bg-sidebar/95 backdrop-blur-xl border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl space-y-6 animate-in slide-in-from-bottom-4">
             <div className="space-y-2">
               <h2 className="text-2xl font-black text-foreground">
-                ✨ Client Created Successfully!
+                {t("client_created_title")}
               </h2>
               <p className="text-sm text-muted-foreground">
-                Save these credentials now. The password is shown only here.
+                {t("save_credentials_notice")}
               </p>
             </div>
 
             {/* Email Display */}
             <div className="space-y-2">
               <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">
-                Generated Email
+                {t("generated_email")}
               </Label>
               <div className="flex items-center gap-2 bg-white/5 border border-white/5 rounded-xl px-4 py-3">
                 <span className="flex-1 text-sm font-mono font-bold text-emerald break-all">
@@ -480,7 +482,7 @@ export default function OwnersPage() {
             {/* Password Display */}
             <div className="space-y-2">
               <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">
-                Generated Password
+                {t("generated_password")}
               </Label>
               <div className="flex items-center gap-2 bg-white/5 border border-white/5 rounded-xl px-4 py-3">
                 <span className="flex-1 text-sm font-mono font-bold text-amber break-all">
@@ -515,7 +517,7 @@ export default function OwnersPage() {
             <div className="space-y-3 border-t border-white/5 pt-4">
               <div className="flex justify-between">
                 <span className="text-xs text-muted-foreground font-semibold">
-                  Name:
+                  {t("name_label")}
                 </span>
                 <span className="text-sm font-bold text-foreground">
                   {createdUser.fullname}
@@ -523,7 +525,7 @@ export default function OwnersPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-xs text-muted-foreground font-semibold">
-                  Role:
+                  {t("role_label")}
                 </span>
                 <span className="text-sm font-bold text-emerald uppercase">
                   {createdUser.role}
@@ -531,7 +533,7 @@ export default function OwnersPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-xs text-muted-foreground font-semibold">
-                  Phone:
+                  {t("phone_label")}
                 </span>
                 <span className="text-sm font-bold text-foreground">
                   {createdUser.phone}
@@ -545,7 +547,7 @@ export default function OwnersPage() {
                 onClick={() => setCreatedUser(null)}
                 className="flex-1 bg-emerald hover:bg-emerald/90 text-white font-bold h-11 rounded-xl"
               >
-                Done
+                {t("done")}
               </Button>
             </div>
           </div>

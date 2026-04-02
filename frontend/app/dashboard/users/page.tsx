@@ -46,6 +46,7 @@ import {
 } from "@/app/_components/ui/select";
 import { cn } from "@/app/_lib/utils";
 import { toast } from "sonner";
+import { useLang } from "@/app/_hooks/useLanguage";
 
 import {
   useUsers,
@@ -60,6 +61,8 @@ import type { User, UserRole, UserCreated } from "@/app/_lib/types/models";
 export default function UsersPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [selectedUser, setSelectedUser] = React.useState<User | null>(null);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [roleFilter, setRoleFilter] = React.useState<"all" | UserRole>("all");
   const [createdUser, setCreatedUser] = React.useState<UserCreated | null>(
     null,
   );
@@ -68,6 +71,7 @@ export default function UsersPage() {
   );
   const [showPassword, setShowPassword] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
+  const { t } = useLang();
 
   const { data: usersData, isLoading: usersLoading } = useUsers();
   const { data: clinicsData } = useClinics();
@@ -79,6 +83,20 @@ export default function UsersPage() {
 
   const users = (usersData?.data || []).filter((u) => u.role !== "client");
   const clinics = clinicsData?.data || [];
+
+  const filteredUsers = React.useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return users.filter((u) => {
+      const matchesRole = roleFilter === "all" || u.role === roleFilter;
+      const clinicName = getClinicName(u.clinic_id).toLowerCase();
+      const matchesSearch =
+        q.length === 0 ||
+        u.fullname.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        clinicName.includes(q);
+      return matchesRole && matchesSearch;
+    });
+  }, [users, searchQuery, roleFilter, clinics]);
 
   const formik = useFormik({
     initialValues: {
@@ -98,11 +116,11 @@ export default function UsersPage() {
               setIsFormOpen(false);
               setSubmitting(false);
               setCreatedUser(null);
-              toast.success("User updated successfully.");
+              toast.success(t("user_updated_success"));
             },
             onError: () => {
               setSubmitting(false);
-              toast.error("Failed to update user. Please try again.");
+              toast.error(t("user_update_failed"));
             },
           },
         );
@@ -113,11 +131,11 @@ export default function UsersPage() {
             setCreatedUser(data);
             setIsFormOpen(false);
             setSubmitting(false);
-            toast.success("User created successfully.");
+            toast.success(t("user_created_success"));
           },
           onError: () => {
             setSubmitting(false);
-            toast.error("Failed to create user. Please try again.");
+            toast.error(t("user_create_failed"));
           },
         });
       }
@@ -150,11 +168,11 @@ export default function UsersPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to deactivate or delete this user?")) {
+    if (confirm(t("confirm_delete_user"))) {
       deleteUser.mutate(id, {
-        onSuccess: () => toast.success("User deactivated successfully."),
+        onSuccess: () => toast.success(t("user_deactivated_success")),
         onError: () =>
-          toast.error("Failed to deactivate user. Please try again."),
+          toast.error(t("user_deactivate_failed")),
       });
     }
   };
@@ -165,17 +183,17 @@ export default function UsersPage() {
         setResettedUser(response.data);
         setShowPassword(false);
         setCopied(false);
-        toast.success("Password loaded successfully.");
+        toast.success(t("password_loaded_success"));
       },
-      onError: () => toast.error("Failed to load password. Please try again."),
+      onError: () => toast.error(t("password_load_failed")),
     });
   };
 
   const getClinicName = (clinicId: string | null) => {
-    if (!clinicId) return "Global";
+    if (!clinicId) return t("global");
     return (
       clinics.find((c) => c.clinic_id === clinicId)?.clinicName ||
-      "Unknown Clinic"
+      t("unknown_clinic")
     );
   };
 
@@ -184,10 +202,10 @@ export default function UsersPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-1.5">
           <h1 className="text-4xl font-black tracking-tight text-foreground">
-            User <span className="text-emerald">Management</span>
+            {t("user_management")}
           </h1>
           <p className="text-muted-foreground font-medium">
-            Manage your clinic staff, doctors, and administrators.
+            {t("manage_staff_and_doctors")}
           </p>
         </div>
         <Button
@@ -195,7 +213,7 @@ export default function UsersPage() {
           className="bg-emerald hover:bg-emerald/90 text-white font-black px-6 h-12 shadow-xl shadow-emerald/20 flex items-center gap-2 group transition-all duration-300"
         >
           <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-          Add New User
+          {t("add_new_user")}
         </Button>
       </div>
 
@@ -203,40 +221,45 @@ export default function UsersPage() {
         <div className="relative group md:col-span-2">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-emerald transition-colors" />
           <Input
-            placeholder="Search by name or email..."
+            placeholder={t("search_users")}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-12 h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
           />
         </div>
-        <Select defaultValue="all">
+        <Select
+          value={roleFilter}
+          onValueChange={(value) => setRoleFilter(value as "all" | UserRole)}
+        >
           <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
-            <SelectValue placeholder="Filter by Role" />
+            <SelectValue placeholder={t("filter_by_role")} />
           </SelectTrigger>
           <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5">
-            <SelectItem value="all">All Roles</SelectItem>
-            <SelectItem value="owner">Owner</SelectItem>
-            <SelectItem value="doctor">Doctor</SelectItem>
-            <SelectItem value="staff">Staff</SelectItem>
+            <SelectItem value="all">{t("all_roles")}</SelectItem>
+            <SelectItem value="owner">{t("owner")}</SelectItem>
+            <SelectItem value="doctor">{t("doctor")}</SelectItem>
+            <SelectItem value="staff">{t("staff")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <div className="relative group">
-        <div className="absolute -inset-0.5 bg-gradient-to-br from-emerald/10 to-transparent rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
-        <div className="relative bg-white/5 backdrop-blur-md rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl">
+        <div className="absolute -inset-0.5 bg-linear-to-br from-emerald/10 to-transparent rounded-4xl blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
+        <div className="relative bg-white/5 backdrop-blur-md rounded-4xl border border-white/5 overflow-hidden shadow-2xl">
           <Table>
             <TableHeader className="bg-white/5">
               <TableRow className="border-b border-white/5 hover:bg-transparent">
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
-                  User Info
+                  {t("user_info")}
                 </TableHead>
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
-                  Role
+                  {t("role")}
                 </TableHead>
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
-                  Clinic
+                  {t("clinic")}
                 </TableHead>
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
-                  Status
+                  {t("status")}
                 </TableHead>
                 <TableHead className="py-6 px-8 text-right"></TableHead>
               </TableRow>
@@ -248,27 +271,27 @@ export default function UsersPage() {
                     colSpan={5}
                     className="text-center py-8 text-muted-foreground"
                   >
-                    Loading users...
+                    {t("loading_users")}
                   </TableCell>
                 </TableRow>
-              ) : users.length === 0 ? (
+              ) : filteredUsers.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={5}
                     className="text-center py-8 text-muted-foreground"
                   >
-                    No users found.
+                    {t("no_users_found")}
                   </TableCell>
                 </TableRow>
               ) : (
-                users.map((user) => (
+                filteredUsers.map((user) => (
                   <TableRow
                     key={user.user_id}
                     className="border-b border-white/5 hover:bg-white/5 transition-colors group/row"
                   >
                     <TableCell className="py-6 px-8">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald/20 to-cyan/20 flex items-center justify-center text-emerald font-black text-lg shadow-inner">
+                        <div className="w-12 h-12 rounded-2xl bg-linear-to-br from-emerald/20 to-cyan/20 flex items-center justify-center text-emerald font-black text-lg shadow-inner">
                           {user.fullname?.[0]?.toUpperCase() || (
                             <UserIcon className="w-5 h-5" />
                           )}
@@ -312,7 +335,7 @@ export default function UsersPage() {
                             : "bg-red-500/10 text-red-400",
                         )}
                       >
-                        {user.is_active ? "Active" : "Inactive"}
+                        {user.is_active ? t("active") : t("inactive")}
                       </Badge>
                     </TableCell>
                     <TableCell className="py-6 px-8 text-right">
@@ -331,26 +354,26 @@ export default function UsersPage() {
                           className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2 w-48 shadow-2xl"
                         >
                           <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
-                            Actions
+                            {t("actions")}
                           </DropdownMenuLabel>
                           <DropdownMenuItem
                             onClick={() => handleOpenForm(user)}
                             className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold"
                           >
-                            Edit Profile
+                            {t("edit_profile")}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleResetPassword(user.user_id)}
                             className="rounded-xl py-3 focus:bg-blue-500/10 focus:text-blue-400 cursor-pointer font-bold"
                           >
-                            Show Password
+                            {t("show_password")}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="bg-white/5 mx-2" />
                           <DropdownMenuItem
                             onClick={() => handleDelete(user.user_id)}
                             className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
                           >
-                            {user.is_active ? "Deactivate" : "Delete"}
+                            {user.is_active ? t("deactivate") : t("delete_user")}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -365,11 +388,11 @@ export default function UsersPage() {
 
       {/* CRUD Form */}
       <DashboardForm
-        title={selectedUser ? "Edit User" : "Create New User"}
+        title={selectedUser ? t("edit_profile") : t("add_new_user")}
         description={
           selectedUser
-            ? `Modifying profile for ${selectedUser.fullname}`
-            : "Invite a new staff member to the platform."
+            ? `${t("modifying_profile_for")} ${selectedUser.fullname}`
+            : t("invite_new_staff")
         }
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
@@ -378,17 +401,17 @@ export default function UsersPage() {
         }
         submitLabel={
           formik.isSubmitting
-            ? "Saving..."
+            ? t("saving")
             : selectedUser
-              ? "Update User"
-              : "Create User"
+              ? t("edit_profile")
+              : t("add_new_user")
         }
       >
         <div className="space-y-8">
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-3">
               <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-                Full Name
+                {t("user_info")}
               </Label>
               <div className="relative group">
                 <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-emerald transition-colors" />
@@ -396,7 +419,7 @@ export default function UsersPage() {
                   name="fullname"
                   value={formik.values.fullname}
                   onChange={formik.handleChange}
-                  placeholder="Full name..."
+                  placeholder={t("user_info")}
                   className="pl-12 h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
                 />
               </div>
@@ -404,7 +427,7 @@ export default function UsersPage() {
 
             <div className="space-y-3">
               <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-                Phone Number
+                {t("phone")}
               </Label>
               <Input
                 name="phone"
@@ -419,7 +442,7 @@ export default function UsersPage() {
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-3">
               <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-                Role Type
+                {t("role")}
               </Label>
               <Select
                 value={formik.values.role}
@@ -447,14 +470,14 @@ export default function UsersPage() {
 
             <div className="space-y-3">
               <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-                Clinic Assignment
+                {t("clinic")}
               </Label>
               <Select
                 value={formik.values.clinic_id}
                 onValueChange={(val) => formik.setFieldValue("clinic_id", val)}
               >
                 <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-black uppercase tracking-tight text-left px-5">
-                  <SelectValue placeholder="Select Clinic" />
+                  <SelectValue placeholder={t("clinic")} />
                 </SelectTrigger>
                 <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
                   {clinics.map((clinic) => (
@@ -470,7 +493,7 @@ export default function UsersPage() {
                     value="none"
                     className="rounded-xl font-bold italic text-muted-foreground"
                   >
-                    Unassigned / Global
+                    {t("unassigned_global")}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -485,17 +508,17 @@ export default function UsersPage() {
           <div className="bg-sidebar/95 backdrop-blur-xl border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl space-y-6 animate-in slide-in-from-bottom-4">
             <div className="space-y-2">
               <h2 className="text-2xl font-black text-foreground">
-                ✨ User Created Successfully!
+                {t("user_created_title")}
               </h2>
               <p className="text-sm text-muted-foreground">
-                Save these credentials now. The password is shown only here.
+                {t("save_credentials_notice")}
               </p>
             </div>
 
             {/* Email Display */}
             <div className="space-y-2">
               <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">
-                Generated Email
+                {t("generated_email")}
               </Label>
               <div className="flex items-center gap-2 bg-white/5 border border-white/5 rounded-xl px-4 py-3">
                 <span className="flex-1 text-sm font-mono font-bold text-emerald break-all">
@@ -522,7 +545,7 @@ export default function UsersPage() {
             {/* Password Display */}
             <div className="space-y-2">
               <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">
-                Generated Password
+                {t("generated_password")}
               </Label>
               <div className="flex items-center gap-2 bg-white/5 border border-white/5 rounded-xl px-4 py-3">
                 <span className="flex-1 text-sm font-mono font-bold text-amber break-all">
@@ -557,7 +580,7 @@ export default function UsersPage() {
             <div className="space-y-3 border-t border-white/5 pt-4">
               <div className="flex justify-between">
                 <span className="text-xs text-muted-foreground font-semibold">
-                  Name:
+                  {t("name_label")}
                 </span>
                 <span className="text-sm font-bold text-foreground">
                   {createdUser.fullname}
@@ -565,7 +588,7 @@ export default function UsersPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-xs text-muted-foreground font-semibold">
-                  Role:
+                  {t("role_label")}
                 </span>
                 <span className="text-sm font-bold text-emerald uppercase">
                   {createdUser.role}
@@ -573,7 +596,7 @@ export default function UsersPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-xs text-muted-foreground font-semibold">
-                  Phone:
+                  {t("phone_label")}
                 </span>
                 <span className="text-sm font-bold text-foreground">
                   {createdUser.phone}
@@ -587,7 +610,7 @@ export default function UsersPage() {
                 onClick={() => setCreatedUser(null)}
                 className="flex-1 bg-emerald hover:bg-emerald/90 text-white font-bold h-11 rounded-xl"
               >
-                Done
+                {t("done")}
               </Button>
             </div>
           </div>
@@ -600,17 +623,17 @@ export default function UsersPage() {
           <div className="bg-sidebar/95 backdrop-blur-xl border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl space-y-6 animate-in slide-in-from-bottom-4">
             <div className="space-y-2">
               <h2 className="text-2xl font-black text-foreground">
-                🔐 Current Password
+                {t("current_password_title")}
               </h2>
               <p className="text-sm text-muted-foreground">
-                Here&apos;s the current password for this user.
+                {t("current_password_description")}
               </p>
             </div>
 
             {/* Current Password Display */}
             <div className="space-y-2">
               <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">
-                Password
+                {t("password")}
               </Label>
               <div className="flex items-center gap-2 bg-white/5 border border-white/5 rounded-xl px-4 py-3">
                 <span className="flex-1 text-sm font-mono font-bold text-blue-400 break-all">
@@ -649,7 +672,7 @@ export default function UsersPage() {
             <div className="space-y-3 border-t border-white/5 pt-4">
               <div className="flex justify-between">
                 <span className="text-xs text-muted-foreground font-semibold">
-                  Name:
+                  {t("name_label")}
                 </span>
                 <span className="text-sm font-bold text-foreground">
                   {resettedUser.fullname}
@@ -657,7 +680,7 @@ export default function UsersPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-xs text-muted-foreground font-semibold">
-                  Email:
+                  {t("email_label")}
                 </span>
                 <span className="text-sm font-bold text-emerald break-all">
                   {resettedUser.email}
@@ -671,7 +694,7 @@ export default function UsersPage() {
                 onClick={() => setResettedUser(null)}
                 className="flex-1 bg-emerald hover:bg-emerald/90 text-white font-bold h-11 rounded-xl"
               >
-                Done
+                {t("done")}
               </Button>
             </div>
           </div>

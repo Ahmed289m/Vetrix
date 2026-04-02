@@ -29,8 +29,8 @@ export function DashboardHeader({
   const { isDark, toggle } = useTheme();
   const { t, lang, setLang } = useLang();
   const { user } = useAuth();
-  const displayName = user?.fullname || user?.email?.split("@")[0] || "User";
-  const displayClinic = user?.clinicName || t("vet_clinic") || "Clinic";
+  const displayName = user?.fullname || user?.email?.split("@")[0] || t("user");
+  const displayClinic = user?.clinicName || t("vet_clinic") || t("clinic");
 
   const toggleTheme = () => {
     toggle();
@@ -82,7 +82,7 @@ export function DashboardHeader({
               </button>
             </TooltipTrigger>
             <TooltipContent className="bg-popover border-border/10 text-xs font-bold px-3 py-1.5 rounded-lg shadow-xl">
-              {lang === "ar" ? "Switch to EN" : "التبديل إلى العربية"}
+              {lang === "ar" ? t("switch_to_en") : t("switch_to_ar")}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
