@@ -310,7 +310,8 @@ export default function ClinicsPage() {
                             {t("configure_details")}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="bg-white/5 mx-2" />
-                          {(user?.role === "admin" || user?.role === "owner") && (
+                          {(user?.role === "admin" ||
+                            user?.role === "owner") && (
                             <DropdownMenuItem
                               onClick={() => handleDelete(clinic.clinic_id)}
                               className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
@@ -331,7 +332,9 @@ export default function ClinicsPage() {
 
       {/* CRUD Form */}
       <DashboardForm
-        title={selectedClinic ? t("update_clinic_details") : t("register_branch")}
+        title={
+          selectedClinic ? t("update_clinic_details") : t("register_branch")
+        }
         description={
           selectedClinic
             ? `${t("configuring_settings_for")} ${selectedClinic.clinicName}`

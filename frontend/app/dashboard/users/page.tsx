@@ -171,8 +171,7 @@ export default function UsersPage() {
     if (confirm(t("confirm_delete_user"))) {
       deleteUser.mutate(id, {
         onSuccess: () => toast.success(t("user_deactivated_success")),
-        onError: () =>
-          toast.error(t("user_deactivate_failed")),
+        onError: () => toast.error(t("user_deactivate_failed")),
       });
     }
   };
@@ -373,7 +372,9 @@ export default function UsersPage() {
                             onClick={() => handleDelete(user.user_id)}
                             className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
                           >
-                            {user.is_active ? t("deactivate") : t("delete_user")}
+                            {user.is_active
+                              ? t("deactivate")
+                              : t("delete_user")}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

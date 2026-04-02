@@ -210,7 +210,8 @@ export function OwnerDashboard() {
               {clinicStats.doctorsOnTeam + clinicStats.staffOnTeam}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {clinicStats.doctorsOnTeam} {t("doctors")}, {clinicStats.staffOnTeam} {t("staff")}
+              {clinicStats.doctorsOnTeam} {t("doctors")},{" "}
+              {clinicStats.staffOnTeam} {t("staff")}
             </p>
           </div>
         </div>

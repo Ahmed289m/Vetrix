@@ -95,10 +95,18 @@ export default function AppointmentsPage() {
         app.appointment_id.toLowerCase().includes(q) ||
         petName.includes(q) ||
         clientName.includes(q);
-      const matchesStatus = statusFilter === "all" || app.status === statusFilter;
+      const matchesStatus =
+        statusFilter === "all" || app.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [sortedAppointments, dateFilter, searchQuery, statusFilter, petsList, clientsList]);
+  }, [
+    sortedAppointments,
+    dateFilter,
+    searchQuery,
+    statusFilter,
+    petsList,
+    clientsList,
+  ]);
 
   const formik = useFormik({
     initialValues: {

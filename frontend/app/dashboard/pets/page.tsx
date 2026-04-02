@@ -332,7 +332,9 @@ export default function PetsPage() {
 
       {/* CRUD Form */}
       <DashboardForm
-        title={selectedPet ? t("update_patient_profile") : t("register_new_patient")}
+        title={
+          selectedPet ? t("update_patient_profile") : t("register_new_patient")
+        }
         description={
           selectedPet
             ? `${t("modifying_clinical_records_for")} ${selectedPet.name}`

@@ -228,7 +228,9 @@ export function StaffDashboard() {
         variants={fadeUp}
         className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-8 mt-8"
       >
-        <h3 className="text-lg font-bold mb-5">{t("staff_priority_summary")}</h3>
+        <h3 className="text-lg font-bold mb-5">
+          {t("staff_priority_summary")}
+        </h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
           <div className="rounded-xl border border-emerald/20 bg-emerald/5 p-4">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -238,7 +240,8 @@ export function StaffDashboard() {
               {staffStats.todayAppointments + staffStats.todayVisits}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {staffStats.todayAppointments} {t("appointments")}, {staffStats.todayVisits} {t("visits")}
+              {staffStats.todayAppointments} {t("appointments")},{" "}
+              {staffStats.todayVisits} {t("visits")}
             </p>
           </div>
           <div className="rounded-xl border border-cyan/20 bg-cyan/5 p-4">
@@ -270,7 +273,9 @@ export function StaffDashboard() {
               {staffStats.lowStockDrugs}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {staffStats.lowStockDrugs > 0 ? t("drugs_low") : t("stock_healthy")}
+              {staffStats.lowStockDrugs > 0
+                ? t("drugs_low")
+                : t("stock_healthy")}
             </p>
           </div>
         </div>
@@ -287,9 +292,12 @@ export function StaffDashboard() {
         >
           <AlertCircle className="w-5 h-5 text-coral mt-0.5 shrink-0" />
           <div>
-            <p className="font-semibold text-sm">{t("pending_prescriptions")}</p>
+            <p className="font-semibold text-sm">
+              {t("pending_prescriptions")}
+            </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {staffStats.pendingPrescriptions} - {t("pending_prescriptions_alert")}
+              {staffStats.pendingPrescriptions} -{" "}
+              {t("pending_prescriptions_alert")}
             </p>
           </div>
         </motion.div>

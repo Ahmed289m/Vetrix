@@ -135,8 +135,7 @@ export default function OwnersPage() {
     if (confirm(t("confirm_delete_client"))) {
       deleteUser.mutate(ownerId, {
         onSuccess: () => toast.success(t("client_deactivated_success")),
-        onError: () =>
-          toast.error(t("client_deactivate_failed")),
+        onError: () => toast.error(t("client_deactivate_failed")),
       });
     }
   };
@@ -201,7 +200,9 @@ export default function OwnersPage() {
         onSubmit={(e) =>
           formikOwner.handleSubmit(e as React.FormEvent<HTMLFormElement>)
         }
-        submitLabel={formikOwner.isSubmitting ? t("creating") : t("create_owner")}
+        submitLabel={
+          formikOwner.isSubmitting ? t("creating") : t("create_owner")
+        }
       >
         <div className="space-y-6">
           <div className="space-y-2">
@@ -238,7 +239,9 @@ export default function OwnersPage() {
         onSubmit={(e) =>
           formikPet.handleSubmit(e as React.FormEvent<HTMLFormElement>)
         }
-        submitLabel={formikPet.isSubmitting ? t("registering") : t("register_pet")}
+        submitLabel={
+          formikPet.isSubmitting ? t("registering") : t("register_pet")
+        }
       >
         <div className="space-y-6">
           <div className="space-y-2">
@@ -425,7 +428,8 @@ export default function OwnersPage() {
                               onClick={() => handleDeleteOwner(owner.user_id)}
                               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-coral/10 border border-coral/20 text-coral hover:bg-coral/20"
                             >
-                              <Trash2 className="w-3.5 h-3.5" /> {t("remove_owner")}
+                              <Trash2 className="w-3.5 h-3.5" />{" "}
+                              {t("remove_owner")}
                             </button>
                           )}
                         </div>

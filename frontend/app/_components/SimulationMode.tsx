@@ -529,7 +529,9 @@ export default function SimulationMode({ role }: Props) {
                     className="w-2 h-2 rounded-full bg-cyan"
                   />
                 )}
-                {currentCase.status === "waiting" ? t("waiting") : t("in_progress")}
+                {currentCase.status === "waiting"
+                  ? t("waiting")
+                  : t("in_progress")}
               </span>
             </div>
 
@@ -621,7 +623,7 @@ export default function SimulationMode({ role }: Props) {
               <span
                 className={`text-[10px] px-2 py-1 rounded-lg font-bold uppercase ${severityConfig[nextCase.severity].bg} ${severityConfig[nextCase.severity].text}`}
               >
-                  {t(severityConfig[nextCase.severity].labelKey)}
+                {t(severityConfig[nextCase.severity].labelKey)}
               </span>
             </div>
           </motion.div>
@@ -733,7 +735,9 @@ export default function SimulationMode({ role }: Props) {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Pill className="w-5 h-5 text-emerald" />
-                  <h3 className="text-lg font-bold">{t("prescribe_medication")}</h3>
+                  <h3 className="text-lg font-bold">
+                    {t("prescribe_medication")}
+                  </h3>
                 </div>
                 <button
                   onClick={() => {
