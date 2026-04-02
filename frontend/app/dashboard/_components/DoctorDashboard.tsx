@@ -47,7 +47,11 @@ const fadeUp = {
 };
 
 const quickActions = [
-  { titleKey: "add_patient", icon: UserPlus, gradient: "gradient-emerald-cyan" },
+  {
+    titleKey: "add_patient",
+    icon: UserPlus,
+    gradient: "gradient-emerald-cyan",
+  },
   { titleKey: "new_appt", icon: Plus, gradient: "gradient-emerald-cyan" },
   { titleKey: "prescription", icon: FileText, gradient: "gradient-cyan-blue" },
   { titleKey: "consultation", icon: Video, gradient: "gradient-cyan-blue" },
@@ -99,11 +103,14 @@ export function DoctorDashboard() {
       .map((apt: any) => {
         const pet = pets.find((p: any) => p.pet_id === apt.pet_id);
         const client = users.find((u: any) => u.user_id === apt.client_id);
-        const time = new Date(apt.appointment_date).toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true,
-        });
+        const time = new Date(apt.appointment_date).toLocaleTimeString(
+          "en-US",
+          {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          },
+        );
 
         return {
           time,
@@ -122,10 +129,10 @@ export function DoctorDashboard() {
   // Calculate stats
   const stats = useMemo(() => {
     const confirmed = appointments.filter(
-      (apt: any) => apt.status === "confirmed"
+      (apt: any) => apt.status === "confirmed",
     ).length;
     const pending = appointments.filter(
-      (apt: any) => apt.status === "pending"
+      (apt: any) => apt.status === "pending",
     ).length;
     const total = appointments.length;
 
@@ -178,11 +185,16 @@ export function DoctorDashboard() {
       >
         <div>
           <p className="text-xs font-semibold text-emerald uppercase tracking-widest mb-1">
-            {lang === "ar" ? "مرحبا" : formatGreeting(
-              user?.fullname || "Doctor",
-              user?.role || "doctor",
-              lang as any
-            ).split(" ").slice(0, 2).join(" ")}
+            {lang === "ar"
+              ? "مرحبا"
+              : formatGreeting(
+                  user?.fullname || "Doctor",
+                  user?.role || "doctor",
+                  lang as any,
+                )
+                  .split(" ")
+                  .slice(0, 2)
+                  .join(" ")}
           </p>
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-arabic">
             {lang === "ar" ? "أهلا وسهلا" : "Welcome"}{" "}
@@ -216,7 +228,13 @@ export function DoctorDashboard() {
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${showSim ? "bg-coral/10 border border-coral/30 text-coral" : "gradient-emerald-cyan text-primary-foreground glow-emerald"}`}
           >
             <Play className="w-3.5 h-3.5" />{" "}
-            {showSim ? (lang === "ar" ? "خروج" : "Exit Sim") : (lang === "ar" ? "محاكاة" : "Simulation")}
+            {showSim
+              ? lang === "ar"
+                ? "خروج"
+                : "Exit Sim"
+              : lang === "ar"
+                ? "محاكاة"
+                : "Simulation"}
           </motion.button>
           <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald/10 border border-emerald/20">
             <div className="w-2 h-2 rounded-full bg-emerald animate-pulse" />
@@ -288,7 +306,8 @@ export function DoctorDashboard() {
                 </h3>
               </div>
               <span className="text-xs font-bold text-emerald tabular-nums">
-                {todayAppointments.length} {lang === "ar" ? "مجدول" : "Scheduled"}
+                {todayAppointments.length}{" "}
+                {lang === "ar" ? "مجدول" : "Scheduled"}
               </span>
             </div>
             <div className="relative space-y-0">

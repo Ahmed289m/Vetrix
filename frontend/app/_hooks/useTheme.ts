@@ -11,7 +11,7 @@ export function useTheme() {
 
   useEffect(() => {
     const root = document.documentElement;
-    
+
     // Use requestAnimationFrame for better performance
     requestAnimationFrame(() => {
       root.classList.add("theme-transitioning");

@@ -7,9 +7,10 @@ export type DateRangeFilter = "today" | "week" | "month" | "all";
 /**
  * Get date range for filtering
  */
-export function getDateRange(
-  filter: DateRangeFilter
-): { start: Date; end: Date } {
+export function getDateRange(filter: DateRangeFilter): {
+  start: Date;
+  end: Date;
+} {
   const end = new Date();
   const start = new Date();
 
@@ -38,7 +39,7 @@ export function getDateRange(
 export function filterByDateRange<T extends Record<string, any>>(
   items: T[],
   dateField: keyof T,
-  filter: DateRangeFilter
+  filter: DateRangeFilter,
 ): T[] {
   const { start, end } = getDateRange(filter);
 
@@ -54,7 +55,7 @@ export function filterByDateRange<T extends Record<string, any>>(
 export function sortByDate<T extends Record<string, any>>(
   items: T[],
   dateField: keyof T,
-  order: "asc" | "desc" = "desc"
+  order: "asc" | "desc" = "desc",
 ): T[] {
   return [...items].sort((a, b) => {
     const dateA = new Date(a[dateField]).getTime();

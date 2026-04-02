@@ -153,87 +153,87 @@ export default function FinancesPage() {
             <TableBody>
               {transactions && transactions.length > 0 ? (
                 transactions.map((tx) => (
-                <TableRow
-                  key={tx.id}
-                  className="border-b border-border/10 hover:bg-muted/40 transition-colors group/row"
-                >
-                  <TableCell className="py-6 px-8">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[10px] font-black tracking-widest text-emerald bg-emerald/5 w-fit px-2 py-0.5 rounded-md uppercase">
-                        {tx.id}
-                      </span>
-                      <span className="font-black text-foreground group-hover/row:text-emerald transition-colors tracking-tight">
-                        {tx.client}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-6 px-8">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-sm font-bold text-foreground/80 leading-none">
-                        {tx.category}
-                      </span>
-                      <span className="text-xs text-muted-foreground/40 font-bold">
-                        {tx.date}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-6 px-8">
-                    <span
-                      className={cn(
-                        "text-lg font-black tracking-tight",
-                        tx.amount > 0 ? "text-emerald" : "text-white/80",
-                      )}
-                    >
-                      {tx.amount > 0
-                        ? `+ $${tx.amount}`
-                        : `- $${Math.abs(tx.amount)}`}
-                    </span>
-                  </TableCell>
-                  <TableCell className="py-6 px-8">
-                    <Badge
-                      className={cn(
-                        "rounded-full px-4 py-1 text-[10px] font-black uppercase tracking-widest border-none",
-                        tx.status === "Paid"
-                          ? "bg-emerald/10 text-emerald"
-                          : "bg-orange-500/10 text-orange-400",
-                      )}
-                    >
-                      {tx.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="py-6 px-8 text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="group-hover/row:bg-muted/50 rounded-xl h-10 w-10"
-                        >
-                          <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        align="end"
-                        className="bg-popover/95 backdrop-blur-xl border-border/10 rounded-2xl p-2 w-56 shadow-2xl"
+                  <TableRow
+                    key={tx.id}
+                    className="border-b border-border/10 hover:bg-muted/40 transition-colors group/row"
+                  >
+                    <TableCell className="py-6 px-8">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-black tracking-widest text-emerald bg-emerald/5 w-fit px-2 py-0.5 rounded-md uppercase">
+                          {tx.id}
+                        </span>
+                        <span className="font-black text-foreground group-hover/row:text-emerald transition-colors tracking-tight">
+                          {tx.client}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-6 px-8">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm font-bold text-foreground/80 leading-none">
+                          {tx.category}
+                        </span>
+                        <span className="text-xs text-muted-foreground/40 font-bold">
+                          {tx.date}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-6 px-8">
+                      <span
+                        className={cn(
+                          "text-lg font-black tracking-tight",
+                          tx.amount > 0 ? "text-emerald" : "text-white/80",
+                        )}
                       >
-                        <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
-                          Treasury Actions
-                        </DropdownMenuLabel>
-                        <DropdownMenuItem className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2">
-                          <Receipt className="w-4 h-4" /> View Receipt
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2">
-                          <Download className="w-4 h-4" /> Export Ledger
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-muted/40 mx-2" />
-                        <DropdownMenuItem className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold">
-                          Void Transaction
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
+                        {tx.amount > 0
+                          ? `+ $${tx.amount}`
+                          : `- $${Math.abs(tx.amount)}`}
+                      </span>
+                    </TableCell>
+                    <TableCell className="py-6 px-8">
+                      <Badge
+                        className={cn(
+                          "rounded-full px-4 py-1 text-[10px] font-black uppercase tracking-widest border-none",
+                          tx.status === "Paid"
+                            ? "bg-emerald/10 text-emerald"
+                            : "bg-orange-500/10 text-orange-400",
+                        )}
+                      >
+                        {tx.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="py-6 px-8 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="group-hover/row:bg-muted/50 rounded-xl h-10 w-10"
+                          >
+                            <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="bg-popover/95 backdrop-blur-xl border-border/10 rounded-2xl p-2 w-56 shadow-2xl"
+                        >
+                          <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
+                            Treasury Actions
+                          </DropdownMenuLabel>
+                          <DropdownMenuItem className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2">
+                            <Receipt className="w-4 h-4" /> View Receipt
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2">
+                            <Download className="w-4 h-4" /> Export Ledger
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator className="bg-muted/40 mx-2" />
+                          <DropdownMenuItem className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold">
+                            Void Transaction
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="py-8 text-center">

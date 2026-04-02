@@ -8,7 +8,13 @@ import { usePets } from "@/app/_hooks/queries/use-pets";
 import { useAppointments } from "@/app/_hooks/queries/use-appointments";
 import { usePrescriptions } from "@/app/_hooks/queries/use-prescriptions";
 import { useVisits } from "@/app/_hooks/queries/use-visits";
-import type { Appointment, Pet, Prescription, User, Visit } from "@/app/_lib/types/models";
+import type {
+  Appointment,
+  Pet,
+  Prescription,
+  User,
+  Visit,
+} from "@/app/_lib/types/models";
 
 const EMPTY_USERS: User[] = [];
 const EMPTY_PETS: Pet[] = [];
@@ -160,7 +166,9 @@ export function OwnerDashboard() {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.2 }}
               >
-                {typeof s.value === "number" ? s.value.toLocaleString() : s.value}
+                {typeof s.value === "number"
+                  ? s.value.toLocaleString()
+                  : s.value}
               </motion.p>
               <p className="text-sm text-muted-foreground mt-1 font-medium">
                 {s.label}
@@ -200,13 +208,15 @@ export function OwnerDashboard() {
               {clinicStats.doctorsOnTeam + clinicStats.staffOnTeam}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {clinicStats.doctorsOnTeam} doctors, {clinicStats.staffOnTeam} staff
+              {clinicStats.doctorsOnTeam} doctors, {clinicStats.staffOnTeam}{" "}
+              staff
             </p>
           </div>
         </div>
         <div className="mt-6 inline-flex items-center gap-2 rounded-xl border border-border/40 px-3 py-2 text-xs text-muted-foreground">
           <Activity className="w-3.5 h-3.5 text-emerald" />
-          Data is sourced from users, pets, appointments, prescriptions, and visits.
+          Data is sourced from users, pets, appointments, prescriptions, and
+          visits.
         </div>
       </motion.div>
     </motion.div>
