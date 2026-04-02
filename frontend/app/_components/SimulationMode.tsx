@@ -293,7 +293,10 @@ export default function SimulationMode({ role }: Props) {
       } satisfies VisitCreate,
       {
         onSuccess: (visitData) => {
-          console.log("[SimulationMode] Visit created successfully:", visitData);
+          console.log(
+            "[SimulationMode] Visit created successfully:",
+            visitData,
+          );
           setShowVisitModal(false);
           setVisitNotes("");
         },
@@ -324,8 +327,7 @@ export default function SimulationMode({ role }: Props) {
       } satisfies PrescriptionItemCreate,
       {
         onSuccess: (itemData) => {
-          const prescriptionItemId =
-            itemData.data.prescriptionItem_id;
+          const prescriptionItemId = itemData.data.prescriptionItem_id;
           console.log(
             "[SimulationMode] Prescription item created:",
             prescriptionItemId,
