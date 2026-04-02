@@ -8,6 +8,7 @@ export type PetType = "cat" | "dog";
 export interface Pet {
   pet_id: string;
   name: string;
+  breed?: string;
   weight: number;
   type: PetType;
   client_id: string;

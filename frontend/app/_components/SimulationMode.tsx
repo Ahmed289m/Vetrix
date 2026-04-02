@@ -24,6 +24,15 @@ import { useCreatePrescriptionItem } from "@/app/_hooks/queries/use-prescription
 import { useDrugs } from "@/app/_hooks/queries/use-drugs";
 import { useWebSocket } from "@/app/_hooks/useWebSocket";
 import { useAuth } from "@/app/_hooks/useAuth";
+import type {
+  Appointment,
+  Drug,
+  Pet,
+  PrescriptionCreate,
+  PrescriptionItemCreate,
+  User,
+  VisitCreate,
+} from "@/app/_lib/types/models";
 
 interface SimCase {
   id: string;
@@ -66,7 +75,9 @@ interface Props {
 }
 
 export default function SimulationMode({ role }: Props) {
-  const [cases, setCases] = useState<SimCase[]>([]);
+  const [caseStatuses, setCaseStatuses] = useState<
+    Record<string, SimCase["status"]>
+  >({});
   const [currentIdx, setCurrentIdx] = useState(0);
   const [showVisitModal, setShowVisitModal] = useState(false);
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
@@ -154,21 +165,21 @@ export default function SimulationMode({ role }: Props) {
 
   // Convert real appointments to simulation cases
   const confirmedCases = useMemo(() => {
-    const appointments = appointmentsData?.data || [];
-    const pets = petsData?.data || [];
-    const users = usersData?.data || [];
+    const appointments: Appointment[] = appointmentsData?.data || [];
+    const pets: Pet[] = petsData?.data || [];
+    const users: User[] = usersData?.data || [];
 
     console.log("[SimulationMode] Data loaded:", {
       appointmentsCount: appointments.length,
       petsCount: pets.length,
       usersCount: users.length,
-      appointmentStatuses: appointments.map((apt: any) => apt.status),
+      appointmentStatuses: appointments.map((apt) => apt.status),
     });
 
     // Filter for confirmed appointments (not pending or completed), sort by date
     const confirmed = appointments
-      .filter((apt: any) => apt.status === "confirmed")
-      .sort((a: any, b: any) => {
+      .filter((apt) => apt.status === "confirmed")
+      .sort((a, b) => {
         const dateA = a.appointment_date
           ? new Date(a.appointment_date).getTime()
           : 0;
@@ -177,12 +188,12 @@ export default function SimulationMode({ role }: Props) {
           : 0;
         return dateA - dateB;
       })
-      .map((apt: any, index: number) => {
-        const pet = pets.find((p: any) => p.pet_id === apt.pet_id);
+      .map((apt, index) => {
+        const pet = pets.find((p) => p.pet_id === apt.pet_id);
         const doctor = apt.doctor_id
-          ? users.find((u: any) => u.user_id === apt.doctor_id)
+          ? users.find((u) => u.user_id === apt.doctor_id)
           : null;
-        const client = users.find((u: any) => u.user_id === apt.client_id);
+        const client = users.find((u) => u.user_id === apt.client_id);
 
         return {
           id: apt.appointment_id,
@@ -204,40 +215,34 @@ export default function SimulationMode({ role }: Props) {
     return confirmed;
   }, [appointmentsData, petsData, usersData]);
 
+  const cases = useMemo(
+    () =>
+      confirmedCases.map((confirmedCase) => ({
+        ...confirmedCase,
+        status: caseStatuses[confirmedCase.id] ?? confirmedCase.status,
+      })),
+    [confirmedCases, caseStatuses],
+  );
+
   // Update local state when confirmed cases change
-  const currentCase = cases[currentIdx];
-  const nextCase = cases[currentIdx + 1] || null;
-  const allDone = currentIdx >= cases.length;
-
-  // Initialize cases from confirmed appointments and re-sync when data changes
-  useEffect(() => {
-    if (confirmedCases.length > 0) {
-      // Keep current case status if it's in progress, otherwise reset
-      const newCases = confirmedCases.map((newCase) => {
-        const existingCase = cases.find((c) => c.id === newCase.id);
-        return existingCase?.status === "in-progress"
-          ? { ...newCase, status: "in-progress" }
-          : newCase;
-      });
-      setCases(newCases);
-
-      // Reset index if it exceeds the new cases length
-      if (currentIdx >= newCases.length && newCases.length > 0) {
-        setCurrentIdx(0);
-      }
-    }
-  }, [confirmedCases]);
+  const activeIdx =
+    currentIdx >= cases.length && cases.length > 0 ? 0 : currentIdx;
+  const currentCase = cases[activeIdx];
+  const nextCase = cases[activeIdx + 1] || null;
+  const allDone = activeIdx >= cases.length;
 
   const handleStart = () => {
-    setCases((prev) =>
-      prev.map((c, i) =>
-        i === currentIdx ? { ...c, status: "in-progress" } : c,
-      ),
-    );
+    const currentCaseId = cases[activeIdx]?.id;
+    if (!currentCaseId) return;
+
+    setCaseStatuses((prev) => ({
+      ...prev,
+      [currentCaseId]: "in-progress",
+    }));
   };
 
   const handleComplete = () => {
-    const completeCase = cases[currentIdx];
+    const completeCase = cases[activeIdx];
     if (!completeCase) return;
 
     console.log(
@@ -254,17 +259,15 @@ export default function SimulationMode({ role }: Props) {
         data: { status: "completed" },
       },
       {
-        onSuccess: (data) => {
+        onSuccess: () => {
           console.log(
             "[SimulationMode] Case completed successfully:",
             completeCase.id,
           );
-          // Move to next case after successful update
-          setCases((prev) =>
-            prev.map((c, i) =>
-              i === currentIdx ? { ...c, status: "completed" } : c,
-            ),
-          );
+          setCaseStatuses((prev) => ({
+            ...prev,
+            [completeCase.id]: "completed",
+          }));
           setCurrentIdx((prev) => prev + 1);
         },
         onError: (error) => {
@@ -275,7 +278,7 @@ export default function SimulationMode({ role }: Props) {
   };
 
   const handleCreateVisit = () => {
-    const currentCase = cases[currentIdx];
+    const currentCase = cases[activeIdx];
     if (!currentCase || !user) return;
 
     console.log("[SimulationMode] Creating visit for case:", currentCase.id);
@@ -284,13 +287,13 @@ export default function SimulationMode({ role }: Props) {
       {
         pet_id: currentCase.petId,
         client_id: currentCase.clientId,
-        doctor_id: user.user_id,
+        doctor_id: user.userId,
         notes: visitNotes || "Visit created from simulation mode",
         date: new Date().toISOString(),
-      } as any,
+      } satisfies VisitCreate,
       {
-        onSuccess: (data) => {
-          console.log("[SimulationMode] Visit created successfully:", data);
+        onSuccess: (visitData) => {
+          console.log("[SimulationMode] Visit created successfully:", visitData);
           setShowVisitModal(false);
           setVisitNotes("");
         },
@@ -302,7 +305,7 @@ export default function SimulationMode({ role }: Props) {
   };
 
   const handleCreatePrescription = () => {
-    const currentCase = cases[currentIdx];
+    const currentCase = cases[activeIdx];
     if (!currentCase || !selectedDrugId || !drugDose) {
       console.warn("[SimulationMode] Missing required prescription fields");
       return;
@@ -318,11 +321,11 @@ export default function SimulationMode({ role }: Props) {
       {
         drug_id: selectedDrugId,
         drugDose: drugDose,
-      } as any,
+      } satisfies PrescriptionItemCreate,
       {
-        onSuccess: (itemData: any) => {
+        onSuccess: (itemData) => {
           const prescriptionItemId =
-            itemData.data?.prescriptionItem_id || itemData.prescriptionItem_id;
+            itemData.data.prescriptionItem_id;
           console.log(
             "[SimulationMode] Prescription item created:",
             prescriptionItemId,
@@ -334,12 +337,12 @@ export default function SimulationMode({ role }: Props) {
               client_id: currentCase.clientId,
               pet_id: currentCase.petId,
               prescriptionItem_id: prescriptionItemId,
-            } as any,
+            } satisfies PrescriptionCreate,
             {
-              onSuccess: (data) => {
+              onSuccess: (prescriptionData) => {
                 console.log(
                   "[SimulationMode] Prescription created successfully:",
-                  data,
+                  prescriptionData,
                 );
                 setShowPrescriptionModal(false);
                 setSelectedDrugId("");
@@ -765,9 +768,9 @@ export default function SimulationMode({ role }: Props) {
                     className="w-full px-3 py-2 rounded-lg bg-muted/30 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50"
                   >
                     <option value="">Select a drug...</option>
-                    {(drugsData?.data || []).map((drug: any) => (
+                    {(drugsData?.data || []).map((drug: Drug) => (
                       <option key={drug.drug_id} value={drug.drug_id}>
-                        {drug.name} ({drug.dosage})
+                        {drug.drugName}
                       </option>
                     ))}
                   </select>
