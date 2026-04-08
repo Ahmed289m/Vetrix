@@ -199,7 +199,7 @@ export default function VisitsPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()}
-              className="glass-card p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto custom-scrollbar space-y-5 shadow-[0_0_50px_-12px_rgba(16,185,129,0.15)] rounded-[2.5rem]"
+              className="glass-card p-4 sm:p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto custom-scrollbar space-y-5 shadow-[0_0_50px_-12px_rgba(16,185,129,0.15)] rounded-3xl sm:rounded-[2.5rem]"
             >
               <div className="flex items-start justify-between">
                 <div>

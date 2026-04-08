@@ -62,6 +62,7 @@ export default function OwnersPage() {
   const [copied, setCopied] = useState(false);
   const { user } = useAuth();
   const { t } = useLang();
+  const isAdminReadOnly = user?.role === "admin";
 
   const { data: usersData, isLoading: usersLoading } = useUsers();
   const { data: petsData } = usePets();
@@ -86,6 +87,12 @@ export default function OwnersPage() {
       role: "client" as UserRole,
     },
     onSubmit: (values, { setSubmitting, resetForm }) => {
+      if (isAdminReadOnly) {
+        setSubmitting(false);
+        toast.error("Admin can only view clients.");
+        return;
+      }
+
       createUser.mutate(values, {
         onSuccess: (data: UserCreated) => {
           setCreatedUser(data);
@@ -110,6 +117,12 @@ export default function OwnersPage() {
       client_id: "",
     },
     onSubmit: (values, { setSubmitting, resetForm }) => {
+      if (isAdminReadOnly) {
+        setSubmitting(false);
+        toast.error("Admin can only view clients.");
+        return;
+      }
+
       createPet.mutate(values, {
         onSuccess: () => {
           setShowAddPet(null);
@@ -126,12 +139,22 @@ export default function OwnersPage() {
   });
 
   const handleOpenAddPet = (ownerId: string) => {
+    if (isAdminReadOnly) {
+      toast.error("Admin can only view clients.");
+      return;
+    }
+
     formikPet.resetForm();
     formikPet.setFieldValue("client_id", ownerId);
     setShowAddPet(ownerId);
   };
 
   const handleDeleteOwner = (ownerId: string) => {
+    if (isAdminReadOnly) {
+      toast.error("Admin can only view clients.");
+      return;
+    }
+
     if (confirm(t("confirm_delete_client"))) {
       deleteUser.mutate(ownerId, {
         onSuccess: () => toast.success(t("client_deactivated_success")),
@@ -169,14 +192,16 @@ export default function OwnersPage() {
             {clients.length} {t("registered_owners")}
           </p>
         </div>
-        <motion.button
-          whileHover={{ y: -1 }}
-          whileTap={{ scale: 0.97 }}
-          onClick={() => setShowCreateOwner(true)}
-          className="flex items-center gap-2 gradient-emerald-cyan text-primary-foreground px-5 py-3 rounded-xl text-sm font-bold glow-emerald ripple"
-        >
-          <UserPlus className="w-4 h-4" /> {t("new_owner")}
-        </motion.button>
+        {!isAdminReadOnly && (
+          <motion.button
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => setShowCreateOwner(true)}
+            className="flex items-center gap-2 gradient-emerald-cyan text-primary-foreground px-5 py-3 rounded-xl text-sm font-bold glow-emerald ripple"
+          >
+            <UserPlus className="w-4 h-4" /> {t("new_owner")}
+          </motion.button>
+        )}
       </motion.div>
 
       <motion.div variants={fadeUp}>
@@ -383,12 +408,14 @@ export default function OwnersPage() {
                             <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                               {t("pets")}
                             </span>
-                            <button
-                              onClick={() => handleOpenAddPet(owner.user_id)}
-                              className="flex items-center gap-1 text-xs font-semibold text-emerald hover:underline"
-                            >
-                              <Plus className="w-3 h-3" /> {t("add_pet")}
-                            </button>
+                            {!isAdminReadOnly && (
+                              <button
+                                onClick={() => handleOpenAddPet(owner.user_id)}
+                                className="flex items-center gap-1 text-xs font-semibold text-emerald hover:underline"
+                              >
+                                <Plus className="w-3 h-3" /> {t("add_pet")}
+                              </button>
+                            )}
                           </div>
                           {ownerPets.length === 0 ? (
                             <p className="text-xs text-muted-foreground/50 italic">
@@ -422,8 +449,7 @@ export default function OwnersPage() {
                           )}
                         </div>
                         <div className="flex items-center gap-2 pt-2">
-                          {(user?.role === "owner" ||
-                            user?.role === "admin") && (
+                          {user?.role === "owner" && (
                             <button
                               onClick={() => handleDeleteOwner(owner.user_id)}
                               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-coral/10 border border-coral/20 text-coral hover:bg-coral/20"

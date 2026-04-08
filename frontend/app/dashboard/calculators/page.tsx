@@ -68,7 +68,7 @@ const calculatorTools = [
 export default function CalculatorsPage() {
   const { t } = useLang();
   return (
-    <div className="p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="space-y-1.5">
         <div className="flex items-center gap-2 mb-2">
           <Calculator className="w-5 h-5 text-emerald" />
@@ -76,7 +76,7 @@ export default function CalculatorsPage() {
             {t("clinical_decision_support")}
           </span>
         </div>
-        <h1 className="text-4xl font-black tracking-tight text-foreground">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground">
           {t("medical_calculators_title")}
         </h1>
         <p className="text-muted-foreground font-medium max-w-2xl">
@@ -88,7 +88,7 @@ export default function CalculatorsPage() {
         {calculatorTools.map((tool, index) => (
           <div
             key={index}
-            className="group relative bg-muted/40 backdrop-blur-md rounded-[2.5rem] border border-border/10 p-8 transition-all duration-500 hover:scale-[1.02] hover:bg-muted/50"
+            className="group relative bg-muted/40 backdrop-blur-md rounded-3xl sm:rounded-[2.5rem] border border-border/10 p-5 sm:p-6 lg:p-8 transition-all duration-500 hover:scale-[1.02] hover:bg-muted/50"
           >
             <div className="absolute top-6 right-8 opacity-0 group-hover:opacity-100 transition-opacity">
               <ChevronRight className="w-6 h-6 text-emerald" />
@@ -96,7 +96,7 @@ export default function CalculatorsPage() {
 
             <div
               className={cn(
-                "w-16 h-16 rounded-[1.5rem] bg-gradient-to-br flex items-center justify-center mb-6 shadow-inner",
+                "w-16 h-16 rounded-3xl bg-linear-to-br flex items-center justify-center mb-6 shadow-inner",
                 tool.color,
               )}
             >
@@ -121,7 +121,7 @@ export default function CalculatorsPage() {
       </div>
 
       {/* Featured Tool (Quick Access) */}
-      <div className="relative overflow-hidden bg-emerald/10 backdrop-blur-xl border border-emerald/20 rounded-[3rem] p-10 mt-12 group">
+      <div className="relative overflow-hidden bg-emerald/10 backdrop-blur-xl border border-emerald/20 rounded-3xl sm:rounded-[3rem] p-6 sm:p-8 lg:p-10 mt-10 sm:mt-12 group">
         <div className="absolute -top-24 -right-24 w-64 h-64 bg-emerald/20 rounded-full blur-[100px] group-hover:bg-emerald/30 transition-all duration-1000" />
         <div className="relative flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="space-y-4 text-center md:text-left">

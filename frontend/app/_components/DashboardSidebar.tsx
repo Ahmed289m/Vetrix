@@ -11,6 +11,7 @@ import {
   SidebarMenuItem,
   SidebarGroup,
   SidebarGroupLabel,
+  useSidebar,
 } from "@/app/_components/ui/sidebar";
 import { useLang } from "@/app/_hooks/useLanguage";
 import { usePathname } from "next/navigation";
@@ -113,6 +114,13 @@ export function DashboardSidebar({ role }: { role: Role }) {
   const pathname = usePathname();
   const { t } = useLang();
   const { logout, isLoggingOut } = useAuth();
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  const handleNavClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   const filtered = navItems.filter((item) => item.roles.includes(role));
 
@@ -125,14 +133,14 @@ export function DashboardSidebar({ role }: { role: Role }) {
       {" "}
       <SidebarHeader className="pt-8 pb-2 border-b border-border/10">
         <div className="flex flex-col items-center text-center">
-          <div className="relative group">
-            <div className="absolute -inset-1 from-emerald to-cyan rounded-xl blur opacity-25 group-hover:opacity-50 transition duration-500" />
+          <div className="relative group/sidebar-logo">
+            <div className="absolute -inset-1 from-emerald to-cyan rounded-xl blur opacity-25 group-hover/sidebar-logo:opacity-50 transition duration-500" />
             <Image
               src="/logo.svg"
               alt="Vetrix logo"
               width={110}
               height={110}
-              className="relative w-27.5 h-27.5 object-contain transform group-hover:scale-105 transition-transform duration-300"
+              className="relative w-27.5 h-27.5 object-contain transform group-hover/sidebar-logo:scale-105 transition-transform duration-300"
             />
           </div>
           <div className="flex items-center gap-1.5 mt-2">
@@ -160,24 +168,24 @@ export function DashboardSidebar({ role }: { role: Role }) {
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
-                      className={`relative flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-colors duration-200 group overflow-hidden ${
+                      className={`relative flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-colors duration-200 group/nav-item overflow-hidden ${
                         isActive
                           ? "bg-emerald/10 text-emerald"
                           : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
                       }`}
                     >
-                      <Link href={item.href} prefetch={true}>
+                      <Link href={item.href} prefetch={true} onClick={handleNavClick}>
                         {isActive && (
                           <div className="absolute left-0 top-1/4 bottom-1/4 w-1 gradient-emerald-cyan rounded-r-full shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
                         )}
                         <div
-                          className={`transition-transform duration-300 group-hover:scale-110 ${isActive ? "text-emerald" : "group-hover:text-emerald"}`}
+                          className={`transition-transform duration-300 group-hover/nav-item:scale-110 ${isActive ? "text-emerald" : "group-hover/nav-item:text-emerald"}`}
                         >
                           <item.icon className="w-5 h-5 shrink-0" />
                         </div>
                         <span className="flex-1">{t(item.labelKey)}</span>
                         {isActive && (
-                          <ChevronRight className="w-4 h-4 text-emerald/50 transition-transform duration-200 group-hover:translate-x-0" />
+                          <ChevronRight className="w-4 h-4 text-emerald/50 transition-transform duration-200 group-hover/nav-item:translate-x-0" />
                         )}
                       </Link>
                     </SidebarMenuButton>
@@ -189,15 +197,15 @@ export function DashboardSidebar({ role }: { role: Role }) {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="p-4 border-t border-border/10">
-        <div className="group flex items-center gap-3 px-3 py-3 rounded-2xl bg-muted/20 border border-border/10 hover:border-emerald/20 transition-all duration-300 transform group-hover:scale-[1.02]">
+        <div className="group/sidebar-user flex items-center gap-3 px-3 py-3 rounded-2xl bg-muted/20 border border-border/10 hover:border-emerald/20 transition-all duration-300 transform group-hover/sidebar-user:scale-[1.02]">
           <div className="relative">
-            <div className="absolute -inset-0.5 bg-linear-to-br from-emerald to-cyan rounded-lg blur-[2px] opacity-0 group-hover:opacity-40 transition duration-300" />
-            <div className="relative w-9 h-9 rounded-lg gradient-emerald-cyan flex items-center justify-center text-xs font-black text-white uppercase shadow-md leading-none">
+            <div className="absolute -inset-0.5 bg-linear-to-br from-emerald to-cyan rounded-lg blur-[2px] opacity-0 group-hover/sidebar-user:opacity-40 transition duration-300" />
+            <div className="relative w-9 h-9 rounded-lg gradient-emerald-cyan flex items-center justify-center text-xs font-black text-white uppercase shadow-md leading-none group-hover/sidebar-user:scale-105 transition-transform">
               {role[0]}
             </div>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-black capitalize tracking-tight truncate group-hover:text-emerald transition-colors">
+            <p className="text-xs font-black capitalize tracking-tight truncate group-hover/sidebar-user:text-emerald transition-colors">
               {role === "doctor" ? "Dr. " : ""}
               {role}
             </p>

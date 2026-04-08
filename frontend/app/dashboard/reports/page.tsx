@@ -46,7 +46,7 @@ const revenueData = [
 export default function ReportsPage() {
   const { t } = useLang();
   return (
-    <div className="p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2 mb-2">
@@ -55,14 +55,14 @@ export default function ReportsPage() {
               {t("intelligence_unit")}
             </span>
           </div>
-          <h1 className="text-4xl font-black tracking-tight text-foreground">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground">
             {t("analytics_and_reports_title")}
           </h1>
           <p className="text-muted-foreground font-medium">
             {t("reports_description")}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="ghost"
             className="h-12 px-6 rounded-xl font-black text-xs uppercase tracking-widest bg-muted/40 border border-border/10 hover:bg-muted/50"
@@ -109,7 +109,7 @@ export default function ReportsPage() {
         ].map((stat, i) => (
           <div
             key={i}
-            className="bg-muted/40 backdrop-blur-md rounded-[2rem] border border-border/10 p-6 relative group overflow-hidden"
+            className="bg-muted/40 backdrop-blur-md rounded-4xl border border-border/10 p-6 relative group overflow-hidden"
           >
             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
               <stat.icon className="w-12 h-12" />
@@ -131,7 +131,7 @@ export default function ReportsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Patient Growth Area Chart */}
-        <div className="bg-muted/40 backdrop-blur-md rounded-[2.5rem] border border-border/10 p-8 group">
+        <div className="bg-muted/40 backdrop-blur-md rounded-3xl sm:rounded-[2.5rem] border border-border/10 p-4 sm:p-6 lg:p-8 group">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-lg font-black text-foreground">
               Patient Growth
@@ -189,7 +189,7 @@ export default function ReportsPage() {
         </div>
 
         {/* Revenue Mix Pie Chart */}
-        <div className="bg-muted/40 backdrop-blur-md rounded-[2.5rem] border border-border/10 p-8">
+        <div className="bg-muted/40 backdrop-blur-md rounded-3xl sm:rounded-[2.5rem] border border-border/10 p-4 sm:p-6 lg:p-8">
           <h3 className="text-lg font-black text-foreground mb-8">
             Revenue Distribution
           </h3>
@@ -246,8 +246,8 @@ export default function ReportsPage() {
       </div>
 
       {/* Featured Performance Card */}
-      <div className="bg-gradient-to-br from-emerald/10 to-transparent backdrop-blur-xl border border-border/10 rounded-[3rem] p-10 flex flex-col md:flex-row items-center gap-12 group overflow-hidden relative">
-        <div className="absolute h-1 w-full top-0 left-0 bg-gradient-to-r from-emerald to-transparent opacity-50" />
+      <div className="bg-linear-to-br from-emerald/10 to-transparent backdrop-blur-xl border border-border/10 rounded-3xl sm:rounded-[3rem] p-6 sm:p-8 lg:p-10 flex flex-col md:flex-row items-center gap-8 sm:gap-12 group overflow-hidden relative">
+        <div className="absolute h-1 w-full top-0 left-0 bg-linear-to-r from-emerald to-transparent opacity-50" />
         <div className="flex-1 space-y-6">
           <h2 className="text-3xl font-black text-foreground">
             Clinic Efficiency Score

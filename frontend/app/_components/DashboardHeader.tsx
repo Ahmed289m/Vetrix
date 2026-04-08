@@ -41,13 +41,13 @@ export function DashboardHeader({
   };
 
   return (
-    <header className="sticky top-0 z-20 px-4 sm:px-6 py-3 flex items-center gap-3 bg-background/40 backdrop-blur-md border-b border-border/10">
+    <header className="sticky top-0 z-20 px-3 sm:px-6 py-3 flex items-center gap-2 sm:gap-3 bg-background/40 backdrop-blur-md border-b border-border/10">
       {/* Mobile menu toggle */}
       <div className="flex items-center gap-2 lg:hidden shrink-0">
         <SidebarTrigger className="w-10 h-10 rounded-xl bg-muted/20 border border-border/20 flex items-center justify-center text-foreground hover:bg-muted/30 transition-colors" />
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-3 ml-auto shrink-0">
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:gap-3 ml-auto">
         <TooltipProvider>
           {/* Theme toggle */}
           <Tooltip>
@@ -90,18 +90,18 @@ export function DashboardHeader({
         <div className="w-px h-6 bg-border/20 mx-0.5 hidden md:block" />
 
         {/* User profile summary */}
-        <div className="flex items-center gap-2 sm:gap-3 pl-0 sm:pl-1 cursor-pointer group transition-transform duration-200 hover:translate-x-0.5">
-          <div className="block text-right">
-            <p className="text-xs font-black capitalize leading-none group-hover:text-emerald transition-colors">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3 pl-0 sm:pl-1 cursor-pointer group transition-transform duration-200 hover:translate-x-0.5">
+          <div className="min-w-0 text-right">
+            <p className="truncate text-xs font-black capitalize leading-none group-hover:text-emerald transition-colors max-w-[34vw] sm:max-w-55">
               {displayName}
             </p>
-            <p className="text-[10px] text-muted-foreground/60 mt-1 font-bold uppercase tracking-wider">
+            <p className="hidden sm:block text-[10px] text-muted-foreground/60 mt-1 font-bold uppercase tracking-wider truncate max-w-55">
               {displayClinic}
             </p>
           </div>
-          <div className="relative">
+          <div className="relative shrink-0">
             <div className="absolute -inset-0.5 bg-linear-to-tr from-emerald to-cyan rounded-xl blur opacity-0 group-hover:opacity-40 transition duration-300" />
-            <div className="relative w-9 h-9 rounded-xl gradient-emerald-cyan flex items-center justify-center text-[11px] font-black text-white uppercase shadow-md leading-none transform group-hover:scale-105 transition-transform">
+            <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl gradient-emerald-cyan flex items-center justify-center text-[11px] font-black text-white uppercase shadow-md leading-none transform group-hover:scale-105 transition-transform">
               {(displayName[0] || "U").toUpperCase()}
             </div>
           </div>

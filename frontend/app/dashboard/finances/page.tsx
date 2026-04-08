@@ -70,7 +70,7 @@ export default function FinancesPage() {
   };
 
   return (
-    <div className="p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2 mb-2">
@@ -79,7 +79,7 @@ export default function FinancesPage() {
               Treasury
             </span>
           </div>
-          <h1 className="text-4xl font-black tracking-tight text-foreground">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground">
             Financial <span className="text-emerald">Overview</span>
           </h1>
           <p className="text-muted-foreground font-medium">
@@ -98,35 +98,35 @@ export default function FinancesPage() {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="bg-emerald/10 backdrop-blur-md rounded-[2.5rem] border border-emerald/20 p-8 relative overflow-hidden group">
+        <div className="bg-emerald/10 backdrop-blur-md rounded-3xl sm:rounded-[2.5rem] border border-emerald/20 p-5 sm:p-6 lg:p-8 relative overflow-hidden group">
           <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald/20 rounded-full blur-[60px]" />
           <p className="text-[10px] font-black uppercase tracking-widest text-emerald mb-2">
             Monthly Revenue
           </p>
           <div className="flex items-center justify-between">
-            <h2 className="text-4xl font-black text-foreground">$14,250.00</h2>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-foreground">$14,250.00</h2>
             <div className="w-12 h-12 rounded-2xl bg-emerald/10 flex items-center justify-center text-emerald">
               <ArrowUpRight className="w-6 h-6" />
             </div>
           </div>
         </div>
-        <div className="bg-muted/40 backdrop-blur-md rounded-[2.5rem] border border-border/10 p-8 relative overflow-hidden group">
+        <div className="bg-muted/40 backdrop-blur-md rounded-3xl sm:rounded-[2.5rem] border border-border/10 p-5 sm:p-6 lg:p-8 relative overflow-hidden group">
           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">
             Expenses
           </p>
           <div className="flex items-center justify-between">
-            <h2 className="text-4xl font-black text-foreground">$4,120.50</h2>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-foreground">$4,120.50</h2>
             <div className="w-12 h-12 rounded-2xl bg-muted/40 flex items-center justify-center text-red-400">
               <ArrowDownLeft className="w-6 h-6" />
             </div>
           </div>
         </div>
-        <div className="bg-muted/40 backdrop-blur-md rounded-[2.5rem] border border-border/10 p-8 relative overflow-hidden group">
+        <div className="bg-muted/40 backdrop-blur-md rounded-3xl sm:rounded-[2.5rem] border border-border/10 p-5 sm:p-6 lg:p-8 relative overflow-hidden group">
           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">
             Profit Projection
           </p>
           <div className="flex items-center justify-between">
-            <h2 className="text-4xl font-black text-foreground">$10,129.50</h2>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-foreground">$10,129.50</h2>
             <div className="w-12 h-12 rounded-2xl bg-muted/40 flex items-center justify-center text-blue-400">
               <DollarSign className="w-6 h-6" />
             </div>
@@ -155,8 +155,8 @@ export default function FinancesPage() {
 
       {/* Table Item */}
       <div className="relative group">
-        <div className="absolute -inset-0.5 bg-linear-to-br from-emerald/10 to-transparent rounded-4xl blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
-        <div className="relative bg-muted/40 backdrop-blur-md rounded-4xl border border-border/10 overflow-hidden shadow-2xl">
+        <div className="absolute -inset-0.5 bg-linear-to-br from-emerald/10 to-transparent rounded-3xl sm:rounded-4xl blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
+        <div className="relative bg-muted/40 backdrop-blur-md rounded-3xl sm:rounded-4xl border border-border/10 overflow-x-auto shadow-2xl">
           <Table>
             <TableHeader className="bg-muted/40">
               <TableRow className="border-b border-border/10 hover:bg-transparent">
