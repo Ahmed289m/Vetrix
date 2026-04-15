@@ -269,16 +269,17 @@ class UserService:
     async def get_user_password(self, user_id: str, current_user: TokenData) -> dict:
         """
         Show the current password for a user (regenerate it based on user data).
-        
+
         - ADMIN can view any user's password
         - OWNER can view DOCTOR, STAFF, CLIENT passwords in their clinic
-        
+        - STAFF can view CLIENT passwords in their clinic
+
         Returns UserCreatedResponse with current password
         """
         user = await self.user_repository.get_by_user_id(user_id)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
-        
+
         # Clinic isolation check
         if not current_user.is_superuser:
             if user.get("clinic_id") != current_user.clinic_id:
@@ -286,65 +287,39 @@ class UserService:
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Access denied",
                 )
-            
-            # OWNER cannot view higher-level users
-            if not can_manage_user(current_user, user.get("role")):
+
+            # Determine if current user can view this user's password:
+            # OWNER can manage DOCTOR/STAFF/CLIENT — same as can_manage_user
+            # STAFF can only view CLIENT passwords (they create clients)
+            target_role = user.get("role")
+            if isinstance(target_role, str):
+                try:
+                    target_role = UserRole(target_role)
+                except ValueError:
+                    pass
+
+            owner_can_view = can_manage_user(current_user, target_role)
+            staff_can_view = (
+                current_user.role == UserRole.STAFF
+                and target_role == UserRole.CLIENT
+            )
+
+            if not owner_can_view and not staff_can_view:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Not authorized to view password for {user.get('role')} users",
+                    detail=f"Not authorized to view password for {target_role} users",
                 )
-        
-        # Regenerate the same password based on user data
-        clinic = await self.clinic_repository.get_by_clinic_id(user.get("clinic_id")) if user.get("clinic_id") else {"clinicName": "clinic"}
+
+        # Regenerate the same password based on user data (deterministic)
+        clinic = (
+            await self.clinic_repository.get_by_clinic_id(user.get("clinic_id"))
+            if user.get("clinic_id")
+            else {"clinicName": "clinic"}
+        )
         clinic_name = clinic.get("clinicName", "clinic") if clinic else "clinic"
-        
-        # Generate the same password (deterministic based on user data)
+
         password_value = self.credential_service.generate_password(
             user.get("fullname"), clinic_name, user_id
         )
-        
-        # Return user data WITH the current password
-        return self._sanitize_with_password(user, password_value)
-        """
-        Generate a new password for a user.
-        
-        - ADMIN can reset any user's password
-        - OWNER can reset DOCTOR, STAFF, CLIENT passwords in their clinic
-        
-        Returns UserCreatedResponse with new password
-        """
-        user = await self.user_repository.get_by_user_id(user_id)
-        if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
-        
-        # Clinic isolation check
-        if not current_user.is_superuser:
-            if user.get("clinic_id") != current_user.clinic_id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Access denied",
-                )
-            
-            # OWNER cannot reset higher-level users
-            if not can_manage_user(current_user, user.get("role")):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Not authorized to reset password for {user.get('role')} users",
-                )
-        
-        # Generate new password
-        clinic = await self.clinic_repository.get_by_clinic_id(user.get("clinic_id")) if user.get("clinic_id") else {"clinicName": "clinic"}
-        clinic_name = clinic.get("clinicName", "clinic") if clinic else "clinic"
-        
-        password_value = self.credential_service.generate_password(
-            user.get("fullname"), clinic_name, user_id
-        )
-        
-        # Hash and update password in database
-        hashed_password = get_password_hash(password_value)
-        updated = await self.user_repository.update_user(user_id, {"password": hashed_password})
-        
-        await broadcast("users:password_reset", {"id": user_id})
-        
-        # Return user data WITH the new plain-text password
-        return self._sanitize_with_password(updated, password_value)
+
+        return self._sanitize_with_password(dict(user), password_value)
