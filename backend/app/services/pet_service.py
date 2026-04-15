@@ -85,7 +85,8 @@ class PetService:
             # CLIENT: look up their clinic_id from their user record
             client_user = await self.user_repository.get_by_user_id(current_user.user_id)
             clinic_id = client_user.get("clinic_id") if client_user else None
-            pets = await self.repository.list_by_owner(current_user.user_id, clinic_id or "")
+            # Pass None if no clinic_id so the query doesn't filter on empty string
+            pets = await self.repository.list_by_owner(current_user.user_id, clinic_id or None)
         else:
             # OWNER/STAFF/DOCTOR see pets in their clinic
             if not current_user.clinic_id:
@@ -107,8 +108,10 @@ class PetService:
         # Clinic isolation check (only for roles with a clinic_id)
         if not current_user.is_superuser:
             if current_user.role == UserRole.CLIENT:
-                # CLIENT: ownership check only
-                if pet.get("owner_id") != current_user.user_id:
+                # CLIENT: ownership check — accept either owner_id or client_id
+                # (backward compat for pets without owner_id set)
+                pet_owner = pet.get("owner_id") or pet.get("client_id")
+                if pet_owner != current_user.user_id:
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail="Access denied",
@@ -134,8 +137,9 @@ class PetService:
 
         if not current_user.is_superuser:
             if current_user.role == UserRole.CLIENT:
-                # CLIENT: ownership check only
-                if pet.get("owner_id") != current_user.user_id:
+                # CLIENT: ownership check — accept either owner_id or client_id
+                pet_owner = pet.get("owner_id") or pet.get("client_id")
+                if pet_owner != current_user.user_id:
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail="Can only update your own pets",
@@ -161,8 +165,9 @@ class PetService:
 
         if not current_user.is_superuser:
             if current_user.role == UserRole.CLIENT:
-                # CLIENT: ownership check only
-                if pet.get("owner_id") != current_user.user_id:
+                # CLIENT: ownership check — accept either owner_id or client_id
+                pet_owner = pet.get("owner_id") or pet.get("client_id")
+                if pet_owner != current_user.user_id:
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail="Can only delete your own pets",

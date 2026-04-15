@@ -7,8 +7,11 @@ import {
   Calendar,
   Search,
   CheckCircle,
+  Clock,
+  FileText,
 } from "lucide-react";
 import { useFormik } from "formik";
+import { toast } from "sonner";
 import { Button } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
 import {
@@ -62,6 +65,10 @@ export default function AppointmentsPage() {
   const { t } = useLang();
 
   const isClient = user?.role === "client";
+  const isStaff =
+    user?.role === "staff" ||
+    user?.role === "owner" ||
+    user?.role === "doctor";
 
   const { data: appData, isLoading: appLoading } = useAppointments();
   const { data: petsData } = usePets();
@@ -74,12 +81,20 @@ export default function AppointmentsPage() {
 
   const appointments = appData?.data || [];
   const petsList = petsData?.data || [];
-  // For CLIENT: clientsList is unused (they see their own name directly)
+
+  // For CLIENT: empty list — they see their own name directly
   const clientsList = isClient
     ? []
     : (usersData?.data || []).filter((u) => u.role === "client");
 
-  // Sort appointments by date
+  // Staff users (doctors) for the doctor selector
+  const doctorsList = isClient
+    ? []
+    : (usersData?.data || []).filter(
+        (u) => u.role === "doctor" || u.role === "staff",
+      );
+
+  // Sort appointments by date descending
   const sortedAppointments = React.useMemo(
     () => sortByDate(appointments, "appointment_date", "desc"),
     [appointments],
@@ -94,9 +109,7 @@ export default function AppointmentsPage() {
    * - Staff/Owner/Admin: look up from the users list
    */
   const getClientName = (clientId: string) => {
-    if (isClient) {
-      return user?.fullname || "Unknown Owner";
-    }
+    if (isClient) return user?.fullname || "—";
     return (
       clientsList.find((c) => c.user_id === clientId)?.fullname ||
       "Unknown Owner"
@@ -123,33 +136,59 @@ export default function AppointmentsPage() {
         statusFilter === "all" || app.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [
-    sortedAppointments,
-    dateFilter,
-    searchQuery,
-    statusFilter,
-    petsList,
-    clientsList,
-    user,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortedAppointments, dateFilter, searchQuery, statusFilter, petsList, clientsList, user]);
 
   const formik = useFormik({
     initialValues: {
       pet_id: "",
       client_id: "",
+      doctor_id: "",
+      appointment_date: "",
+      reason: "",
     },
-    onSubmit: (values, { setSubmitting }) => {
-      // For CLIENT: inject their own user_id as client_id
+    validate: (values) => {
+      const errors: Record<string, string> = {};
+      if (!values.pet_id) errors.pet_id = "Select a pet";
+      if (!isClient && !values.client_id) errors.client_id = "Select a client";
+      return errors;
+    },
+    onSubmit: (values, { setSubmitting, resetForm }) => {
+      // Build payload — CLIENT auto-injects their own user_id
       const payload = isClient
-        ? { pet_id: values.pet_id, client_id: user?.userId || "" }
-        : values;
+        ? {
+            pet_id: values.pet_id,
+            // client_id is resolved from JWT on the backend for CLIENT role
+            ...(values.appointment_date && {
+              appointment_date: values.appointment_date,
+            }),
+            ...(values.reason && { reason: values.reason }),
+            ...(values.doctor_id && { doctor_id: values.doctor_id }),
+          }
+        : {
+            pet_id: values.pet_id,
+            client_id: values.client_id,
+            ...(values.appointment_date && {
+              appointment_date: values.appointment_date,
+            }),
+            ...(values.reason && { reason: values.reason }),
+            ...(values.doctor_id && { doctor_id: values.doctor_id }),
+          };
 
       createAppointment.mutate(payload, {
         onSuccess: () => {
+          toast.success(t("appointment_booked_success"));
           setIsFormOpen(false);
+          resetForm();
           setSubmitting(false);
         },
-        onError: () => setSubmitting(false),
+        onError: (err: unknown) => {
+          const msg =
+            (err as { response?: { data?: { detail?: string } } })?.response
+              ?.data?.detail || t("appointment_book_failed");
+          toast.error(msg);
+          setSubmitting(false);
+        },
       });
     },
   });
@@ -160,8 +199,11 @@ export default function AppointmentsPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Cancel this appointment?")) {
-      deleteAppointment.mutate(id);
+    if (confirm(t("confirm_cancel_appointment"))) {
+      deleteAppointment.mutate(id, {
+        onSuccess: () => toast.success(t("appointment_cancelled")),
+        onError: () => toast.error(t("appointment_cancel_failed")),
+      });
     }
   };
 
@@ -169,17 +211,15 @@ export default function AppointmentsPage() {
     updateAppointment.mutate(
       { id: appointmentId, data: { status: "confirmed" } },
       {
-        onSuccess: () => {
-          // Toast notification is handled by the mutation
-        },
-        onError: () => {
-          // Error handling is done in the mutation
-        },
+        onSuccess: () => toast.success(t("appointment_confirmed")),
+        onError: () => toast.error(t("appointment_confirm_failed")),
       },
     );
   };
 
-  // Pets available for the CLIENT to book (their own pets only)
+  // Pets available in the booking form:
+  // - CLIENT: all their own pets (fetched from /pets which already filters by owner)
+  // - STAFF: pets belonging to the selected client
   const clientPets = isClient
     ? petsList
     : petsList.filter((p) => p.client_id === formik.values.client_id);
@@ -202,7 +242,7 @@ export default function AppointmentsPage() {
           </p>
         </div>
         <Button
-          onClick={() => handleOpenForm()}
+          onClick={handleOpenForm}
           className="bg-emerald hover:bg-emerald/90 text-white font-black px-6 h-12 shadow-xl shadow-emerald/20 flex items-center gap-2 group transition-all duration-300"
         >
           <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
@@ -247,7 +287,7 @@ export default function AppointmentsPage() {
         </Select>
       </div>
 
-      {/* Table Item */}
+      {/* Table */}
       <div className="relative group">
         <div className="absolute -inset-0.5 bg-linear-to-br from-emerald/10 to-transparent rounded-3xl sm:rounded-4xl blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
         <div className="relative bg-white/5 backdrop-blur-md rounded-3xl sm:rounded-4xl border border-white/5 overflow-x-auto shadow-2xl">
@@ -265,7 +305,7 @@ export default function AppointmentsPage() {
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
                   Status
                 </TableHead>
-                <TableHead className="py-6 px-8 text-right"></TableHead>
+                <TableHead className="py-6 px-8 text-right" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -300,7 +340,7 @@ export default function AppointmentsPage() {
                             {getPetName(app.pet_id)}
                           </span>
                           <span className="text-[10px] text-muted-foreground font-black tracking-widest uppercase opacity-50">
-                            {app.appointment_id.slice(0, 8)}...
+                            {app.appointment_id.slice(0, 8)}…
                           </span>
                         </div>
                       </div>
@@ -342,27 +382,27 @@ export default function AppointmentsPage() {
                           <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
                             {t("operations")}
                           </DropdownMenuLabel>
-                          {!isClient && (
+
+                          {/* Confirm / Check-in — STAFF only */}
+                          {isStaff && app.status !== "confirmed" && (
                             <DropdownMenuItem
                               onClick={() => handleCheckIn(app.appointment_id)}
                               className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2"
                             >
-                              <CheckCircle className="w-4 h-4" />{" "}
+                              <CheckCircle className="w-4 h-4" />
                               {t("check_in_patient")}
                             </DropdownMenuItem>
                           )}
+
                           <DropdownMenuSeparator className="bg-white/5 mx-2" />
-                          {(user?.role === "staff" ||
-                            user?.role === "owner" ||
-                            user?.role === "admin" ||
-                            user?.role === "client") && (
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(app.appointment_id)}
-                              className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
-                            >
-                              {t("cancel_appointment")}
-                            </DropdownMenuItem>
-                          )}
+
+                          {/* Cancel — both CLIENT and STAFF can cancel */}
+                          <DropdownMenuItem
+                            onClick={() => handleDelete(app.appointment_id)}
+                            className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
+                          >
+                            {t("cancel_appointment")}
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -374,7 +414,7 @@ export default function AppointmentsPage() {
         </div>
       </div>
 
-      {/* CRUD Form */}
+      {/* Booking Form */}
       <DashboardForm
         title={t("book_appointment_title")}
         description={t("schedule_new_session")}
@@ -385,66 +425,167 @@ export default function AppointmentsPage() {
         }
         submitLabel={formik.isSubmitting ? t("booking") : t("confirm_booking")}
       >
-        <div className="space-y-8">
-          {/* Client selector — only for staff/owner/admin */}
+        <div className="space-y-6">
+          {/* Client selector — only for staff/owner roles */}
           {!isClient && (
-            <div className="space-y-3">
-              <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-                {t("client_owner")}
+            <div className="space-y-2">
+              <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
+                {t("client_owner")} *
               </Label>
               <Select
                 value={formik.values.client_id}
-                onValueChange={(val) => formik.setFieldValue("client_id", val)}
+                onValueChange={(val) => {
+                  formik.setFieldValue("client_id", val);
+                  // Reset pet when client changes
+                  formik.setFieldValue("pet_id", "");
+                }}
               >
-                <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold">
+                <SelectTrigger
+                  className={cn(
+                    "h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold",
+                    formik.errors.client_id &&
+                      formik.touched.client_id &&
+                      "border-red-500/50",
+                  )}
+                >
                   <SelectValue placeholder={t("select_client")} />
                 </SelectTrigger>
                 <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
-                  {clientsList.map((client) => (
-                    <SelectItem
-                      key={client.user_id}
-                      value={client.user_id}
-                      className="rounded-xl font-bold"
-                    >
-                      {client.fullname}
-                    </SelectItem>
-                  ))}
+                  {clientsList.length === 0 ? (
+                    <div className="px-4 py-3 text-sm text-muted-foreground">
+                      {t("no_clients_found")}
+                    </div>
+                  ) : (
+                    clientsList.map((client) => (
+                      <SelectItem
+                        key={client.user_id}
+                        value={client.user_id}
+                        className="rounded-xl font-bold"
+                      >
+                        {client.fullname}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
+              {formik.errors.client_id && formik.touched.client_id && (
+                <p className="text-xs text-red-400 ml-1">
+                  {formik.errors.client_id}
+                </p>
+              )}
             </div>
           )}
 
-          <div className="space-y-3">
-            <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-              {t("select_pet_label")}
+          {/* Pet selector */}
+          <div className="space-y-2">
+            <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
+              {t("select_pet_label")} *
             </Label>
             <Select
               value={formik.values.pet_id}
               onValueChange={(val) => formik.setFieldValue("pet_id", val)}
               disabled={!isClient && !formik.values.client_id}
             >
-              <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold">
+              <SelectTrigger
+                className={cn(
+                  "h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold",
+                  formik.errors.pet_id &&
+                    formik.touched.pet_id &&
+                    "border-red-500/50",
+                )}
+              >
                 <SelectValue
                   placeholder={
                     isClient
                       ? t("select_pet_label")
-                      : t("select_pet_choose_client")
+                      : formik.values.client_id
+                        ? t("select_pet_label")
+                        : t("select_pet_choose_client")
                   }
                 />
               </SelectTrigger>
               <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
-                {clientPets.map((pet) => (
-                  <SelectItem
-                    key={pet.pet_id}
-                    value={pet.pet_id}
-                    className="rounded-xl font-bold"
-                  >
-                    {pet.name}
-                  </SelectItem>
-                ))}
+                {clientPets.length === 0 ? (
+                  <div className="px-4 py-3 text-sm text-muted-foreground">
+                    {isClient ? t("no_pets_registered") : t("no_pets_for_client")}
+                  </div>
+                ) : (
+                  clientPets.map((pet) => (
+                    <SelectItem
+                      key={pet.pet_id}
+                      value={pet.pet_id}
+                      className="rounded-xl font-bold"
+                    >
+                      {pet.name}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
+            {formik.errors.pet_id && formik.touched.pet_id && (
+              <p className="text-xs text-red-400 ml-1">
+                {formik.errors.pet_id}
+              </p>
+            )}
           </div>
+
+          {/* Appointment Date */}
+          <div className="space-y-2">
+            <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5" />
+              {t("appointment_date")}
+            </Label>
+            <Input
+              type="datetime-local"
+              name="appointment_date"
+              value={formik.values.appointment_date}
+              onChange={formik.handleChange}
+              className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
+            />
+          </div>
+
+          {/* Reason */}
+          <div className="space-y-2">
+            <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1 flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5" />
+              {t("reason")}
+            </Label>
+            <Input
+              name="reason"
+              value={formik.values.reason}
+              onChange={formik.handleChange}
+              placeholder={t("reason_placeholder")}
+              className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
+            />
+          </div>
+
+          {/* Doctor selector — only for staff/owner */}
+          {!isClient && doctorsList.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
+                {t("assign_doctor")}
+              </Label>
+              <Select
+                value={formik.values.doctor_id}
+                onValueChange={(val) => formik.setFieldValue("doctor_id", val)}
+              >
+                <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold">
+                  <SelectValue placeholder={t("select_doctor_optional")} />
+                </SelectTrigger>
+                <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
+                  {doctorsList.map((doc) => (
+                    <SelectItem
+                      key={doc.user_id}
+                      value={doc.user_id}
+                      className="rounded-xl font-bold"
+                    >
+                      {doc.fullname}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
       </DashboardForm>
     </div>

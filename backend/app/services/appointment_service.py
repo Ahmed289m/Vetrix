@@ -75,8 +75,11 @@ class AppointmentService:
                     detail="Could not determine clinic from pet record.",
                 )
 
-            # Verify the pet belongs to this client
-            if pet.get("owner_id") != current_user.user_id:
+            # Verify the pet belongs to this client.
+            # Check both owner_id and client_id for backward compatibility
+            # (pets created before owner_id was introduced only have client_id).
+            pet_owner = pet.get("owner_id") or pet.get("client_id")
+            if pet_owner != current_user.user_id:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Pet does not belong to you.",
@@ -113,6 +116,12 @@ class AppointmentService:
         clinic = await self.clinic_repository.get_by_clinic_id(clinic_id)
         if not clinic:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Clinic not found.")
+
+        if not client_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="client_id is required",
+            )
 
         client = await self.user_repository.get_by_user_id(client_id)
         if not client:
