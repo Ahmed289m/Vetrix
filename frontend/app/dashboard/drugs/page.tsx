@@ -399,8 +399,10 @@ type DrugFormValues = {
   drugInteractions: string;
   dosageDog: string;
   dosageCat: string;
-  toxicityLD50: string;
-  toxicitySeverity: string;
+  toxicityDog: string;
+  toxicityCat: string;
+  toxicitySeverityDog: string;
+  toxicitySeverityCat: string;
   clinic_id: string; // "" means null (global), used by admin only
 };
 
@@ -437,8 +439,10 @@ function DrugCrudForm({
       drugInteractions: "",
       dosageDog: "",
       dosageCat: "",
-      toxicityLD50: "",
-      toxicitySeverity: "",
+      toxicityDog: "",
+      toxicityCat: "",
+      toxicitySeverityDog: "",
+      toxicitySeverityCat: "",
       clinic_id: "",
     },
     onSubmit: (values, { setSubmitting, resetForm }) => {
@@ -456,9 +460,13 @@ function DrugCrudForm({
           ...(values.dosageCat ? { cat: values.dosageCat.trim() } : {}),
         },
         toxicity: {
-          ...(values.toxicityLD50 ? { LD50: values.toxicityLD50.trim() } : {}),
-          ...(values.toxicitySeverity
-            ? { severity: values.toxicitySeverity }
+          ...(values.toxicityDog ? { dog: values.toxicityDog.trim() } : {}),
+          ...(values.toxicityCat ? { cat: values.toxicityCat.trim() } : {}),
+          ...(values.toxicitySeverityDog
+            ? { severityDog: values.toxicitySeverityDog }
+            : {}),
+          ...(values.toxicitySeverityCat
+            ? { severityCat: values.toxicitySeverityCat }
             : {}),
         },
         // Only send clinic_id from the form if admin (let backend auto-assign for others)
@@ -507,8 +515,10 @@ function DrugCrudForm({
           ),
           dosageDog: (selectedDrug.dosage as any)?.dog ?? "",
           dosageCat: (selectedDrug.dosage as any)?.cat ?? "",
-          toxicityLD50: (selectedDrug.toxicity as any)?.LD50 ?? "",
-          toxicitySeverity: (selectedDrug.toxicity as any)?.severity ?? "",
+          toxicityDog: (selectedDrug.toxicity as any)?.dog ?? "",
+          toxicityCat: (selectedDrug.toxicity as any)?.cat ?? "",
+          toxicitySeverityDog: (selectedDrug.toxicity as any)?.severityDog ?? "",
+          toxicitySeverityCat: (selectedDrug.toxicity as any)?.severityCat ?? "",
           clinic_id: selectedDrug.clinic_id ?? "",
         });
       } else {
@@ -716,50 +726,59 @@ function DrugCrudForm({
 
         {/* Specific Destructured Toxicity */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Toxicity (LD50)">
+          <Field label="Toxicity (Dog)">
             <Input
-              name="toxicityLD50"
-              value={formik.values.toxicityLD50}
+              name="toxicityDog"
+              value={formik.values.toxicityDog}
               onChange={formik.handleChange}
               placeholder="e.g. 500mg/kg"
-              className="h-12 bg-white/5 border-white/5 focus:border-red-400/30 rounded-xl"
+              className="h-12 bg-muted/40 dark:bg-white/5 border-border dark:border-white/5 focus:border-red-400/30 rounded-xl"
             />
           </Field>
-          <Field label="Toxicity Severity">
+          <Field label="Toxicity (Cat)">
+            <Input
+              name="toxicityCat"
+              value={formik.values.toxicityCat}
+              onChange={formik.handleChange}
+              placeholder="e.g. 300mg/kg"
+              className="h-12 bg-muted/40 dark:bg-white/5 border-border dark:border-white/5 focus:border-red-400/30 rounded-xl"
+            />
+          </Field>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label="Toxicity Severity (Dog)">
             <Select
-              value={formik.values.toxicitySeverity}
+              value={formik.values.toxicitySeverityDog}
               onValueChange={(val) =>
-                formik.setFieldValue("toxicitySeverity", val)
+                formik.setFieldValue("toxicitySeverityDog", val)
               }
             >
-              <SelectTrigger className="h-12 bg-white/5 border-white/5 focus:border-red-400/30 rounded-xl font-semibold">
+              <SelectTrigger className="h-12 bg-muted/40 dark:bg-white/5 border-border dark:border-white/5 focus:border-red-400/30 rounded-xl font-semibold">
                 <SelectValue placeholder="Select severity" />
               </SelectTrigger>
-              <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2">
-                <SelectItem
-                  value="High"
-                  className="rounded-xl font-bold py-3 cursor-pointer focus:bg-red-500/20 focus:text-red-400"
-                >
-                  High
-                </SelectItem>
-                <SelectItem
-                  value="Medium"
-                  className="rounded-xl font-bold py-3 cursor-pointer focus:bg-amber-500/20 focus:text-amber-400"
-                >
-                  Medium
-                </SelectItem>
-                <SelectItem
-                  value="Low"
-                  className="rounded-xl font-bold py-3 cursor-pointer focus:bg-yellow-500/20 focus:text-yellow-400"
-                >
-                  Low
-                </SelectItem>
-                <SelectItem
-                  value="No"
-                  className="rounded-xl font-bold py-3 cursor-pointer focus:bg-emerald-500/20 focus:text-emerald-400"
-                >
-                  No Risk
-                </SelectItem>
+              <SelectContent className="bg-background/95 dark:bg-sidebar/95 backdrop-blur-xl border-border dark:border-white/5 rounded-2xl p-2">
+                <SelectItem value="High" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-red-500/20 focus:text-red-400">High</SelectItem>
+                <SelectItem value="Medium" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-amber-500/20 focus:text-amber-400">Medium</SelectItem>
+                <SelectItem value="Low" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-yellow-500/20 focus:text-yellow-400">Low</SelectItem>
+                <SelectItem value="No" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-emerald-500/20 focus:text-emerald-400">No Risk</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Toxicity Severity (Cat)">
+            <Select
+              value={formik.values.toxicitySeverityCat}
+              onValueChange={(val) =>
+                formik.setFieldValue("toxicitySeverityCat", val)
+              }
+            >
+              <SelectTrigger className="h-12 bg-muted/40 dark:bg-white/5 border-border dark:border-white/5 focus:border-red-400/30 rounded-xl font-semibold">
+                <SelectValue placeholder="Select severity" />
+              </SelectTrigger>
+              <SelectContent className="bg-background/95 dark:bg-sidebar/95 backdrop-blur-xl border-border dark:border-white/5 rounded-2xl p-2">
+                <SelectItem value="High" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-red-500/20 focus:text-red-400">High</SelectItem>
+                <SelectItem value="Medium" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-amber-500/20 focus:text-amber-400">Medium</SelectItem>
+                <SelectItem value="Low" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-yellow-500/20 focus:text-yellow-400">Low</SelectItem>
+                <SelectItem value="No" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-emerald-500/20 focus:text-emerald-400">No Risk</SelectItem>
               </SelectContent>
             </Select>
           </Field>
@@ -815,8 +834,8 @@ function ImportJsonModal({
       }
       setIsImporting(true);
 
-      // Loop and create each drug sequentially
-      for (const item of parsed) {
+      // Execute all creations in parallel
+      const importPromises = parsed.map(async (item: any) => {
         if (!item.name || !item.drugClass) {
           throw new Error("One or more items missing required 'name' or 'drugClass'.");
         }
@@ -833,8 +852,10 @@ function ImportJsonModal({
           ...(isAdmin && item.clinic_id !== undefined ? { clinic_id: item.clinic_id } : {})
         };
 
-        await createDrug.mutateAsync(payload as any);
-      }
+        return createDrug.mutateAsync(payload as any);
+      });
+
+      await Promise.all(importPromises);
 
       setIsImporting(false);
       onOpenChange(false);
