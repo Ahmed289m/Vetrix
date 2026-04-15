@@ -7,12 +7,13 @@ const LIST_STALE_TIME = 1000 * 60 * 2;
 const DETAIL_STALE_TIME = 1000 * 60;
 const QUERY_GC_TIME = 1000 * 60 * 30;
 
-export function useUsers() {
+export function useUsers(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: USERS_KEY,
     queryFn: () => usersApi.list(),
     staleTime: LIST_STALE_TIME,
     gcTime: QUERY_GC_TIME,
+    enabled: options?.enabled !== false,
   });
 }
 

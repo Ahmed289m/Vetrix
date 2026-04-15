@@ -7,7 +7,7 @@ class PetCreate(BaseModel):
     name: str
     weight: float
     type: PetType
-    client_id: str
+    client_id: str | None = None  # Auto-set from token for CLIENT role
     # clinic_id is set automatically from current_user
 
 

@@ -3,7 +3,7 @@ export type { UserRole } from "./api.types";
 
 /* ── Pet ──────────────────────────────────────────────────────────── */
 
-export type PetType = "cat" | "dog";
+export type PetType = "cat" | "dog" | "other";
 
 export interface Pet {
   pet_id: string;
@@ -21,7 +21,7 @@ export interface PetCreate {
   name: string;
   weight: number;
   type: PetType;
-  client_id: string;
+  client_id?: string; // Auto-set from token for CLIENT role
 }
 
 export interface PetUpdate {
@@ -46,7 +46,7 @@ export interface Appointment {
 
 export interface AppointmentCreate {
   pet_id: string;
-  client_id: string;
+  client_id?: string; // Auto-set from token for CLIENT role
   doctor_id?: string;
   appointment_date?: string;
   reason?: string;

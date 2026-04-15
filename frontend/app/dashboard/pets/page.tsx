@@ -58,21 +58,28 @@ export default function PetsPage() {
   const { user } = useAuth();
   const { t } = useLang();
 
+  const isClient = user?.role === "client";
+
   const { data: petsData, isLoading: isPetsLoading } = usePets();
-  const { data: usersData } = useUsers();
+  // Only fetch all users for roles that have users.read permission
+  const { data: usersData } = useUsers({ enabled: !isClient });
 
   const createPet = useCreatePet();
   const updatePet = useUpdatePet();
   const deletePet = useDeletePet();
 
   const pets = petsData?.data || [];
-  const clients = (usersData?.data || []).filter((u) => u.role === "client");
+  const clients = isClient
+    ? []
+    : (usersData?.data || []).filter((u) => u.role === "client");
 
   const filteredPets = React.useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return pets.filter((pet) => {
-      const client = clients.find((c) => c.user_id === pet.client_id);
-      const ownerName = (client?.fullname || "").toLowerCase();
+      const ownerName = isClient
+        ? (user?.fullname || "").toLowerCase()
+        : (clients.find((c) => c.user_id === pet.client_id)?.fullname || "").toLowerCase();
+
       const matchesSearch =
         q.length === 0 ||
         pet.name.toLowerCase().includes(q) ||
@@ -82,7 +89,7 @@ export default function PetsPage() {
         speciesFilter === "all" || pet.type.toLowerCase() === speciesFilter;
       return matchesSearch && matchesSpecies;
     });
-  }, [pets, clients, searchQuery, speciesFilter]);
+  }, [pets, clients, searchQuery, speciesFilter, user, isClient]);
 
   const formik = useFormik({
     initialValues: {
@@ -92,9 +99,14 @@ export default function PetsPage() {
       client_id: "",
     },
     onSubmit: (values, { setSubmitting }) => {
+      // For CLIENT: inject their own user_id as client_id
+      const payload = isClient
+        ? { ...values, client_id: user?.userId || "" }
+        : values;
+
       if (selectedPet) {
         updatePet.mutate(
-          { id: selectedPet.pet_id, data: values },
+          { id: selectedPet.pet_id, data: payload },
           {
             onSuccess: () => {
               setIsFormOpen(false);
@@ -104,7 +116,7 @@ export default function PetsPage() {
           },
         );
       } else {
-        createPet.mutate(values, {
+        createPet.mutate(payload, {
           onSuccess: () => {
             setIsFormOpen(false);
             setSubmitting(false);
@@ -138,6 +150,12 @@ export default function PetsPage() {
   };
 
   const getClientDetails = (clientId: string) => {
+    if (isClient) {
+      return {
+        name: user?.fullname || t("unknown_owner"),
+        phone: t("no_phone"),
+      };
+    }
     const client = clients.find((c) => c.user_id === clientId);
     return {
       name: client?.fullname || t("unknown_owner"),
@@ -211,9 +229,11 @@ export default function PetsPage() {
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
                   {t("species")}
                 </TableHead>
-                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
-                  {t("contact_info")}
-                </TableHead>
+                {!isClient && (
+                  <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
+                    {t("contact_info")}
+                  </TableHead>
+                )}
                 <TableHead className="py-6 px-8 text-right"></TableHead>
               </TableRow>
             </TableHeader>
@@ -221,7 +241,7 @@ export default function PetsPage() {
               {isPetsLoading ? (
                 <TableRow>
                   <TableCell
-                    colSpan={4}
+                    colSpan={isClient ? 3 : 4}
                     className="text-center py-8 text-muted-foreground"
                   >
                     {t("loading_patients")}
@@ -230,7 +250,7 @@ export default function PetsPage() {
               ) : filteredPets.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={4}
+                    colSpan={isClient ? 3 : 4}
                     className="text-center py-8 text-muted-foreground"
                   >
                     {t("no_patients_found")}
@@ -274,14 +294,16 @@ export default function PetsPage() {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="py-6 px-8">
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-muted-foreground/60" />
-                          <span className="text-sm font-bold text-muted-foreground/80">
-                            {client.phone}
-                          </span>
-                        </div>
-                      </TableCell>
+                      {!isClient && (
+                        <TableCell className="py-6 px-8">
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-4 h-4 text-muted-foreground/60" />
+                            <span className="text-sm font-bold text-muted-foreground/80">
+                              {client.phone}
+                            </span>
+                          </div>
+                        </TableCell>
+                      )}
                       <TableCell className="py-6 px-8 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -306,9 +328,11 @@ export default function PetsPage() {
                             >
                               {t("edit_profile")}
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold">
-                              {t("create_visit")}
-                            </DropdownMenuItem>
+                            {!isClient && (
+                              <DropdownMenuItem className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold">
+                                {t("create_visit")}
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuSeparator className="bg-white/5 mx-2" />
                             {user?.role !== "doctor" && (
                               <DropdownMenuItem
@@ -354,44 +378,46 @@ export default function PetsPage() {
         }
       >
         <div className="space-y-6">
-          {/* Prominent Client Selection Box */}
-          <div className="p-6 bg-emerald/5 border border-emerald/10 rounded-4xl space-y-4">
-            <div className="flex items-center gap-2 px-2">
-              <User className="w-4 h-4 text-emerald" />
-              <Label className="text-xs font-black uppercase tracking-[0.2em] text-emerald">
-                {t("assigned_clinical_owner")}
-              </Label>
+          {/* Client selector — only for staff/owner/admin */}
+          {!isClient && (
+            <div className="p-6 bg-emerald/5 border border-emerald/10 rounded-4xl space-y-4">
+              <div className="flex items-center gap-2 px-2">
+                <User className="w-4 h-4 text-emerald" />
+                <Label className="text-xs font-black uppercase tracking-[0.2em] text-emerald">
+                  {t("assigned_clinical_owner")}
+                </Label>
+              </div>
+              <Select
+                value={formik.values.client_id}
+                onValueChange={(val) => formik.setFieldValue("client_id", val)}
+              >
+                <SelectTrigger className="h-16 bg-white/10 border-white/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-black text-xl text-left px-5">
+                  <SelectValue placeholder={t("search_or_select_client")} />
+                </SelectTrigger>
+                <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2 max-h-75">
+                  {clients.map((client) => (
+                    <SelectItem
+                      key={client.user_id}
+                      value={client.user_id}
+                      className="rounded-xl py-4 cursor-pointer focus:bg-emerald/10 focus:text-emerald"
+                    >
+                      <div className="flex flex-col text-left">
+                        <span className="font-black text-lg tracking-tight leading-none mb-1">
+                          {client.fullname}
+                        </span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                          {client.email} · {client.phone}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="px-2 text-[10px] font-black text-muted-foreground/40 italic flex items-center gap-1.5 uppercase tracking-widest">
+                <Plus className="w-3 h-3" /> {t("register_clients_in_owners")}
+              </p>
             </div>
-            <Select
-              value={formik.values.client_id}
-              onValueChange={(val) => formik.setFieldValue("client_id", val)}
-            >
-              <SelectTrigger className="h-16 bg-white/10 border-white/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-black text-xl text-left px-5">
-                <SelectValue placeholder={t("search_or_select_client")} />
-              </SelectTrigger>
-              <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2 max-h-75">
-                {clients.map((client) => (
-                  <SelectItem
-                    key={client.user_id}
-                    value={client.user_id}
-                    className="rounded-xl py-4 cursor-pointer focus:bg-emerald/10 focus:text-emerald"
-                  >
-                    <div className="flex flex-col text-left">
-                      <span className="font-black text-lg tracking-tight leading-none mb-1">
-                        {client.fullname}
-                      </span>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
-                        {client.email} · {client.phone}
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="px-2 text-[10px] font-black text-muted-foreground/40 italic flex items-center gap-1.5 uppercase tracking-widest">
-              <Plus className="w-3 h-3" /> {t("register_clients_in_owners")}
-            </p>
-          </div>
+          )}
 
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-3 relative">
@@ -427,6 +453,9 @@ export default function PetsPage() {
                   </SelectItem>
                   <SelectItem value="cat" className="rounded-xl font-bold">
                     {t("cat")}
+                  </SelectItem>
+                  <SelectItem value="other" className="rounded-xl font-bold">
+                    {t("other")}
                   </SelectItem>
                 </SelectContent>
               </Select>

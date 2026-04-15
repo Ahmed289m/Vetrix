@@ -28,7 +28,7 @@ class AppointmentService:
     async def get_appointments(self, current_user: TokenData) -> list:
         """
         Get all appointments accessible to the current user.
-        
+
         - ADMIN can see all appointments
         - STAFF/OWNER/DOCTOR can see appointments in their clinic
         - CLIENT can see only their appointments
@@ -49,7 +49,7 @@ class AppointmentService:
             ).to_list(length=None)
         else:
             appointments = []
-        
+
         # Serialize all appointments
         return [serialize_mongo_doc(apt, "appointment_id") for apt in appointments]  # type: ignore[misc]
 
@@ -58,43 +58,68 @@ class AppointmentService:
         Create an appointment with authorization.
 
         - STAFF/OWNER can create appointments in their clinic
-        - CLIENT can create appointments (auto-set as client)
+        - CLIENT can create appointments (auto-set as client, clinic_id resolved from pet)
         - ADMIN can create in any clinic
         """
-        requested_clinic_id = getattr(request, "clinic_id", None)
-        clinic_id = requested_clinic_id or current_user.clinic_id
-        if not clinic_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="clinic_id is required",
-            )
+        # For CLIENT: resolve clinic_id from the pet they are booking for,
+        # since CLIENT tokens do not carry clinic_id.
+        if current_user.role == UserRole.CLIENT:
+            pet = await self.pet_repository.get_by_id(request.pet_id)
+            if not pet:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pet not found.")
 
-        # Enforce clinic isolation
-        if not current_user.is_superuser and current_user.clinic_id != clinic_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Cannot create appointments in other clinics",
-            )
+            clinic_id = pet.get("clinic_id")
+            if not clinic_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Could not determine clinic from pet record.",
+                )
+
+            # Verify the pet belongs to this client
+            if pet.get("owner_id") != current_user.user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Pet does not belong to you.",
+                )
+
+            client_id = current_user.user_id
+        else:
+            requested_clinic_id = getattr(request, "clinic_id", None)
+            clinic_id = requested_clinic_id or current_user.clinic_id
+            if not clinic_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="clinic_id is required",
+                )
+
+            # Enforce clinic isolation for non-admins
+            if not current_user.is_superuser and current_user.clinic_id != clinic_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Cannot create appointments in other clinics",
+                )
+
+            pet = await self.pet_repository.get_by_id(request.pet_id)
+            if not pet:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pet not found.")
+            if pet.get("clinic_id") != clinic_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Pet belongs to a different clinic",
+                )
+
+            client_id = request.client_id
 
         clinic = await self.clinic_repository.get_by_clinic_id(clinic_id)
         if not clinic:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Clinic not found.")
 
-        pet = await self.pet_repository.get_by_id(request.pet_id)
-        if not pet:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pet not found.")
-        if pet.get("clinic_id") != clinic_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Pet belongs to a different clinic",
-            )
-
-        # For CLIENT, auto-set client_id; otherwise validate
-        client_id = current_user.user_id if current_user.role == UserRole.CLIENT else request.client_id
         client = await self.user_repository.get_by_user_id(client_id)
         if not client:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found.")
-        if client.get("clinic_id") != clinic_id:
+
+        # For non-CLIENT roles, validate the client belongs to the same clinic
+        if current_user.role != UserRole.CLIENT and client.get("clinic_id") != clinic_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Client belongs to a different clinic",
@@ -106,6 +131,9 @@ class AppointmentService:
             clinic_id=clinic_id,
             pet_id=request.pet_id,
             client_id=client_id,
+            doctor_id=request.doctor_id,
+            appointment_date=request.appointment_date,
+            reason=request.reason,
             status="pending",
         )
         payload = normalize_for_mongo(appointment_model.model_dump())
@@ -116,34 +144,32 @@ class AppointmentService:
     async def update_appointment(self, appointment_id: str, request: AppointmentUpdate, current_user: TokenData) -> dict:
         """
         Update an appointment with authorization.
-        
+
         - ADMIN can update any appointment
         - STAFF/OWNER can update appointments in their clinic
-        - CLIENT can update only their appointments
+        - CLIENT can update only their own appointments (ownership check only, no clinic_id required)
         """
         appointment = await self.appointment_repository.get_by_id(appointment_id)
         if not appointment:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found.")
-        
-        # Clinic isolation check
+
         if not current_user.is_superuser:
-            if appointment.get("clinic_id") != current_user.clinic_id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Access denied",
-                )
-            
-            # CLIENT can only update their appointments
-            if current_user.role == UserRole.CLIENT and appointment.get("client_id") != current_user.user_id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Can only update your own appointments",
-                )
-        
+            if current_user.role == UserRole.CLIENT:
+                # CLIENT: only ownership check — clinic_id is not in their token
+                if appointment.get("client_id") != current_user.user_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Can only update your own appointments",
+                    )
+            else:
+                # STAFF/OWNER/DOCTOR: clinic isolation check
+                if appointment.get("clinic_id") != current_user.clinic_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Access denied",
+                    )
+
         payload = normalize_for_mongo(request.model_dump(exclude_none=True))
-        # Set default status to "confirmed" only if not explicitly provided
-        if "status" not in payload:
-            payload["status"] = "confirmed"
 
         if payload.get("clinic_id"):
             clinic = await self.clinic_repository.get_by_clinic_id(payload["clinic_id"])
@@ -170,32 +196,32 @@ class AppointmentService:
     async def delete_appointment(self, appointment_id: str, current_user: TokenData) -> None:
         """
         Delete an appointment with authorization.
-        
+
         - ADMIN can delete any appointment
         - STAFF/OWNER can delete appointments in their clinic
-        - CLIENT can delete only their appointments
+        - CLIENT can delete only their own appointments (ownership check only, no clinic_id required)
         """
         appointment = await self.appointment_repository.get_by_id(appointment_id)
         if not appointment:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found.")
-        
-        # Clinic isolation check
+
         if not current_user.is_superuser:
-            if appointment.get("clinic_id") != current_user.clinic_id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Access denied",
-                )
-            
-            # CLIENT can only delete their appointments
-            if current_user.role == UserRole.CLIENT and appointment.get("client_id") != current_user.user_id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Can only delete your own appointments",
-                )
-        
+            if current_user.role == UserRole.CLIENT:
+                # CLIENT: only ownership check — clinic_id is not in their token
+                if appointment.get("client_id") != current_user.user_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Can only delete your own appointments",
+                    )
+            else:
+                # STAFF/OWNER/DOCTOR: clinic isolation check
+                if appointment.get("clinic_id") != current_user.clinic_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Access denied",
+                    )
+
         deleted = await self.appointment_repository.delete_by_id(appointment_id)
         if not deleted:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found.")
         await broadcast("appointments:deleted", {"id": appointment_id})
-

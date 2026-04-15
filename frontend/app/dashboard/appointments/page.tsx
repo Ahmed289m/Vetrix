@@ -61,9 +61,12 @@ export default function AppointmentsPage() {
   const { user } = useAuth();
   const { t } = useLang();
 
+  const isClient = user?.role === "client";
+
   const { data: appData, isLoading: appLoading } = useAppointments();
   const { data: petsData } = usePets();
-  const { data: usersData } = useUsers();
+  // Only fetch all users for roles that have users.read permission
+  const { data: usersData } = useUsers({ enabled: !isClient });
 
   const createAppointment = useCreateAppointment();
   const deleteAppointment = useDeleteAppointment();
@@ -71,9 +74,10 @@ export default function AppointmentsPage() {
 
   const appointments = appData?.data || [];
   const petsList = petsData?.data || [];
-  const clientsList = (usersData?.data || []).filter(
-    (u) => u.role === "client",
-  );
+  // For CLIENT: clientsList is unused (they see their own name directly)
+  const clientsList = isClient
+    ? []
+    : (usersData?.data || []).filter((u) => u.role === "client");
 
   // Sort appointments by date
   const sortedAppointments = React.useMemo(
@@ -83,9 +87,21 @@ export default function AppointmentsPage() {
 
   const getPetName = (petId: string) =>
     petsList.find((p) => p.pet_id === petId)?.name || "Unknown Pet";
-  const getClientName = (clientId: string) =>
-    clientsList.find((c) => c.user_id === clientId)?.fullname ||
-    "Unknown Owner";
+
+  /**
+   * Resolve the display name for a client on an appointment row.
+   * - CLIENT role: always their own name (no users.read permission)
+   * - Staff/Owner/Admin: look up from the users list
+   */
+  const getClientName = (clientId: string) => {
+    if (isClient) {
+      return user?.fullname || "Unknown Owner";
+    }
+    return (
+      clientsList.find((c) => c.user_id === clientId)?.fullname ||
+      "Unknown Owner"
+    );
+  };
 
   const filteredAppointments = React.useMemo(() => {
     const byDate = filterByDateRange(
@@ -114,6 +130,7 @@ export default function AppointmentsPage() {
     statusFilter,
     petsList,
     clientsList,
+    user,
   ]);
 
   const formik = useFormik({
@@ -122,7 +139,12 @@ export default function AppointmentsPage() {
       client_id: "",
     },
     onSubmit: (values, { setSubmitting }) => {
-      createAppointment.mutate(values, {
+      // For CLIENT: inject their own user_id as client_id
+      const payload = isClient
+        ? { pet_id: values.pet_id, client_id: user?.userId || "" }
+        : values;
+
+      createAppointment.mutate(payload, {
         onSuccess: () => {
           setIsFormOpen(false);
           setSubmitting(false);
@@ -156,6 +178,11 @@ export default function AppointmentsPage() {
       },
     );
   };
+
+  // Pets available for the CLIENT to book (their own pets only)
+  const clientPets = isClient
+    ? petsList
+    : petsList.filter((p) => p.client_id === formik.values.client_id);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -230,9 +257,11 @@ export default function AppointmentsPage() {
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
                   {t("schedule_id_pet")}
                 </TableHead>
-                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
-                  {t("owner")}
-                </TableHead>
+                {!isClient && (
+                  <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
+                    {t("owner")}
+                  </TableHead>
+                )}
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
                   Status
                 </TableHead>
@@ -243,7 +272,7 @@ export default function AppointmentsPage() {
               {appLoading ? (
                 <TableRow>
                   <TableCell
-                    colSpan={4}
+                    colSpan={isClient ? 3 : 4}
                     className="text-center py-8 text-muted-foreground"
                   >
                     {t("loading_appointments")}
@@ -252,7 +281,7 @@ export default function AppointmentsPage() {
               ) : filteredAppointments.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={4}
+                    colSpan={isClient ? 3 : 4}
                     className="text-center py-8 text-muted-foreground"
                   >
                     {t("no_appointments_found")}
@@ -276,11 +305,13 @@ export default function AppointmentsPage() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="py-6 px-8">
-                      <span className="text-sm font-bold text-muted-foreground/80">
-                        {getClientName(app.client_id)}
-                      </span>
-                    </TableCell>
+                    {!isClient && (
+                      <TableCell className="py-6 px-8">
+                        <span className="text-sm font-bold text-muted-foreground/80">
+                          {getClientName(app.client_id)}
+                        </span>
+                      </TableCell>
+                    )}
                     <TableCell className="py-6 px-8">
                       <Badge
                         className={cn(
@@ -311,16 +342,20 @@ export default function AppointmentsPage() {
                           <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
                             {t("operations")}
                           </DropdownMenuLabel>
-                          <DropdownMenuItem
-                            onClick={() => handleCheckIn(app.appointment_id)}
-                            className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2"
-                          >
-                            <CheckCircle className="w-4 h-4" /> {t("check_in_patient")}
-                          </DropdownMenuItem>
+                          {!isClient && (
+                            <DropdownMenuItem
+                              onClick={() => handleCheckIn(app.appointment_id)}
+                              className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2"
+                            >
+                              <CheckCircle className="w-4 h-4" />{" "}
+                              {t("check_in_patient")}
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuSeparator className="bg-white/5 mx-2" />
                           {(user?.role === "staff" ||
                             user?.role === "owner" ||
-                            user?.role === "admin") && (
+                            user?.role === "admin" ||
+                            user?.role === "client") && (
                             <DropdownMenuItem
                               onClick={() => handleDelete(app.appointment_id)}
                               className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
@@ -351,30 +386,33 @@ export default function AppointmentsPage() {
         submitLabel={formik.isSubmitting ? t("booking") : t("confirm_booking")}
       >
         <div className="space-y-8">
-          <div className="space-y-3">
-            <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-              {t("client_owner")}
-            </Label>
-            <Select
-              value={formik.values.client_id}
-              onValueChange={(val) => formik.setFieldValue("client_id", val)}
-            >
-              <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold">
-                <SelectValue placeholder={t("select_client")} />
-              </SelectTrigger>
-              <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
-                {clientsList.map((client) => (
-                  <SelectItem
-                    key={client.user_id}
-                    value={client.user_id}
-                    className="rounded-xl font-bold"
-                  >
-                    {client.fullname}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Client selector — only for staff/owner/admin */}
+          {!isClient && (
+            <div className="space-y-3">
+              <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
+                {t("client_owner")}
+              </Label>
+              <Select
+                value={formik.values.client_id}
+                onValueChange={(val) => formik.setFieldValue("client_id", val)}
+              >
+                <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold">
+                  <SelectValue placeholder={t("select_client")} />
+                </SelectTrigger>
+                <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
+                  {clientsList.map((client) => (
+                    <SelectItem
+                      key={client.user_id}
+                      value={client.user_id}
+                      className="rounded-xl font-bold"
+                    >
+                      {client.fullname}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-3">
             <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
@@ -383,23 +421,27 @@ export default function AppointmentsPage() {
             <Select
               value={formik.values.pet_id}
               onValueChange={(val) => formik.setFieldValue("pet_id", val)}
-              disabled={!formik.values.client_id}
+              disabled={!isClient && !formik.values.client_id}
             >
               <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold">
-                <SelectValue placeholder={t("select_pet_choose_client")} />
+                <SelectValue
+                  placeholder={
+                    isClient
+                      ? t("select_pet_label")
+                      : t("select_pet_choose_client")
+                  }
+                />
               </SelectTrigger>
               <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
-                {petsList
-                  .filter((p) => p.client_id === formik.values.client_id)
-                  .map((pet) => (
-                    <SelectItem
-                      key={pet.pet_id}
-                      value={pet.pet_id}
-                      className="rounded-xl font-bold"
-                    >
-                      {pet.name}
-                    </SelectItem>
-                  ))}
+                {clientPets.map((pet) => (
+                  <SelectItem
+                    key={pet.pet_id}
+                    value={pet.pet_id}
+                    className="rounded-xl font-bold"
+                  >
+                    {pet.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

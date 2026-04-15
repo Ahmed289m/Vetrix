@@ -4,11 +4,11 @@ from datetime import datetime
 
 class AppointmentCreate(BaseModel):
     pet_id: str
-    client_id: str
+    client_id: str | None = None  # Auto-set from token for CLIENT role
     doctor_id: str | None = None
     appointment_date: datetime | None = None
     reason: str | None = None
-    # clinic_id is set automatically from current_user
+    # clinic_id is resolved from pet record for CLIENT, from token for STAFF/OWNER
 
 
 class AppointmentUpdate(BaseModel):

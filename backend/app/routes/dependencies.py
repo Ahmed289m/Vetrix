@@ -62,7 +62,8 @@ def get_drug_controller() -> DrugController:
 def get_pet_controller() -> PetController:
     db = get_database()
     repo = PetRepository(db)
-    service = PetService(repo)
+    user_repo = UserRepository(db)
+    service = PetService(repo, user_repo)
     return PetController(service)
 
 
