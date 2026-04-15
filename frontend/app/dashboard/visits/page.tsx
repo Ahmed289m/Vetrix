@@ -29,6 +29,18 @@ import { usePrescriptionItems } from "@/app/_hooks/queries/use-prescription-item
 import { useDrugs } from "@/app/_hooks/queries/use-drugs";
 import type { Visit, Drug } from "@/app/_lib/types/models";
 
+const formatDose = (val: any): string => {
+  if (!val) return "—";
+  if (typeof val === "object") {
+    try {
+      return JSON.stringify(val).replace(/["{}]/g, "").replace(/:/g, ": ");
+    } catch {
+      return String(val);
+    }
+  }
+  return String(val);
+};
+
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" as const } },
@@ -469,7 +481,7 @@ export default function VisitsPage() {
                           {Object.entries(drug.dosage).map(([k, v]) => (
                             <div key={k} className="flex justify-between text-sm">
                               <span className="text-muted-foreground capitalize">{k}</span>
-                              <span className="font-bold text-emerald">{String(v)}</span>
+                              <span className="font-bold text-emerald">{formatDose(v)}</span>
                             </div>
                           ))}
                         </div>

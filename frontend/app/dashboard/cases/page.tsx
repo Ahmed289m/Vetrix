@@ -124,6 +124,14 @@ export default function CasesPage() {
     setIsFormOpen(false);
   };
 
+  const clients = React.useMemo(() => {
+    const allUsers = usersData?.data || [];
+    return allUsers.filter((u: any) => u.role === "client");
+  }, [usersData]);
+
+  const petsList = petsData?.data || [];
+
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Page Header */}
@@ -310,23 +318,38 @@ export default function CasesPage() {
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-3">
               <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-              {t("pet_id_label")}
-              </Label>
-              <Input
-                placeholder="PET-001"
-                defaultValue={selectedCase?.id}
-                className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
-              />
-            </div>
-            <div className="space-y-3">
-              <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
               {t("client_id_label")}
               </Label>
-              <Input
-                placeholder="CLI-001"
-                defaultValue={selectedCase?.ownerName}
-                className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
-              />
+              <Select>
+                <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold">
+                  <SelectValue placeholder={t("select_client") || "Select Client"} />
+                </SelectTrigger>
+                <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
+                  {clients.map((doc: any) => (
+                    <SelectItem key={doc.user_id} value={doc.user_id} className="rounded-xl font-bold">
+                      {doc.fullname}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
+              {t("pet_id_label")}
+              </Label>
+              <Select>
+                <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold">
+                  <SelectValue placeholder={t("select_pet_label") || "Select Pet"} />
+                </SelectTrigger>
+                <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
+                  {petsList.map((p: any) => (
+                    <SelectItem key={p.pet_id} value={p.pet_id} className="rounded-xl font-bold">
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -335,19 +358,26 @@ export default function CasesPage() {
               <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
               {t("doctor_id_label")}
               </Label>
-              <Input
-                placeholder="DOC-001"
-                defaultValue={selectedCase?.doctorName}
-                className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
-              />
+              <Select>
+                <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold">
+                  <SelectValue placeholder={t("assign_doctor") || "Assign Doctor"} />
+                </SelectTrigger>
+                <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
+                  {doctors.map((doc: any) => (
+                    <SelectItem key={doc.user_id} value={doc.user_id} className="rounded-xl font-bold">
+                      {doc.fullname}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-3">
               <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-              {t("prescription_id_label")}
+              {t("visit_date")}
               </Label>
               <Input
-                placeholder="RX-001"
-                defaultValue={selectedCase?.reason}
+                type="date"
+                defaultValue={selectedCase?.date ? selectedCase.date.split('T')[0] : ""}
                 className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
               />
             </div>
@@ -355,11 +385,11 @@ export default function CasesPage() {
 
           <div className="space-y-3">
             <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-              {t("visit_date")}
+              {t("reason")}
             </Label>
             <Input
-              type="date"
-              defaultValue={selectedCase?.date}
+              defaultValue={selectedCase?.reason}
+              placeholder={t("chief_complaint") || "Chief complaint or symptoms..."}
               className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
             />
           </div>

@@ -20,7 +20,6 @@ import { usePets } from "@/app/_hooks/queries/use-pets";
 import { useUsers } from "@/app/_hooks/queries/use-users";
 import { useCreateVisit } from "@/app/_hooks/queries/use-visits";
 import { useCreatePrescription } from "@/app/_hooks/queries/use-prescriptions";
-import { useCreatePrescriptionItem } from "@/app/_hooks/queries/use-prescription-items";
 import { useDrugs } from "@/app/_hooks/queries/use-drugs";
 import { useWebSocket } from "@/app/_hooks/useWebSocket";
 import { useAuth } from "@/app/_hooks/useAuth";
@@ -30,7 +29,6 @@ import type {
   Drug,
   Pet,
   PrescriptionCreate,
-  PrescriptionItemCreate,
   User,
   VisitCreate,
 } from "@/app/_lib/types/models";
@@ -84,7 +82,6 @@ export default function SimulationMode({ role }: Props) {
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
   const [visitNotes, setVisitNotes] = useState("");
   const [selectedDrugId, setSelectedDrugId] = useState<string>("");
-  const [drugDose, setDrugDose] = useState("");
 
 
   // Fetch real data
@@ -98,7 +95,6 @@ export default function SimulationMode({ role }: Props) {
   const updateAppointment = useUpdateAppointment();
   const createVisit = useCreateVisit();
   const createPrescription = useCreatePrescription();
-  const createPrescriptionItem = useCreatePrescriptionItem();
 
   // Initialize websocket connection for real-time updates
   useWebSocket();
@@ -251,59 +247,31 @@ export default function SimulationMode({ role }: Props) {
 
   const handleCreatePrescription = () => {
     const currentCase = cases[activeIdx];
-    if (!currentCase || !selectedDrugId || !drugDose) {
+    if (!currentCase || !selectedDrugId) {
       console.warn("[SimulationMode] Missing required prescription fields");
       return;
     }
 
-    console.log(
-      "[SimulationMode] Creating prescription item for case:",
-      currentCase.id,
-    );
+    console.log("[SimulationMode] Creating prescription for case:", currentCase.id);
 
-    // First, create the prescription item with drug and dosage
-    createPrescriptionItem.mutate(
+    createPrescription.mutate(
       {
+        client_id: currentCase.clientId,
+        pet_id: currentCase.petId,
         drug_id: selectedDrugId,
-        drugDose: drugDose,
-      } satisfies PrescriptionItemCreate,
+      } satisfies PrescriptionCreate,
       {
-        onSuccess: (itemData) => {
-          const prescriptionItemId = itemData.data.prescriptionItem_id;
+        onSuccess: (prescriptionData) => {
           console.log(
-            "[SimulationMode] Prescription item created:",
-            prescriptionItemId,
+            "[SimulationMode] Prescription created successfully:",
+            prescriptionData,
           );
-
-          // Then, create the prescription with the item
-          createPrescription.mutate(
-            {
-              client_id: currentCase.clientId,
-              pet_id: currentCase.petId,
-              prescriptionItem_id: prescriptionItemId,
-            } satisfies PrescriptionCreate,
-            {
-              onSuccess: (prescriptionData) => {
-                console.log(
-                  "[SimulationMode] Prescription created successfully:",
-                  prescriptionData,
-                );
-                setShowPrescriptionModal(false);
-                setSelectedDrugId("");
-                setDrugDose("");
-              },
-              onError: (error) => {
-                console.error(
-                  "[SimulationMode] Failed to create prescription:",
-                  error,
-                );
-              },
-            },
-          );
+          setShowPrescriptionModal(false);
+          setSelectedDrugId("");
         },
         onError: (error) => {
           console.error(
-            "[SimulationMode] Failed to create prescription item:",
+            "[SimulationMode] Failed to create prescription:",
             error,
           );
         },
@@ -683,7 +651,6 @@ export default function SimulationMode({ role }: Props) {
                   onClick={() => {
                     setShowPrescriptionModal(false);
                     setSelectedDrugId("");
-                    setDrugDose("");
                   }}
                   className="p-1 hover:bg-muted rounded-lg transition-colors"
                 >
@@ -724,23 +691,6 @@ export default function SimulationMode({ role }: Props) {
                   </select>
                 </div>
 
-                <div>
-                  <label
-                    htmlFor="dose"
-                    className="text-xs font-bold text-muted-foreground mb-2 block"
-                  >
-                    {t("dosage")}
-                  </label>
-                  <input
-                    id="dose"
-                    type="text"
-                    value={drugDose}
-                    onChange={(e) => setDrugDose(e.target.value)}
-                    placeholder={t("dosage_example")}
-                    className="w-full px-3 py-2 rounded-lg bg-muted/30 border border-border text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald/50"
-                  />
-                </div>
-
                 <div className="flex gap-3">
                   <motion.button
                     whileHover={{ scale: 1.02 }}
@@ -748,7 +698,6 @@ export default function SimulationMode({ role }: Props) {
                     onClick={() => {
                       setShowPrescriptionModal(false);
                       setSelectedDrugId("");
-                      setDrugDose("");
                     }}
                     className="flex-1 px-4 py-2 rounded-lg bg-muted/30 hover:bg-muted/50 text-sm font-bold transition-colors"
                   >
@@ -759,15 +708,12 @@ export default function SimulationMode({ role }: Props) {
                     whileTap={{ scale: 0.97 }}
                     onClick={handleCreatePrescription}
                     disabled={
-                      createPrescriptionItem.isPending ||
                       createPrescription.isPending ||
-                      !selectedDrugId ||
-                      !drugDose
+                      !selectedDrugId
                     }
                     className="flex-1 px-4 py-2 rounded-lg gradient-emerald-cyan text-primary-foreground text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {createPrescriptionItem.isPending ||
-                    createPrescription.isPending
+                    {createPrescription.isPending
                       ? t("prescribing")
                       : t("prescribe")}
                   </motion.button>

@@ -21,6 +21,7 @@ import { usePets } from "@/app/_hooks/queries/use-pets";
 import { usePrescriptions } from "@/app/_hooks/queries/use-prescriptions";
 import { useUsers } from "@/app/_hooks/queries/use-users";
 import type { Appointment, Pet } from "@/app/_lib/types/models";
+import { cn } from "@/app/_lib/utils";
 
 const stagger = { animate: { transition: { staggerChildren: 0.06 } } };
 const fadeUp = {
@@ -263,7 +264,7 @@ export function ClientDashboard() {
                         {t("position_in_queue")}
                       </p>
                       <div className="flex items-baseline gap-1.5 mt-2">
-                        <span className="text-3xl font-extrabold tabular-nums text-emerald">
+                        <span className={cn("text-3xl font-extrabold tabular-nums", myQueuePosition === 1 ? "text-cyan animate-pulse" : "text-emerald")}>
                           {myQueuePosition}
                         </span>
                         <span className="text-sm text-muted-foreground">
@@ -293,12 +294,26 @@ export function ClientDashboard() {
                   <motion.div
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="p-5 rounded-xl border-2 border-emerald/30 bg-emerald/5 space-y-3"
+                    transition={{ duration: 0.4 }}
+                    className={cn(
+                      "p-5 rounded-xl border-2 space-y-3 relative overflow-hidden",
+                      myQueuePosition === 1
+                        ? "border-cyan/50 bg-cyan/10 shadow-[0_0_40px_-10px_rgba(34,211,238,0.2)]"
+                        : "border-emerald/30 bg-emerald/5"
+                    )}
                   >
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                        {t("your_appointment")}
+                    {/* Active turn glow */}
+                    {myQueuePosition === 1 && (
+                      <div className="absolute inset-0 bg-gradient-to-tr from-cyan/20 to-transparent pointer-events-none" />
+                    )}
+
+                    <div className="flex items-center gap-1.5 mb-1 relative z-10">
+                      <Clock className={cn("w-3.5 h-3.5", myQueuePosition === 1 ? "text-cyan" : "text-muted-foreground")} />
+                      <span className={cn(
+                        "text-[10px] font-bold uppercase tracking-widest",
+                        myQueuePosition === 1 ? "text-cyan animate-pulse" : "text-muted-foreground"
+                      )}>
+                        {myQueuePosition === 1 ? t("it_is_your_turn") || "YOUR TURN NOW" : t("your_appointment")}
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
@@ -320,14 +335,17 @@ export function ClientDashboard() {
                           {myCase.caseNumber}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald/15 text-emerald">
-                          <div className="w-2 h-2 rounded-full bg-emerald animate-pulse" />
-                          {t("confirmed")}
+                      <div className="text-right relative z-10">
+                        <span className={cn(
+                          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold",
+                          myQueuePosition === 1 ? "bg-cyan text-primary-foreground shadow-[0_0_20px_-5px_rgba(34,211,238,0.5)]" : "bg-emerald/15 text-emerald"
+                        )}>
+                          <div className={cn("w-2 h-2 rounded-full animate-pulse", myQueuePosition === 1 ? "bg-primary-foreground" : "bg-emerald")} />
+                          {myQueuePosition === 1 ? t("in_progress") : t("confirmed")}
                         </span>
                       </div>
                     </div>
-                    <p className="text-sm text-foreground/80 mt-1">
+                    <p className="text-sm text-foreground/80 mt-1 relative z-10">
                       {myCase.complaint}
                     </p>
                   </motion.div>

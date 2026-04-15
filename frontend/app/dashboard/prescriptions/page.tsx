@@ -62,6 +62,18 @@ import type { Drug, Prescription } from "@/app/_lib/types/models";
 
 type MouseEvent = React.MouseEvent<HTMLDivElement>;
 
+const formatDose = (val: any): string => {
+  if (!val) return "—";
+  if (typeof val === "object") {
+    try {
+      return JSON.stringify(val).replace(/["{}]/g, "").replace(/:/g, ": ");
+    } catch {
+      return String(val);
+    }
+  }
+  return String(val);
+};
+
 export default function PrescriptionsPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -440,7 +452,7 @@ export default function PrescriptionsPage() {
                       {Object.entries(selectedDrug.dosage || {}).map(([k, v]) => (
                         <div key={k} className="flex justify-between text-sm">
                           <span className="text-muted-foreground capitalize">{k}</span>
-                          <span className="font-bold text-emerald">{String(v)}</span>
+                          <span className="font-bold text-emerald">{formatDose(v)}</span>
                         </div>
                       ))}
                     </div>
@@ -587,7 +599,7 @@ export default function PrescriptionsPage() {
                     {Object.entries(selectedDrugInForm.dosage || {}).map(([k, v]) => (
                       <div key={k} className="flex justify-between text-sm">
                         <span className="text-muted-foreground capitalize">{k}</span>
-                        <span className="font-bold text-foreground">{String(v)}</span>
+                        <span className="font-bold text-foreground">{formatDose(v)}</span>
                       </div>
                     ))}
                   </div>
@@ -704,7 +716,7 @@ function ClientPrescriptionView({
                   {Object.entries(drug.dosage).slice(0, 2).map(([k, v]) => (
                     <div key={k} className="flex justify-between text-xs">
                       <span className="text-muted-foreground capitalize">{k}</span>
-                      <span className="font-bold text-emerald">{String(v)}</span>
+                      <span className="font-bold text-emerald">{formatDose(v)}</span>
                     </div>
                   ))}
                 </div>
