@@ -28,7 +28,6 @@ async def create_visit(
 @router.get("")
 async def list_visits(
     current_user: TokenData = Depends(require_permission(Permissions.VISITS_READ)),
-    clinic_check: TokenData = Depends(require_clinic_id()),
     controller: VisitController = Depends(get_visit_controller),
 ) -> dict:
     """

@@ -210,7 +210,10 @@ export interface Prescription {
 export interface PrescriptionCreate {
   client_id: string;
   pet_id: string;
-  prescriptionItem_id: string;
+  /** Pass drug_id to auto-create the prescription item from the drug's dosage info */
+  drug_id?: string;
+  /** Or pass an existing prescriptionItem_id directly */
+  prescriptionItem_id?: string;
 }
 
 export interface PrescriptionUpdate {

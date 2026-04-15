@@ -28,12 +28,11 @@ async def create_prescription(
 @router.get("")
 async def list_prescriptions(
     current_user: TokenData = Depends(require_permission(Permissions.PRESCRIPTIONS_READ)),
-    clinic_check: TokenData = Depends(require_clinic_id()),
     controller: PrescriptionController = Depends(get_prescription_controller),
 ) -> dict:
     """
     List prescriptions (authorized users only).
-    
+
     - ADMIN sees all prescriptions
     - DOCTOR/STAFF see prescriptions in their clinic
     - CLIENT sees only their prescriptions

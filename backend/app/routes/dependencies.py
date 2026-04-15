@@ -77,14 +77,17 @@ def get_prescription_item_controller() -> PrescriptionItemController:
 def get_prescription_controller() -> PrescriptionController:
     db = get_database()
     repo = PrescriptionRepository(db)
-    service = PrescriptionService(repo)
+    drug_repo = DrugRepository(db)
+    rx_item_repo = PrescriptionItemRepository(db)
+    service = PrescriptionService(repo, drug_repo, rx_item_repo)
     return PrescriptionController(service)
 
 
 def get_visit_controller() -> VisitController:
     db = get_database()
     repo = VisitRepository(db)
-    service = VisitService(repo)
+    user_repo = UserRepository(db)
+    service = VisitService(repo, user_repo)
     return VisitController(service)
 
 

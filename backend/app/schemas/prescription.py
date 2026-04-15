@@ -4,7 +4,8 @@ from pydantic import BaseModel, ConfigDict
 class PrescriptionCreate(BaseModel):
     client_id: str
     pet_id: str
-    prescriptionItem_id: str
+    drug_id: str | None = None          # Auto-creates a PrescriptionItem from the drug's dosage
+    prescriptionItem_id: str | None = None  # OR supply an existing item directly
     # clinic_id is set automatically from current_user
 
 

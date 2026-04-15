@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class Visit(BaseModel):
     visit_id: str | None = Field(default=None, alias="_id")
-    prescription_id: str
+    prescription_id: str | None = None
     clinic_id: str
     client_id: str
     notes: str | None = None
