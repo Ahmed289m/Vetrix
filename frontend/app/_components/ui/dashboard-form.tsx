@@ -40,7 +40,7 @@ export function DashboardForm({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "w-[calc(100vw-1.25rem)] max-w-xl bg-sidebar/60 backdrop-blur-3xl border border-white/10 p-0 overflow-hidden rounded-3xl sm:rounded-[2.5rem] shadow-[0_0_50px_-12px_rgba(16,185,129,0.15)]",
+          "w-[calc(100vw-2.5rem)] sm:w-full max-w-xl bg-background/95 dark:bg-sidebar/60 backdrop-blur-3xl border border-border dark:border-white/10 p-0 overflow-hidden rounded-3xl sm:rounded-[2.5rem] shadow-[0_0_50px_-12px_rgba(16,185,129,0.15)]",
           className,
         )}
       >
@@ -53,8 +53,8 @@ export function DashboardForm({
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
               className="flex flex-col h-auto max-h-[92vh]"
             >
-              <DialogHeader className="p-4 sm:p-6 border-b border-white/5 bg-white/5 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-emerald/0 via-emerald/50 to-emerald/0" />
+              <DialogHeader className="p-4 sm:p-6 border-b border-border dark:border-white/5 bg-muted/40 dark:bg-white/5 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald/0 via-emerald/50 to-emerald/0" />
                 <DialogTitle className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
                   {title}
                 </DialogTitle>
@@ -73,12 +73,12 @@ export function DashboardForm({
                   {children}
                 </div>
 
-                <DialogFooter className="p-4 sm:p-6 border-t border-white/5 bg-white/5 flex items-center gap-3 sm:gap-4 sm:justify-end">
+                <DialogFooter className="p-4 sm:p-6 border-t border-border dark:border-white/5 bg-muted/40 dark:bg-white/5 flex items-center gap-3 sm:gap-4 sm:justify-end">
                   <Button
                     type="button"
                     variant="ghost"
                     onClick={() => onOpenChange(false)}
-                    className="w-full sm:w-auto font-bold hover:bg-white/10 h-12 sm:h-14 px-6 sm:px-8 rounded-xl sm:rounded-2xl transition-all"
+                    className="w-full sm:w-auto font-bold hover:bg-black/5 dark:hover:bg-white/10 text-foreground h-12 sm:h-14 px-6 sm:px-8 rounded-xl sm:rounded-2xl transition-all"
                   >
                     {cancelLabel}
                   </Button>

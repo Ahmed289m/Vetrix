@@ -193,7 +193,7 @@ function DrugRow({
                   e.stopPropagation();
                   onEdit();
                 }}
-                className="h-9 w-9 rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-emerald/10 hover:text-emerald"
+                className="h-9 w-9 rounded-xl opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all hover:bg-emerald/10 hover:text-emerald"
                 title="Edit drug"
               >
                 <Pencil className="w-4 h-4" />
@@ -205,7 +205,7 @@ function DrugRow({
                   e.stopPropagation();
                   onDelete();
                 }}
-                className="h-9 w-9 rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/10 hover:text-red-400"
+                className="h-9 w-9 rounded-xl opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all hover:bg-red-500/10 hover:text-red-400"
                 title="Delete drug"
               >
                 <Trash2 className="w-4 h-4" />
@@ -891,7 +891,7 @@ function ImportJsonModal({
           <p className="font-bold flex items-center gap-2.5 text-blue-400 text-sm">
             <FileJson className="w-5 h-5" /> Expected JSON Shape Example:
           </p>
-          <pre className="p-4 bg-black/20 rounded-xl overflow-x-auto text-[10px] text-blue-200/90 font-mono shadow-inner border border-black/20">
+          <pre className="block w-full max-w-[calc(100vw-5.5rem)] sm:max-w-none p-4 bg-blue-950/5 dark:bg-black/20 rounded-xl overflow-x-auto text-[10px] text-blue-800 dark:text-blue-200/90 font-mono shadow-inner border border-blue-500/10 dark:border-black/20">
             {`[
   {
     "name": "Amoxicillin",

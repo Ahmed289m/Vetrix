@@ -33,7 +33,7 @@ class DrugService:
         if current_user.is_superuser:
             return all_drugs
         # Filter: show global drugs and drugs for user's clinic
-        return [d for d in all_drugs if d.get("clinic_id") is None or d.get("clinic_id") == current_user.clinic_id]
+        return [d for d in all_drugs if not d.get("clinic_id") or d.get("clinic_id") == current_user.clinic_id]
 
     async def get_drug(self, drug_id: str, current_user: TokenData) -> dict:
         """
@@ -44,7 +44,7 @@ class DrugService:
         drug = await self.crud.get(drug_id)
         if current_user.is_superuser:
             return drug
-        if drug.get("clinic_id") is None or drug.get("clinic_id") == current_user.clinic_id:
+        if not drug.get("clinic_id") or drug.get("clinic_id") == current_user.clinic_id:
             return drug
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
 
