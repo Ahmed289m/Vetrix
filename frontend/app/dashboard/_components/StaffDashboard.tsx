@@ -93,11 +93,7 @@ export function StaffDashboard() {
 
     const activePatients = pets.filter((pet) => pet.is_active ?? true).length;
 
-    const lowStockDrugs = drugs.filter(
-      (drug) =>
-        typeof drug.quantity === "number" &&
-        drug.quantity < (drug.min_quantity ?? 10),
-    ).length;
+    const lowStockDrugs = 0; // Drugs no longer track quantity directly
 
     return {
       todayAppointments,

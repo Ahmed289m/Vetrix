@@ -98,7 +98,7 @@ export default function PrescriptionsPage() {
     const rxItem = rxItems.find((r) => r.prescriptionItem_id === rxItemId);
     if (!rxItem) return "Unknown Formulation";
     const drug = drugs.find((d) => d.drug_id === rxItem.drug_id);
-    return `${drug?.drugName || "Unknown Drug"} (${rxItem.drugDose})`;
+    return `${drug?.name || "Unknown Drug"} (${rxItem.drugDose})`;
   };
 
   const filteredPrescriptions = React.useMemo(() => {
@@ -376,7 +376,7 @@ export default function PrescriptionsPage() {
                       key={item.prescriptionItem_id}
                       value={item.prescriptionItem_id}
                     >
-                      {drug?.drugName || "Unknown Drug"} - {item.drugDose}
+                      {drug?.name || "Unknown Drug"} - {item.drugDose}
                     </SelectItem>
                   );
                 })}
