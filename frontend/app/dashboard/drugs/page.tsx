@@ -23,6 +23,7 @@ import {
 import { useFormik } from "formik";
 
 import { useAuth } from "@/app/_hooks/useAuth";
+import { useLang } from "@/app/_hooks/useLanguage";
 import {
   useDrugs,
   useCreateDrug,
@@ -235,6 +236,7 @@ function DrugDetailPanel({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useLang();
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -269,7 +271,7 @@ function DrugDetailPanel({
               </div>
               {drug.clinic_id && (
                 <p className="text-[10px] font-mono text-muted-foreground/50 mt-1">
-                  clinic: {drug.clinic_id}
+                  {t("clinic")}: {drug.clinic_id}
                 </p>
               )}
             </div>
@@ -286,43 +288,59 @@ function DrugDetailPanel({
         <div className="space-y-3">
           <DetailSection
             icon={<FlaskConical className="w-4 h-4 text-emerald" />}
-            label="Indications"
+            label={t("indications_label")}
             items={drug.indications}
           />
           <DetailSection
             icon={<AlertTriangle className="w-4 h-4 text-amber-400" />}
-            label="Side Effects"
+            label={t("side_effects")}
             items={drug.sideEffects}
           />
           <DetailSection
             icon={<Shield className="w-4 h-4 text-red-400" />}
-            label="Contraindications"
+            label={t("contraindications_label")}
             items={drug.contraindications}
           />
           <DetailSection
             icon={<Pill className="w-4 h-4 text-cyan-400" />}
-            label="Drug Interactions"
+            label={t("drug_interactions_label")}
             items={drug.drugInteractions}
           />
 
           {drug.dosage && Object.keys(drug.dosage).length > 0 && (
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
-                Dosage Guidelines
-              </p>
-              <pre className="text-xs text-foreground/85 whitespace-pre-wrap font-mono leading-relaxed">
-                {JSON.stringify(drug.dosage, null, 2)}
-              </pre>
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-3">
+              <div className="flex items-center gap-2 mb-1">
+                <FlaskConical className="w-4 h-4 text-cyan-400" />
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  {t("dosage_guidelines")}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {Object.entries(drug.dosage as Record<string, string>).map(([k, v]) => (
+                  <div key={k} className="p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/10">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-1">{k}</p>
+                    <p className="text-sm font-semibold text-foreground">{String(v)}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
           {drug.toxicity && Object.keys(drug.toxicity).length > 0 && (
-            <div className="p-4 rounded-2xl bg-red-500/5 border border-red-500/10">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-red-400 mb-2">
-                Toxicity Information
-              </p>
-              <pre className="text-xs text-foreground/85 whitespace-pre-wrap font-mono leading-relaxed">
-                {JSON.stringify(drug.toxicity, null, 2)}
-              </pre>
+            <div className="p-4 rounded-2xl bg-red-500/5 border border-red-500/10 space-y-3">
+              <div className="flex items-center gap-2 mb-1">
+                <AlertTriangle className="w-4 h-4 text-red-400" />
+                <p className="text-[10px] font-bold uppercase tracking-widest text-red-400">
+                  {t("toxicity_information")}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {Object.entries(drug.toxicity as Record<string, string>).map(([k, v]) => (
+                  <div key={k} className="p-3 rounded-xl bg-red-500/5 border border-red-500/10">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-red-400 mb-1">{k}</p>
+                    <p className="text-sm font-semibold text-foreground">{String(v)}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -334,22 +352,22 @@ function DrugDetailPanel({
               onClick={onEdit}
               className="flex-1 bg-emerald hover:bg-emerald/90 text-white font-black h-12 rounded-xl shadow-lg shadow-emerald/20 gap-2"
             >
-              <Pencil className="w-4 h-4" /> Edit Drug
+              <Pencil className="w-4 h-4" /> {t("edit_drug")}
             </Button>
             <Button
               onClick={onDelete}
               variant="ghost"
               className="flex-1 h-12 rounded-xl border border-red-500/20 text-red-400 hover:bg-red-500/10 hover:border-red-500/30 font-bold gap-2"
             >
-              <Trash2 className="w-4 h-4" /> Delete
+              <Trash2 className="w-4 h-4" /> {t("delete_drug")}
             </Button>
           </div>
         ) : (
           <div className="flex items-center gap-2 pt-2 border-t border-white/5 text-xs text-muted-foreground/50 font-semibold">
             <Lock className="w-3.5 h-3.5" />
             {drug.clinic_id
-              ? "This drug belongs to another clinic — read only."
-              : "Global drug — contact admin to modify."}
+              ? t("read_only_other_clinic")
+              : t("global_contact_admin")}
           </div>
         )}
       </motion.div>
@@ -368,7 +386,7 @@ function DetailSection({
 }) {
   if (!items?.length) return null;
   return (
-    <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
+    <div className="p-4 rounded-2xl bg-white/5 dark:bg-white/5 border border-border/30 dark:border-white/5">
       <div className="flex items-center gap-2 mb-2">
         {icon}
         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -379,7 +397,7 @@ function DetailSection({
         {items.map((item, i) => (
           <span
             key={i}
-            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white/5 border border-white/5 text-foreground/80"
+            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-muted/40 dark:bg-white/5 border border-border/30 dark:border-white/5 text-foreground/90"
           >
             {item}
           </span>
@@ -427,6 +445,7 @@ function DrugCrudForm({
 }) {
   const createDrug = useCreateDrug();
   const updateDrug = useUpdateDrug();
+  const { t } = useLang();
   const isAdmin = level === "admin";
 
   const formik = useFormik<DrugFormValues>({
@@ -541,13 +560,13 @@ function DrugCrudForm({
 
   return (
     <DashboardForm
-      title={selectedDrug ? "Edit Drug" : "Add New Drug"}
+      title={selectedDrug ? t("edit_drug_title") : t("add_new_drug")}
       description={
         selectedDrug
-          ? `Updating formulary record for ${selectedDrug.name}`
+          ? `${t("updating_formulary_for")} ${selectedDrug.name}`
           : isAdmin
-            ? "Register a drug — optionally assign to a clinic"
-            : `Adding clinic drug — will be assigned to ${clinicHint ?? "your clinic"}`
+            ? t("admin_register_drug_hint")
+            : `${t("clinic_drug_adding_hint")} ${clinicHint ?? t("your_clinic")}`
       }
       isOpen={isOpen}
       onOpenChange={onOpenChange}
@@ -556,10 +575,10 @@ function DrugCrudForm({
       }
       submitLabel={
         formik.isSubmitting
-          ? "Saving…"
+          ? t("saving_ellipsis")
           : selectedDrug
-            ? "Save Changes"
-            : "Add Drug"
+            ? t("save_changes")
+            : t("add_drug")
       }
     >
       <div className="space-y-5">
@@ -591,7 +610,7 @@ function DrugCrudForm({
             <div className="flex items-center gap-2">
               <Building2 className="w-4 h-4 text-blue-400" />
               <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">
-                Clinic Assignment (Admin Only)
+                {t("clinic_assignment_admin_only")}
               </p>
             </div>
             <Select
@@ -604,7 +623,7 @@ function DrugCrudForm({
               }
             >
               <SelectTrigger className="h-12 bg-white/5 border-white/5 focus:border-blue-400/30 rounded-xl font-semibold">
-                <SelectValue placeholder="Global (no clinic)" />
+                <SelectValue placeholder={t("global_no_clinic")} />
               </SelectTrigger>
               <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2">
                 <SelectItem
@@ -612,7 +631,7 @@ function DrugCrudForm({
                   className="rounded-xl font-bold py-3 cursor-pointer focus:bg-blue-500/10 focus:text-blue-400"
                 >
                   <span className="flex items-center gap-2">
-                    <Globe className="w-4 h-4" /> Global (visible to all)
+                    <Globe className="w-4 h-4" /> {t("global_visible")}
                   </span>
                 </SelectItem>
                 {clinics.map((c) => (
@@ -630,7 +649,7 @@ function DrugCrudForm({
             </Select>
             <p className="text-[10px] text-muted-foreground/50 font-semibold px-1 flex items-center gap-1.5">
               <Info className="w-3 h-3" />
-              Leave as Global to make this drug visible across all clinics.
+              {t("leave_global_hint")}
             </p>
           </div>
         )}
@@ -645,16 +664,16 @@ function DrugCrudForm({
               </div>
               <div className="flex-1 space-y-1">
                 <h4 className="text-sm font-black text-emerald tracking-tight">
-                  Clinic Assignment
+                  {t("clinic_assignment")}
                 </h4>
                 <p className="text-xs font-semibold text-emerald/80 leading-relaxed max-w-lg">
-                  This drug will be exclusively assigned to{" "}
+                  {t("drug_exclusively_assigned_to")}{" "}
                   <span className="font-bold underline decoration-emerald/30 decoration-2 underline-offset-2">
                     {clinicHint}
                   </span>
                   .<br />
                   <span className="opacity-75">
-                    It will not be visible to other clinics.
+                    {t("not_visible_other_clinics")}
                   </span>
                 </p>
               </div>
@@ -663,10 +682,10 @@ function DrugCrudForm({
         )}
 
         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40 px-1">
-          Separate multiple entries with commas
+          {t("separate_with_commas")}
         </p>
 
-        <Field label="Indications">
+        <Field label={t("indications_label")}>
           <Input
             name="indications"
             value={formik.values.indications}
@@ -675,7 +694,7 @@ function DrugCrudForm({
             className="h-12 bg-white/5 border-white/5 focus:border-emerald/30 rounded-xl"
           />
         </Field>
-        <Field label="Side Effects">
+        <Field label={t("side_effects")}>
           <Input
             name="sideEffects"
             value={formik.values.sideEffects}
@@ -684,7 +703,7 @@ function DrugCrudForm({
             className="h-12 bg-white/5 border-white/5 focus:border-amber-400/30 rounded-xl"
           />
         </Field>
-        <Field label="Contraindications">
+        <Field label={t("contraindications_label")}>
           <Input
             name="contraindications"
             value={formik.values.contraindications}
@@ -693,7 +712,7 @@ function DrugCrudForm({
             className="h-12 bg-white/5 border-white/5 focus:border-red-400/30 rounded-xl"
           />
         </Field>
-        <Field label="Drug Interactions">
+        <Field label={t("drug_interactions_label")}>
           <Input
             name="drugInteractions"
             value={formik.values.drugInteractions}
@@ -704,7 +723,7 @@ function DrugCrudForm({
         </Field>
         {/* Specific Destructured Dosage */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Dosage (Dog)">
+          <Field label={t("dosage_dog")}>
             <Input
               name="dosageDog"
               value={formik.values.dosageDog}
@@ -713,7 +732,7 @@ function DrugCrudForm({
               className="h-12 bg-white/5 border-white/5 focus:border-emerald/30 rounded-xl"
             />
           </Field>
-          <Field label="Dosage (Cat)">
+          <Field label={t("dosage_cat")}>
             <Input
               name="dosageCat"
               value={formik.values.dosageCat}
@@ -726,7 +745,7 @@ function DrugCrudForm({
 
         {/* Specific Destructured Toxicity */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Toxicity (Dog)">
+          <Field label={t("toxicity_dog")}>
             <Input
               name="toxicityDog"
               value={formik.values.toxicityDog}
@@ -735,7 +754,7 @@ function DrugCrudForm({
               className="h-12 bg-muted/40 dark:bg-white/5 border-border dark:border-white/5 focus:border-red-400/30 rounded-xl"
             />
           </Field>
-          <Field label="Toxicity (Cat)">
+          <Field label={t("toxicity_cat")}>
             <Input
               name="toxicityCat"
               value={formik.values.toxicityCat}
@@ -746,7 +765,7 @@ function DrugCrudForm({
           </Field>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Toxicity Severity (Dog)">
+          <Field label={t("toxicity_severity_dog")}>
             <Select
               value={formik.values.toxicitySeverityDog}
               onValueChange={(val) =>
@@ -754,17 +773,17 @@ function DrugCrudForm({
               }
             >
               <SelectTrigger className="h-12 bg-muted/40 dark:bg-white/5 border-border dark:border-white/5 focus:border-red-400/30 rounded-xl font-semibold">
-                <SelectValue placeholder="Select severity" />
+                <SelectValue placeholder={t("select_severity")} />
               </SelectTrigger>
               <SelectContent className="bg-background/95 dark:bg-sidebar/95 backdrop-blur-xl border-border dark:border-white/5 rounded-2xl p-2">
-                <SelectItem value="High" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-red-500/20 focus:text-red-400">High</SelectItem>
-                <SelectItem value="Medium" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-amber-500/20 focus:text-amber-400">Medium</SelectItem>
-                <SelectItem value="Low" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-yellow-500/20 focus:text-yellow-400">Low</SelectItem>
-                <SelectItem value="No" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-emerald-500/20 focus:text-emerald-400">No Risk</SelectItem>
+                <SelectItem value="High" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-red-500/20 focus:text-red-400">{t("high")}</SelectItem>
+                <SelectItem value="Medium" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-amber-500/20 focus:text-amber-400">{t("medium")}</SelectItem>
+                <SelectItem value="Low" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-yellow-500/20 focus:text-yellow-400">{t("low")}</SelectItem>
+                <SelectItem value="No" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-emerald-500/20 focus:text-emerald-400">{t("no_risk")}</SelectItem>
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Toxicity Severity (Cat)">
+          <Field label={t("toxicity_severity_cat")}>
             <Select
               value={formik.values.toxicitySeverityCat}
               onValueChange={(val) =>
@@ -772,13 +791,13 @@ function DrugCrudForm({
               }
             >
               <SelectTrigger className="h-12 bg-muted/40 dark:bg-white/5 border-border dark:border-white/5 focus:border-red-400/30 rounded-xl font-semibold">
-                <SelectValue placeholder="Select severity" />
+                <SelectValue placeholder={t("select_severity")} />
               </SelectTrigger>
               <SelectContent className="bg-background/95 dark:bg-sidebar/95 backdrop-blur-xl border-border dark:border-white/5 rounded-2xl p-2">
-                <SelectItem value="High" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-red-500/20 focus:text-red-400">High</SelectItem>
-                <SelectItem value="Medium" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-amber-500/20 focus:text-amber-400">Medium</SelectItem>
-                <SelectItem value="Low" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-yellow-500/20 focus:text-yellow-400">Low</SelectItem>
-                <SelectItem value="No" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-emerald-500/20 focus:text-emerald-400">No Risk</SelectItem>
+                <SelectItem value="High" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-red-500/20 focus:text-red-400">{t("high")}</SelectItem>
+                <SelectItem value="Medium" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-amber-500/20 focus:text-amber-400">{t("medium")}</SelectItem>
+                <SelectItem value="Low" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-yellow-500/20 focus:text-yellow-400">{t("low")}</SelectItem>
+                <SelectItem value="No" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-emerald-500/20 focus:text-emerald-400">{t("no_risk")}</SelectItem>
               </SelectContent>
             </Select>
           </Field>
@@ -819,6 +838,7 @@ function ImportJsonModal({
   isAdmin: boolean;
 }) {
   const createDrug = useCreateDrug();
+  const { t } = useLang();
   const [jsonText, setJsonText] = React.useState("");
   const [error, setError] = React.useState("");
   const [isImporting, setIsImporting] = React.useState(false);
@@ -868,30 +888,30 @@ function ImportJsonModal({
 
   return (
     <DashboardForm
-      title="Import Drugs via JSON"
-      description="Paste a standard JSON array of drug objects to import in bulk."
+      title={t("import_drugs_json")}
+      description={t("import_drugs_desc")}
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       onSubmit={(e) => {
         e.preventDefault();
         handleImport();
       }}
-      submitLabel={isImporting ? "Importing Drugs..." : "Start Import"}
+      submitLabel={isImporting ? t("importing_drugs") : t("start_import")}
     >
       <div className="space-y-4">
         {error && (
           <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold leading-relaxed shadow-inner">
             <div className="flex items-center gap-2 mb-1.5">
-              <AlertTriangle className="w-4 h-4" /> Error parsing payload
+              <AlertTriangle className="w-4 h-4" /> {t("error_parsing_payload")}
             </div>
             {error}
           </div>
         )}
         <div className="p-4 sm:p-5 rounded-2xl bg-blue-500/5 border border-blue-500/10 space-y-3 text-xs font-medium text-blue-300/80">
           <p className="font-bold flex items-center gap-2.5 text-blue-400 text-sm">
-            <FileJson className="w-5 h-5" /> Expected JSON Shape Example:
+            <FileJson className="w-5 h-5" /> {t("json_shape_example")}
           </p>
-          <pre className="block w-full max-w-[calc(100vw-5.5rem)] sm:max-w-none p-4 bg-blue-950/5 dark:bg-black/20 rounded-xl overflow-x-auto text-[10px] text-blue-800 dark:text-blue-200/90 font-mono shadow-inner border border-blue-500/10 dark:border-black/20">
+          <pre className="block w-full p-3 sm:p-4 mx-0 bg-blue-950/5 dark:bg-black/20 rounded-xl overflow-x-auto text-[10px] text-blue-800 dark:text-blue-200/90 font-mono shadow-inner border border-blue-500/10 dark:border-black/20 leading-relaxed">
             {`[
   {
     "name": "Amoxicillin",
@@ -908,7 +928,7 @@ function ImportJsonModal({
         </div>
         <div className="space-y-2.5">
           <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 ml-1">
-            JSON Payload
+            {t("json_payload")}
           </Label>
           <Textarea
             value={jsonText}
@@ -926,6 +946,7 @@ function ImportJsonModal({
 /* ── Main Page ──────────────────────────────────────────────────────────── */
 export default function DrugsPage() {
   const { user } = useAuth();
+  const { t } = useLang();
   const level = useManageLevel();
   const isAdmin = level === "admin";
   const isClinicStaff = level === "clinic";
@@ -1008,16 +1029,15 @@ export default function DrugsPage() {
           <div className="flex items-center gap-2 mb-2">
             <Pill className="w-5 h-5 text-emerald fill-emerald/20" />
             <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald">
-              Pharmacology
+              {t("pharmacology")}
             </span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-foreground">
-            Drug Formulary
+            {t("drug_formulary")}
           </h1>
           <p className="text-muted-foreground font-medium">
-            {allDrugs.length} drugs visible ·{" "}
-            <span className="text-blue-400">{globalCount} global</span> ·{" "}
-            <span className="text-emerald">{clinicCount} clinic-specific</span>
+            {allDrugs.length} {t("drugs_label")} ·{" "}
+            <span className="text-blue-400">{globalCount} {t("global_visible")}</span>
           </p>
         </div>
         {canAdd && (
@@ -1028,14 +1048,14 @@ export default function DrugsPage() {
               className="bg-transparent hover:bg-white/5 border-white/10 text-foreground font-bold px-5 h-12 rounded-xl transition-all w-full sm:w-auto"
             >
               <Upload className="w-4 h-4 mr-2" />
-              Import JSON
+              {t("bulk_import_json")}
             </Button>
             <Button
               onClick={handleOpenAdd}
               className="bg-emerald hover:bg-emerald/90 text-white font-black px-6 h-12 shadow-xl shadow-emerald/20 flex items-center justify-center gap-2 group transition-all duration-300 rounded-xl w-full sm:w-auto"
             >
               <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300 shrink-0" />
-              Add Drug
+              {t("add_drug")}
             </Button>
           </div>
         )}
@@ -1045,20 +1065,20 @@ export default function DrugsPage() {
       <div className="grid grid-cols-3 gap-4">
         {[
           {
-            label: "Total",
+            label: t("total_stat_label"),
             value: allDrugs.length,
             color: "text-foreground",
             bg: "bg-white/5",
           },
           {
-            label: "Global",
+            label: t("scope_global"),
             value: globalCount,
             color: "text-blue-400",
             bg: "bg-blue-500/5",
             icon: <Globe className="w-4 h-4 text-blue-400" />,
           },
           {
-            label: "Clinic",
+            label: t("scope_clinic"),
             value: clinicCount,
             color: "text-emerald",
             bg: "bg-emerald/5",
@@ -1085,18 +1105,18 @@ export default function DrugsPage() {
         <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-xs font-semibold text-amber-400">
           <Building2 className="w-4 h-4 shrink-0" />
           <span>
-            You can manage drugs assigned to{" "}
+            {t("you_manage_drugs_for")}{" "}
             <span className="font-black">
-              {user?.clinicName ?? "your clinic"}
+              {user?.clinicName ?? t("your_clinic")}
             </span>
-            . Global drugs are read-only — contact admin to modify them.
+            . {t("global_drugs_readonly_notice")}
           </span>
         </div>
       )}
       {level === "readonly" && (
         <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/5 border border-white/5 text-xs font-semibold text-muted-foreground">
           <Lock className="w-4 h-4 shrink-0" />
-          You have read-only access to the formulary as{" "}
+          {t("read_only_formulary_as")}{" "}
           <span className="capitalize font-black text-foreground/70">
             {user?.role}
           </span>
@@ -1111,7 +1131,7 @@ export default function DrugsPage() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, class, or indication…"
+            placeholder={t("search_drugs")}
             className="pl-11 h-12 bg-white/5 border-white/5 focus:border-emerald/30 rounded-xl font-medium"
           />
         </div>
@@ -1126,7 +1146,7 @@ export default function DrugsPage() {
                   : "bg-white/5 border border-white/5 text-muted-foreground hover:border-emerald/20 hover:text-emerald"
               }`}
             >
-              {f}
+              {f === "all" ? t("scope_all") : f === "global" ? t("scope_global") : t("scope_clinic")}
             </button>
           ))}
         </div>
@@ -1137,13 +1157,13 @@ export default function DrugsPage() {
         <DrugSkeleton />
       ) : isError ? (
         <div className="text-center py-16 text-red-400 font-semibold">
-          Failed to load drugs. Please try again.
+          {t("failed_load_drugs")}
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 space-y-3">
           <Pill className="w-12 h-12 text-muted-foreground/20 mx-auto" />
           <p className="text-muted-foreground font-semibold">
-            {search ? "No drugs match your search." : "No drugs found."}
+            {search ? t("no_drugs_match_search") : t("no_drugs_found_text")}
           </p>
           {canAdd && !search && (
             <Button
@@ -1151,7 +1171,7 @@ export default function DrugsPage() {
               variant="ghost"
               className="text-emerald hover:bg-emerald/10 border border-emerald/20 rounded-xl font-bold"
             >
-              <Plus className="w-4 h-4 mr-2" /> Add the first drug
+              <Plus className="w-4 h-4 mr-2" /> {t("add_first_drug")}
             </Button>
           )}
         </div>

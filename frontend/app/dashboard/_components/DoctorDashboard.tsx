@@ -78,7 +78,7 @@ const visitData = [
 export function DoctorDashboard() {
   const [showSim, setShowSim] = useState(false);
   const { user } = useAuth();
-  const { lang, t } = useLang();
+  const { t } = useLang();
   const { data: appointmentsData } = useAppointments();
   const { data: petsData } = usePets();
   const { data: usersData } = useUsers();
@@ -138,7 +138,7 @@ export function DoctorDashboard() {
 
     return [
       {
-        label: lang === "ar" ? "المؤكدة" : "Confirmed",
+        label: t("confirmed_stat"),
         value: confirmed,
         icon: CheckCircle2,
         color: "text-emerald",
@@ -146,7 +146,7 @@ export function DoctorDashboard() {
         border: "border-emerald/20",
       },
       {
-        label: lang === "ar" ? "قيد الانتظار" : "Pending",
+        label: t("pending_stat"),
         value: pending,
         icon: Timer,
         color: "text-orange",
@@ -154,7 +154,7 @@ export function DoctorDashboard() {
         border: "border-orange/20",
       },
       {
-        label: lang === "ar" ? "المرضى اليوم" : "Today's Patients",
+        label: t("todays_patients"),
         value: todayAppointments.length,
         icon: Dog,
         color: "text-cyan",
@@ -162,7 +162,7 @@ export function DoctorDashboard() {
         border: "border-cyan/20",
       },
       {
-        label: lang === "ar" ? "الإجمالي" : "Total",
+        label: t("total_stat"),
         value: total,
         icon: Activity,
         color: "text-purple",
@@ -170,7 +170,7 @@ export function DoctorDashboard() {
         border: "border-purple/20",
       },
     ];
-  }, [appointments, todayAppointments.length, lang]);
+  }, [appointments, todayAppointments.length, t]);
 
   return (
     <motion.div
@@ -185,40 +185,20 @@ export function DoctorDashboard() {
       >
         <div>
           <p className="text-xs font-semibold text-emerald uppercase tracking-widest mb-1">
-            {lang === "ar"
-              ? "مرحبا"
-              : formatGreeting(
-                  user?.fullname || "Doctor",
-                  user?.role || "doctor",
-                  lang as any,
-                )
-                  .split(" ")
-                  .slice(0, 2)
-                  .join(" ")}
+            {t("hello")}
           </p>
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-arabic">
-            {lang === "ar" ? "أهلا وسهلا" : "Welcome"}{" "}
+            {t("welcome")}{" "}
             <span className="gradient-text">
               {user?.role === "doctor" ? "Dr. " : ""}
               {user?.fullname || "User"}
             </span>
           </h2>
           <p className="text-sm text-muted-foreground mt-1.5">
-            {lang === "ar" ? (
-              <>
-                <span className="font-semibold text-foreground">
-                  {todayAppointments.length}
-                </span>
-                {" موعد مجدول لهذا اليوم"}
-              </>
-            ) : (
-              <>
-                <span className="font-semibold text-foreground">
-                  {todayAppointments.length}
-                </span>
-                {" appointments scheduled today"}
-              </>
-            )}
+            <span className="font-semibold text-foreground">
+              {todayAppointments.length}
+            </span>
+            {" "}{t("appointments_scheduled_today")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -228,18 +208,12 @@ export function DoctorDashboard() {
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${showSim ? "bg-coral/10 border border-coral/30 text-coral" : "gradient-emerald-cyan text-primary-foreground glow-emerald"}`}
           >
             <Play className="w-3.5 h-3.5" />{" "}
-            {showSim
-              ? lang === "ar"
-                ? "خروج"
-                : "Exit Sim"
-              : lang === "ar"
-                ? "محاكاة"
-                : "Simulation"}
+            {showSim ? t("exit_simulation") : t("simulation_label")}
           </motion.button>
           <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald/10 border border-emerald/20">
             <div className="w-2 h-2 rounded-full bg-emerald animate-pulse" />
             <span className="text-xs font-bold text-emerald uppercase tracking-wider">
-              {lang === "ar" ? "متصل" : "On Duty"}
+              {t("on_duty_status")}
             </span>
           </div>
         </div>
@@ -302,12 +276,12 @@ export function DoctorDashboard() {
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-emerald" />
                 <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                  {lang === "ar" ? "مواعيد اليوم" : "Today's Appointments"}
+                  {t("todays_appointments_title")}
                 </h3>
               </div>
               <span className="text-xs font-bold text-emerald tabular-nums">
                 {todayAppointments.length}{" "}
-                {lang === "ar" ? "مجدول" : "Scheduled"}
+                {t("scheduled")}
               </span>
             </div>
             <div className="relative space-y-0">
@@ -352,9 +326,7 @@ export function DoctorDashboard() {
               ) : (
                 <div className="text-center py-8">
                   <p className="text-sm text-muted-foreground">
-                    {lang === "ar"
-                      ? "لا توجد مواعيد لهذا اليوم"
-                      : "No appointments today"}
+                    {t("no_appointments_today")}
                   </p>
                 </div>
               )}

@@ -17,6 +17,7 @@ import {
   EyeOff,
   Copy,
   Check,
+  KeyRound,
 } from "lucide-react";
 import { useFormik } from "formik";
 import { DashboardForm } from "@/app/_components/ui/dashboard-form";
@@ -39,6 +40,7 @@ import {
   useUsers,
   useCreateUser,
   useDeleteUser,
+  useResetPassword,
 } from "@/app/_hooks/queries/use-users";
 import { usePets, useCreatePet } from "@/app/_hooks/queries/use-pets";
 import type { UserRole, PetType, UserCreated } from "@/app/_lib/types/models";
@@ -58,8 +60,11 @@ export default function OwnersPage() {
   const [showAddPet, setShowAddPet] = useState<string | null>(null);
   const [expandedOwner, setExpandedOwner] = useState<string | null>(null);
   const [createdUser, setCreatedUser] = useState<UserCreated | null>(null);
+  const [resettedClient, setResettedClient] = useState<UserCreated | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [showResettedPassword, setShowResettedPassword] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedResetted, setCopiedResetted] = useState(false);
   const { user } = useAuth();
   const { t } = useLang();
   const isAdminReadOnly = user?.role === "admin";
@@ -70,6 +75,7 @@ export default function OwnersPage() {
   const createUser = useCreateUser();
   const deleteUser = useDeleteUser();
   const createPet = useCreatePet();
+  const resetPassword = useResetPassword();
 
   const clients = (usersData?.data || []).filter((u) => u.role === "client");
   const pets = petsData?.data || [];
@@ -168,6 +174,18 @@ export default function OwnersPage() {
     navigator.clipboard.writeText(createdUser.password);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShowClientPassword = (clientId: string) => {
+    resetPassword.mutate(clientId, {
+      onSuccess: (response) => {
+        setResettedClient(response.data);
+        setShowResettedPassword(false);
+        setCopiedResetted(false);
+        toast.success(t("password_loaded_success"));
+      },
+      onError: () => toast.error(t("password_load_failed")),
+    });
   };
 
   return (
@@ -448,11 +466,18 @@ export default function OwnersPage() {
                             </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 pt-2">
+                        <div className="flex items-center gap-2 pt-2 flex-wrap">
+                          <button
+                            onClick={() => handleShowClientPassword(owner.user_id)}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 transition-colors"
+                          >
+                            <KeyRound className="w-3.5 h-3.5" />{" "}
+                            {t("show_password")}
+                          </button>
                           {user?.role === "owner" && (
                             <button
                               onClick={() => handleDeleteOwner(owner.user_id)}
-                              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-coral/10 border border-coral/20 text-coral hover:bg-coral/20"
+                              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-coral/10 border border-coral/20 text-coral hover:bg-coral/20 transition-colors"
                             >
                               <Trash2 className="w-3.5 h-3.5" />{" "}
                               {t("remove_owner")}
@@ -575,6 +600,90 @@ export default function OwnersPage() {
             <div className="flex gap-3 border-t border-white/5 pt-6">
               <Button
                 onClick={() => setCreatedUser(null)}
+                className="flex-1 bg-emerald hover:bg-emerald/90 text-white font-bold h-11 rounded-xl"
+              >
+                {t("done")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Show Client Password Modal */}
+      {resettedClient && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-sidebar/95 backdrop-blur-xl border border-white/10 rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-6 animate-in slide-in-from-bottom-4">
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black text-foreground">
+                {t("current_password_title")}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {t("current_password_description")}
+              </p>
+            </div>
+
+            {/* Password Display */}
+            <div className="space-y-2">
+              <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">
+                {t("password")}
+              </Label>
+              <div className="flex items-center gap-2 bg-white/5 border border-white/5 rounded-xl px-4 py-3">
+                <span className="flex-1 text-sm font-mono font-bold text-blue-400 break-all">
+                  {showResettedPassword ? resettedClient.password : "••••••••••••••••"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowResettedPassword(!showResettedPassword)}
+                  className="text-muted-foreground hover:text-blue-400 transition-colors"
+                >
+                  {showResettedPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(resettedClient.password);
+                    setCopiedResetted(true);
+                    setTimeout(() => setCopiedResetted(false), 2000);
+                  }}
+                  className="text-muted-foreground hover:text-emerald transition-colors"
+                >
+                  {copiedResetted ? (
+                    <Check className="w-4 h-4" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* User Info */}
+            <div className="space-y-3 border-t border-white/5 pt-4">
+              <div className="flex justify-between">
+                <span className="text-xs text-muted-foreground font-semibold">
+                  {t("name_label")}
+                </span>
+                <span className="text-sm font-bold text-foreground">
+                  {resettedClient.fullname}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-muted-foreground font-semibold">
+                  {t("email_label")}
+                </span>
+                <span className="text-sm font-bold text-emerald break-all">
+                  {resettedClient.email}
+                </span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 border-t border-white/5 pt-6">
+              <Button
+                onClick={() => setResettedClient(null)}
                 className="flex-1 bg-emerald hover:bg-emerald/90 text-white font-bold h-11 rounded-xl"
               >
                 {t("done")}

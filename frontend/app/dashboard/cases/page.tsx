@@ -41,6 +41,7 @@ import { useVisits } from "@/app/_hooks/queries/use-visits";
 import { usePets } from "@/app/_hooks/queries/use-pets";
 import { useUsers } from "@/app/_hooks/queries/use-users";
 import { useAuth } from "@/app/_hooks/useAuth";
+import { useLang } from "@/app/_hooks/useLanguage";
 
 type CaseItem = {
   id: string;
@@ -58,6 +59,7 @@ export default function CasesPage() {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [doctorFilter, setDoctorFilter] = React.useState("all");
   const { user } = useAuth();
+  const { t } = useLang();
 
   // Fetch real data
   const { data: visitsData } = useVisits();
@@ -130,14 +132,14 @@ export default function CasesPage() {
           <div className="flex items-center gap-2 mb-2">
             <Hash className="w-5 h-5 text-emerald" />
             <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald">
-              Clinical Tracker
+              {t("clinical_tracker")}
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground">
-            Visits & <span className="text-emerald">Cases</span>
+            {t("visits_and_cases_title")}
           </h1>
           <p className="text-muted-foreground font-medium">
-            Monitor ongoing clinical cases, visit history and medical progress.
+            {t("monitor_cases")}
           </p>
         </div>
         {user?.role === "doctor" && (
@@ -146,7 +148,7 @@ export default function CasesPage() {
             className="bg-emerald hover:bg-emerald/90 text-white font-black px-6 h-12 shadow-xl shadow-emerald/20 flex items-center gap-2 group transition-all duration-300"
           >
             <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-            Create New Case
+            {t("create_new_case")}
           </Button>
         )}
       </div>
@@ -156,7 +158,7 @@ export default function CasesPage() {
         <div className="relative group md:col-span-2">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-emerald transition-colors" />
           <Input
-            placeholder="Search by case ID, patient or reason..."
+            placeholder={t("search_cases_page")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-12 h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
@@ -167,7 +169,7 @@ export default function CasesPage() {
             <SelectValue placeholder="Doctor" />
           </SelectTrigger>
           <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5">
-            <SelectItem value="all">All Doctors</SelectItem>
+            <SelectItem value="all">{t("all_doctors")}</SelectItem>
             {doctors.map((doc: any) => (
               <SelectItem key={doc.user_id} value={doc.fullname}>
                 {doc.fullname}
@@ -185,13 +187,13 @@ export default function CasesPage() {
             <TableHeader className="bg-white/5">
               <TableRow className="border-b border-white/5 hover:bg-transparent">
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
-                  Case ID & Patient
+                  {t("case_id_patient")}
                 </TableHead>
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
-                  Reason & Doctor
+                  {t("reason_doctor")}
                 </TableHead>
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
-                  Visit Date
+                  {t("visit_date")}
                 </TableHead>
                 <TableHead className="py-6 px-8 text-right"></TableHead>
               </TableRow>
@@ -203,7 +205,7 @@ export default function CasesPage() {
                     colSpan={4}
                     className="text-center py-8 text-muted-foreground"
                   >
-                    No cases found.
+                    {t("no_cases_found")}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -220,7 +222,7 @@ export default function CasesPage() {
                         <span className="font-black text-foreground group-hover/row:text-emerald transition-colors tracking-tight">
                           {caseItem.patientName}
                           <span className="text-muted-foreground/50 font-medium text-xs ml-1.5">
-                            (Owner: {caseItem.ownerName})
+                            ({t("owner_label")} {caseItem.ownerName})
                           </span>
                         </span>
                       </div>
@@ -231,7 +233,7 @@ export default function CasesPage() {
                           {caseItem.reason}
                         </span>
                         <span className="text-xs text-muted-foreground/60 font-medium">
-                          Assigned: {caseItem.doctorName}
+                          {t("assigned_label")} {caseItem.doctorName}
                         </span>
                       </div>
                     </TableCell>
@@ -263,22 +265,22 @@ export default function CasesPage() {
                           className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2 w-56 shadow-2xl"
                         >
                           <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
-                            Case Operations
+                            {t("case_operations")}
                           </DropdownMenuLabel>
                           <DropdownMenuItem
                             onClick={() => handleOpenForm(caseItem)}
                             className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2"
                           >
                             <FileText className="w-4 h-4" />
-                            Clinical Notes
+                            {t("clinical_notes")}
                           </DropdownMenuItem>
                           <DropdownMenuItem className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2">
                             <CheckCircle2 className="w-4 h-4" />
-                            Mark Completed
+                            {t("mark_completed")}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="bg-white/5 mx-2" />
                           <DropdownMenuItem className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold">
-                            Delete Record
+                            {t("delete_record_btn")}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -293,22 +295,22 @@ export default function CasesPage() {
 
       {/* CRUD Form */}
       <DashboardForm
-        title={selectedCase ? "Update Clinical Case" : "Register Visit"}
+        title={selectedCase ? t("update_clinical_case") : t("register_visit")}
         description={
           selectedCase
-            ? `Updating records for case ${selectedCase.id}`
-            : "Provide initial diagnosis and assignment for the clinical visit."
+            ? `${t("updating_records")} ${selectedCase.id}`
+            : t("provide_diagnosis")
         }
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
         onSubmit={handleSubmit}
-        submitLabel={selectedCase ? "Save Case Profile" : "Open Case"}
+        submitLabel={selectedCase ? t("save_case_profile") : t("open_case")}
       >
         <div className="space-y-8">
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-3">
               <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-                Pet ID
+              {t("pet_id_label")}
               </Label>
               <Input
                 placeholder="PET-001"
@@ -318,7 +320,7 @@ export default function CasesPage() {
             </div>
             <div className="space-y-3">
               <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-                Client ID
+              {t("client_id_label")}
               </Label>
               <Input
                 placeholder="CLI-001"
@@ -331,7 +333,7 @@ export default function CasesPage() {
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-3">
               <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-                Doctor ID
+              {t("doctor_id_label")}
               </Label>
               <Input
                 placeholder="DOC-001"
@@ -341,7 +343,7 @@ export default function CasesPage() {
             </div>
             <div className="space-y-3">
               <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-                Prescription ID
+              {t("prescription_id_label")}
               </Label>
               <Input
                 placeholder="RX-001"
@@ -353,7 +355,7 @@ export default function CasesPage() {
 
           <div className="space-y-3">
             <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-              Visit Date
+              {t("visit_date")}
             </Label>
             <Input
               type="date"
@@ -364,7 +366,7 @@ export default function CasesPage() {
 
           <div className="space-y-3">
             <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-              Clinical Notes
+              {t("clinical_notes")}
             </Label>
             <textarea
               placeholder="Detailed observations and findings..."

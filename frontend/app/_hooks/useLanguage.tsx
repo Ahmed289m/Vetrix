@@ -568,6 +568,375 @@ const translations: Translations = {
     en: "Client Created Successfully!",
     ar: "تم إنشاء العميل بنجاح!",
   },
+
+  // ─── Sidebar ───────────────────────────────────────────────────────
+  medical_portal: { en: "Medical Portal", ar: "البوابة الطبية" },
+  management_portal: { en: "Management Portal", ar: "بوابة الإدارة" },
+  online: { en: "Online", ar: "متصل" },
+  signing_out: { en: "Signing out", ar: "جاري الخروج" },
+
+  // ─── Doctor Dashboard ──────────────────────────────────────────────
+  welcome: { en: "Welcome", ar: "أهلاً وسهلاً" },
+  hello: { en: "Hello", ar: "مرحباً" },
+  confirmed_stat: { en: "Confirmed", ar: "المؤكدة" },
+  pending_stat: { en: "Pending", ar: "قيد الانتظار" },
+  todays_patients: { en: "Today's Patients", ar: "مرضى اليوم" },
+  total_stat: { en: "Total", ar: "الإجمالي" },
+  todays_appointments_title: {
+    en: "Today's Appointments",
+    ar: "مواعيد اليوم",
+  },
+  on_duty_status: { en: "On Duty", ar: "متصل" },
+  no_appointments_today: {
+    en: "No appointments today",
+    ar: "لا توجد مواعيد لهذا اليوم",
+  },
+  scheduled: { en: "Scheduled", ar: "مجدول" },
+  appointments_scheduled_today: {
+    en: "appointments scheduled today",
+    ar: "موعد مجدول لهذا اليوم",
+  },
+  exit_simulation: { en: "Exit Sim", ar: "خروج" },
+  simulation_label: { en: "Simulation", ar: "محاكاة" },
+  quick_actions: { en: "Quick Actions", ar: "إجراءات سريعة" },
+  case_distribution: { en: "Case Distribution", ar: "توزيع الحالات" },
+  visit_trends: { en: "Visit Trends", ar: "اتجاهات الزيارات" },
+  add_patient: { en: "Add Patient", ar: "إضافة مريض" },
+  new_appt: { en: "New Appt", ar: "موعد جديد" },
+  prescription: { en: "Prescription", ar: "وصفة" },
+  consultation: { en: "Consultation", ar: "استشارة" },
+
+  // ─── Appointments Page ─────────────────────────────────────────────
+  scheduling_portal: { en: "Scheduling Portal", ar: "بوابة الجدولة" },
+  bookings_and_appointments: {
+    en: "Bookings & Appointments",
+    ar: "الحجوزات والمواعيد",
+  },
+  manage_daily_schedule: {
+    en: "Manage your daily clinic schedule, patient arrivals and availability.",
+    ar: "إدارة الجدول اليومي للعيادة ووصول المرضى والتوافر.",
+  },
+  book_appointment: { en: "Book Appointment", ar: "حجز موعد" },
+  search_appointments: {
+    en: "Search by ID, pet or owner...",
+    ar: "بحث بالمعرف أو الحيوان أو المالك...",
+  },
+  all_statuses_filter: { en: "All Statuses", ar: "كل الحالات" },
+  schedule_id_pet: { en: "Schedule ID & Pet", ar: "معرف الجدول والحيوان" },
+  loading_appointments: {
+    en: "Loading appointments...",
+    ar: "جاري تحميل المواعيد...",
+  },
+  no_appointments_found: {
+    en: "No appointments found.",
+    ar: "لم يتم العثور على مواعيد.",
+  },
+  operations: { en: "Operations", ar: "العمليات" },
+  check_in_patient: { en: "Check In Patient", ar: "تسجيل دخول المريض" },
+  cancel_appointment: { en: "Cancel", ar: "إلغاء" },
+  book_appointment_title: { en: "Book Appointment", ar: "حجز موعد" },
+  schedule_new_session: {
+    en: "Schedule a new clinical session for a patient.",
+    ar: "جدولة جلسة سريرية جديدة لمريض.",
+  },
+  client_owner: { en: "Client Owner", ar: "المالك العميل" },
+  select_client: { en: "Select Client", ar: "اختر العميل" },
+  select_pet_label: { en: "Select Pet", ar: "اختر الحيوان" },
+  select_pet_choose_client: {
+    en: "Select Pet (Choose Client First)",
+    ar: "اختر الحيوان (اختر العميل أولاً)",
+  },
+  booking: { en: "Booking...", ar: "جاري الحجز..." },
+  confirm_booking: { en: "Confirm Booking", ar: "تأكيد الحجز" },
+
+  // ─── Cases Page ────────────────────────────────────────────────────
+  clinical_tracker: { en: "Clinical Tracker", ar: "المتتبع السريري" },
+  visits_and_cases_title: { en: "Visits & Cases", ar: "الزيارات والحالات" },
+  monitor_cases: {
+    en: "Monitor ongoing clinical cases, visit history and medical progress.",
+    ar: "متابعة الحالات السريرية الجارية وسجل الزيارات والتقدم الطبي.",
+  },
+  create_new_case: { en: "Create New Case", ar: "إنشاء حالة جديدة" },
+  search_cases_page: {
+    en: "Search by case ID, patient or reason...",
+    ar: "بحث بمعرف الحالة أو المريض أو السبب...",
+  },
+  case_id_patient: { en: "Case ID & Patient", ar: "معرف الحالة والمريض" },
+  reason_doctor: { en: "Reason & Doctor", ar: "السبب والطبيب" },
+  visit_date: { en: "Visit Date", ar: "تاريخ الزيارة" },
+  no_cases_found: { en: "No cases found.", ar: "لم يتم العثور على حالات." },
+  case_operations: { en: "Case Operations", ar: "عمليات الحالة" },
+  clinical_notes: { en: "Clinical Notes", ar: "ملاحظات سريرية" },
+  mark_completed: { en: "Mark Completed", ar: "تحديد كمكتمل" },
+  update_clinical_case: {
+    en: "Update Clinical Case",
+    ar: "تحديث الحالة السريرية",
+  },
+  register_visit: { en: "Register Visit", ar: "تسجيل زيارة" },
+  provide_diagnosis: {
+    en: "Provide initial diagnosis and assignment for the clinical visit.",
+    ar: "تقديم التشخيص الأولي والتعيين للزيارة السريرية.",
+  },
+  updating_records: { en: "Updating records for case", ar: "تحديث سجلات الحالة" },
+  save_case_profile: { en: "Save Case Profile", ar: "حفظ ملف الحالة" },
+  open_case: { en: "Open Case", ar: "فتح حالة" },
+  pet_id_label: { en: "Pet ID", ar: "معرف الحيوان" },
+  client_id_label: { en: "Client ID", ar: "معرف العميل" },
+  doctor_id_label: { en: "Doctor ID", ar: "معرف الطبيب" },
+  prescription_id_label: { en: "Prescription ID", ar: "معرف الوصفة" },
+  all_doctors: { en: "All Doctors", ar: "كل الأطباء" },
+  assigned_label: { en: "Assigned:", ar: "المكلّف:" },
+  owner_label: { en: "Owner:", ar: "المالك:" },
+
+  // ─── Prescriptions Page ────────────────────────────────────────────
+  pharmacy_portal: { en: "Pharmacy Portal", ar: "بوابة الصيدلية" },
+  medical_prescriptions: { en: "Medical Prescriptions", ar: "الوصفات الطبية" },
+  review_medication_history: {
+    en: "Review patient medication history and issue new clinical prescriptions.",
+    ar: "مراجعة سجل أدوية المريض وإصدار وصفات سريرية جديدة.",
+  },
+  new_prescription_btn: { en: "New Prescription", ar: "وصفة جديدة" },
+  search_prescriptions: {
+    en: "Search by Rx ID, patient or medication...",
+    ar: "بحث بمعرف الوصفة أو المريض أو الدواء...",
+  },
+  all_prescriptions: { en: "All Prescriptions", ar: "كل الوصفات" },
+  rx_id_patient: { en: "Rx ID & Patient", ar: "معرف الوصفة والمريض" },
+  primary_medication: { en: "Primary Medication", ar: "الدواء الأساسي" },
+  loading_prescriptions_text: {
+    en: "Loading prescriptions...",
+    ar: "جاري تحميل الوصفات...",
+  },
+  no_prescriptions_found: {
+    en: "No prescriptions found.",
+    ar: "لم يتم العثور على وصفات.",
+  },
+  pharmacy_actions: { en: "Pharmacy Actions", ar: "إجراءات الصيدلية" },
+  export_pdf: { en: "Export PDF", ar: "تصدير PDF" },
+  revoke: { en: "Revoke", ar: "إلغاء" },
+  issue_prescription: { en: "Issue Prescription", ar: "إصدار وصفة" },
+  select_formulation: {
+    en: "Select a patient and formulation to generate a clinical prescription.",
+    ar: "اختر مريضاً وتركيبة لإنشاء وصفة سريرية.",
+  },
+  generating: { en: "Generating...", ar: "جاري الإنشاء..." },
+  generate_rx: { en: "Generate Rx", ar: "إنشاء الوصفة" },
+  medication_formulation: {
+    en: "Medication Formulation",
+    ar: "تركيبة الدواء",
+  },
+  select_existing_formulation: {
+    en: "Select Existing Formulation",
+    ar: "اختر تركيبة موجودة",
+  },
+  define_drugs_notice: {
+    en: "Please define new drugs/formulations in the inventory manager.",
+    ar: "يرجى تحديد الأدوية/التركيبات الجديدة في مدير المخزون.",
+  },
+
+  // ─── Visits Page ───────────────────────────────────────────────────
+  total_recorded_visits: {
+    en: "total recorded visits",
+    ar: "إجمالي الزيارات المسجلة",
+  },
+  loading_visits: {
+    en: "Loading visits data...",
+    ar: "جاري تحميل بيانات الزيارات...",
+  },
+  no_visits_found: { en: "No visits found.", ar: "لم يتم العثور على زيارات." },
+  completed_status: { en: "Completed", ar: "مكتمل" },
+  clinical_visit: { en: "Clinical Visit", ar: "زيارة سريرية" },
+  no_date_recorded: { en: "No date recorded", ar: "لا يوجد تاريخ مسجل" },
+  details_btn: { en: "Details", ar: "التفاصيل" },
+  visit_id_label: { en: "Visit ID:", ar: "معرف الزيارة:" },
+  clinical_record_overview: {
+    en: "Clinical Record Overview",
+    ar: "نظرة عامة على السجل السريري",
+  },
+  date_label: { en: "Date", ar: "التاريخ" },
+  time_label: { en: "Time", ar: "الوقت" },
+  anytime: { en: "Anytime", ar: "في أي وقت" },
+  doctor_label: { en: "Doctor", ar: "الطبيب" },
+  status_label: { en: "Status", ar: "الحالة" },
+  clinical_notes_report: {
+    en: "Clinical Notes / Report",
+    ar: "ملاحظات سريرية / تقرير",
+  },
+  no_clinical_notes: {
+    en: "No additional clinical notes recorded for this visit session.",
+    ar: "لا توجد ملاحظات سريرية إضافية مسجلة لهذه الجلسة.",
+  },
+  prescribed_medicine: { en: "Prescribed Medicine", ar: "الأدوية الموصوفة" },
+
+  // ─── Drugs Page ────────────────────────────────────────────────────
+  drug_formulary: { en: "Drug Formulary", ar: "دليل الأدوية" },
+  drug_formulary_title: {
+    en: "Drug Formulary",
+    ar: "دليل الأدوية",
+  },
+  search_drugs: {
+    en: "Search by name, class or indication...",
+    ar: "بحث بالاسم أو الفئة أو الاستطباب...",
+  },
+  add_new_drug: { en: "Add New Drug", ar: "إضافة دواء جديد" },
+  edit_drug: { en: "Edit Drug", ar: "تعديل الدواء" },
+  delete_drug: { en: "Delete", ar: "حذف" },
+  drug_name: { en: "Drug Name", ar: "اسم الدواء" },
+  drug_class: { en: "Drug Class", ar: "فئة الدواء" },
+  indications_label: { en: "Indications", ar: "الاستطبابات" },
+  side_effects: { en: "Side Effects", ar: "الآثار الجانبية" },
+  contraindications_label: { en: "Contraindications", ar: "موانع الاستعمال" },
+  drug_interactions_label: { en: "Drug Interactions", ar: "تفاعلات الأدوية" },
+  dosage_guidelines: { en: "Dosage Guidelines", ar: "إرشادات الجرعات" },
+  toxicity_information: { en: "Toxicity Information", ar: "معلومات السمية" },
+  clinic_assignment: { en: "Clinic Assignment", ar: "تعيين العيادة" },
+  global_visible: {
+    en: "Global (visible to all)",
+    ar: "عام (مرئي للجميع)",
+  },
+  save_changes: { en: "Save Changes", ar: "حفظ التغييرات" },
+  add_drug: { en: "Add Drug", ar: "إضافة دواء" },
+  saving_ellipsis: { en: "Saving…", ar: "جاري الحفظ…" },
+  no_indications: { en: "No indications listed", ar: "لا توجد استطبابات مدرجة" },
+  manageable_label: { en: "manageable", ar: "قابل للإدارة" },
+  read_only_other_clinic: {
+    en: "This drug belongs to another clinic — read only.",
+    ar: "هذا الدواء ينتمي لعيادة أخرى — للقراءة فقط.",
+  },
+  global_contact_admin: {
+    en: "Global drug — contact admin to modify.",
+    ar: "دواء عام — تواصل مع المدير للتعديل.",
+  },
+  separate_with_commas: {
+    en: "Separate multiple entries with commas",
+    ar: "افصل بين الإدخالات المتعددة بفواصل",
+  },
+  admin_only: { en: "Admin Only", ar: "المدير فقط" },
+  leave_global_hint: {
+    en: "Leave as Global to make this drug visible across all clinics.",
+    ar: "اتركه كعام لجعل الدواء مرئياً لكل العيادات.",
+  },
+  dosage_dog: { en: "Dosage (Dog)", ar: "الجرعة (كلب)" },
+  dosage_cat: { en: "Dosage (Cat)", ar: "الجرعة (قط)" },
+  toxicity_dog: { en: "Toxicity (Dog)", ar: "السمية (كلب)" },
+  toxicity_cat: { en: "Toxicity (Cat)", ar: "السمية (قط)" },
+  toxicity_severity_dog: {
+    en: "Toxicity Severity (Dog)",
+    ar: "شدة السمية (كلب)",
+  },
+  toxicity_severity_cat: {
+    en: "Toxicity Severity (Cat)",
+    ar: "شدة السمية (قط)",
+  },
+  select_severity: { en: "Select severity", ar: "اختر الشدة" },
+  high: { en: "High", ar: "عالية" },
+  medium: { en: "Medium", ar: "متوسطة" },
+  low: { en: "Low", ar: "منخفضة" },
+  no_risk: { en: "No Risk", ar: "لا خطر" },
+  bulk_import_json: { en: "Bulk Import JSON", ar: "استيراد JSON جماعي" },
+  drugs_label: { en: "Drugs", ar: "الأدوية" },
+  formulary_desc: {
+    en: "Manage your veterinary drug formulary, interactions and dosage guidelines.",
+    ar: "إدارة دليل الأدوية البيطرية والتفاعلات وإرشادات الجرعات.",
+  },
+
+  // ─── Client Dashboard ─────────────────────────────────────────────
+  case_tracker: { en: "Case Tracker", ar: "متتبع الحالات" },
+  your_queue_position: { en: "Your Queue Position", ar: "موقعك في قائمة الانتظار" },
+  current_case_order: { en: "Current Case Order", ar: "ترتيب الحالة الحالية" },
+  no_active_appointments: {
+    en: "No active appointments",
+    ar: "لا توجد مواعيد نشطة",
+  },
+  waiting_for_your_turn: {
+    en: "Waiting for your turn in the queue",
+    ar: "بانتظار دورك في قائمة الانتظار",
+  },
+  your_appointment: { en: "Your Appointment", ar: "موعدك" },
+  position_in_queue: { en: "Position in queue", ar: "الموقع في القائمة" },
+  of_total: { en: "of", ar: "من" },
+
+  // ─── Common page labels ────────────────────────────────────────────
+  today_filter: { en: "Today", ar: "اليوم" },
+  this_week: { en: "This Week", ar: "هذا الأسبوع" },
+  this_month: { en: "This Month", ar: "هذا الشهر" },
+  all_time: { en: "All Time", ar: "كل الأوقات" },
+  delete_record_btn: { en: "Delete Record", ar: "حذف السجل" },
+
+  // ─── Drugs Page — extended ─────────────────────────────────────────
+  pharmacology: { en: "Pharmacology", ar: "علم الأدوية" },
+  total_stat_label: { en: "Total", ar: "الإجمالي" },
+  scope_all: { en: "All", ar: "الكل" },
+  scope_global: { en: "Global", ar: "عام" },
+  scope_clinic: { en: "Clinic", ar: "عيادة" },
+  json_shape_example: {
+    en: "Expected JSON Shape Example:",
+    ar: "مثال على الشكل المتوقع لـ JSON:",
+  },
+  json_payload: { en: "JSON Payload", ar: "حمولة JSON" },
+  import_drugs_json: {
+    en: "Import Drugs via JSON",
+    ar: "استيراد الأدوية عبر JSON",
+  },
+  import_drugs_desc: {
+    en: "Paste a standard JSON array of drug objects to import in bulk.",
+    ar: "الصق مصفوفة JSON قياسية من كائنات أدوية للاستيراد الجماعي.",
+  },
+  error_parsing_payload: {
+    en: "Error parsing payload",
+    ar: "خطأ في تحليل البيانات",
+  },
+  importing_drugs: { en: "Importing Drugs...", ar: "جاري استيراد الأدوية..." },
+  start_import: { en: "Start Import", ar: "بدء الاستيراد" },
+  updating_formulary_for: {
+    en: "Updating formulary record for",
+    ar: "تحديث سجل الدليل لـ",
+  },
+  admin_register_drug_hint: {
+    en: "Register a drug — optionally assign to a clinic",
+    ar: "تسجيل دواء — مع إمكانية تعيينه لعيادة",
+  },
+  clinic_drug_adding_hint: {
+    en: "Adding clinic drug — will be assigned to",
+    ar: "إضافة دواء للعيادة — سيتم تعيينه لـ",
+  },
+  your_clinic: { en: "your clinic", ar: "عيادتك" },
+  global_no_clinic: { en: "Global (no clinic)", ar: "عام (بدون عيادة)" },
+  clinic_assignment_admin_only: {
+    en: "Clinic Assignment (Admin Only)",
+    ar: "تعيين العيادة (للمدير فقط)",
+  },
+  drug_exclusively_assigned_to: {
+    en: "This drug will be exclusively assigned to",
+    ar: "سيتم تعيين هذا الدواء حصراً لـ",
+  },
+  not_visible_other_clinics: {
+    en: "It will not be visible to other clinics.",
+    ar: "لن يكون مرئياً للعيادات الأخرى.",
+  },
+  failed_load_drugs: {
+    en: "Failed to load drugs. Please try again.",
+    ar: "فشل تحميل الأدوية. يرجى المحاولة مرة أخرى.",
+  },
+  no_drugs_match_search: {
+    en: "No drugs match your search.",
+    ar: "لا توجد أدوية تطابق بحثك.",
+  },
+  no_drugs_found_text: { en: "No drugs found.", ar: "لا توجد أدوية." },
+  add_first_drug: { en: "Add the first drug", ar: "أضف أول دواء" },
+  you_manage_drugs_for: {
+    en: "You can manage drugs assigned to",
+    ar: "يمكنك إدارة الأدوية المخصصة لـ",
+  },
+  global_drugs_readonly_notice: {
+    en: "Global drugs are read-only — contact admin to modify them.",
+    ar: "الأدوية العامة للقراءة فقط — تواصل مع المدير للتعديل.",
+  },
+  read_only_formulary_as: {
+    en: "You have read-only access to the formulary as",
+    ar: "لديك وصول للقراءة فقط لدليل الأدوية بصفتك",
+  },
+  edit_drug_title: { en: "Edit Drug", ar: "تعديل الدواء" },
 };
 
 interface LangContextType {

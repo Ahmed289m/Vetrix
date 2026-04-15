@@ -153,7 +153,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
           <div className="flex items-center gap-1.5 mt-2">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald animate-pulse" />
             <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-[0.18em] leading-none">
-              {role === "doctor" ? "Medical Portal" : "Management Portal"}
+              {role === "doctor" ? t("medical_portal") : t("management_portal")}
             </p>
           </div>
         </div>
@@ -223,7 +223,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald shadow-[0_0_5px_rgba(16,185,129,0.5)]" />
               <p className="text-[10px] text-muted-foreground/70 font-bold uppercase tracking-wider">
-                Online
+              {t("online")}
               </p>
             </div>
           </div>
@@ -235,7 +235,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
             aria-label="Sign out"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span>{isLoggingOut ? "Signing out" : "Sign out"}</span>
+            <span>{isLoggingOut ? t("signing_out") : t("sign_out")}</span>
           </button>
         </div>
       </SidebarFooter>

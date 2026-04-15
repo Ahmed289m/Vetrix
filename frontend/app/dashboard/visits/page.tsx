@@ -93,7 +93,7 @@ export default function VisitsPage() {
           {t("visits_history") || "Clinical Visits"}
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
-          {visits.length} total recorded visits
+          {visits.length} {t("total_recorded_visits")}
         </p>
       </motion.div>
 
@@ -108,7 +108,7 @@ export default function VisitsPage() {
                 : "bg-muted/30 border border-border/50 text-muted-foreground hover:border-emerald/30"
             }`}
           >
-            {f.replace("-", " ")}
+            {f === "completed" ? t("completed_status") : f.replace("-", " ")}
           </button>
         ))}
       </motion.div>
@@ -116,11 +116,11 @@ export default function VisitsPage() {
       <motion.div variants={fadeUp} className="space-y-3">
         {visitsLoading ? (
           <div className="text-center py-8 text-muted-foreground">
-            Loading visits data...
+            {t("loading_visits")}
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            No visits found.
+            {t("no_visits_found")}
           </div>
         ) : (
           sortedVisits.map((visit, i) => {
@@ -155,10 +155,10 @@ export default function VisitsPage() {
                         <span
                           className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${isInProgress ? "bg-cyan/15 text-cyan" : "bg-emerald/15 text-emerald"}`}
                         >
-                          Completed
+                          {t("completed_status")}
                         </span>
                       </div>
-                      <p className="text-sm font-bold mt-0.5">Clinical Visit</p>
+                      <p className="text-sm font-bold mt-0.5">{t("clinical_visit")}</p>
                       <p className="text-xs text-muted-foreground">
                         {pet?.name || "Unknown Pet"} ·{" "}
                         {owner?.fullname || "Unknown Owner"} ·{" "}
@@ -168,13 +168,13 @@ export default function VisitsPage() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-xs text-muted-foreground flex items-center gap-1 bg-white/5 py-1 px-3 rounded-full">
-                      {visit.date || "No date recorded"}
+                      {visit.date || t("no_date_recorded")}
                     </span>
                     <button
                       onClick={() => setSelectedVisit(visit)}
                       className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-muted/30 border border-border/50 hover:border-emerald/30 focus:outline-none focus:ring-2 focus:ring-emerald/50"
                     >
-                      <Eye className="w-3.5 h-3.5" /> Details
+                      <Eye className="w-3.5 h-3.5" /> {t("details_btn")}
                     </button>
                   </div>
                 </div>
@@ -204,10 +204,10 @@ export default function VisitsPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <span className="font-mono text-xs text-muted-foreground">
-                    Visit ID: {selectedVisit.visit_id.toUpperCase()}
+                    {t("visit_id_label")} {selectedVisit.visit_id.toUpperCase()}
                   </span>
                   <h3 className="text-xl font-bold mt-1">
-                    Clinical Record Overview
+                    {t("clinical_record_overview")}
                   </h3>
                   <p className="text-sm text-muted-foreground">
                     {getPet(selectedVisit.pet_id)?.name} ·{" "}
@@ -225,19 +225,19 @@ export default function VisitsPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
                   <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">
-                    Date
+                    {t("date_label")}
                   </p>
                   <p className="text-sm font-semibold">{selectedVisit.date}</p>
                 </div>
                 <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
                   <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">
-                    Time
+                    {t("time_label")}
                   </p>
-                  <p className="text-sm font-semibold">Anytime</p>
+                  <p className="text-sm font-semibold">{t("anytime")}</p>
                 </div>
                 <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
                   <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">
-                    Doctor
+                    {t("doctor_label")}
                   </p>
                   <p className="text-sm font-semibold">
                     {getUser(selectedVisit.doctor_id)?.fullname ||
@@ -246,10 +246,10 @@ export default function VisitsPage() {
                 </div>
                 <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
                   <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">
-                    Status
+                    {t("status_label")}
                   </p>
                   <p className={`text-sm font-semibold text-emerald`}>
-                    Completed
+                    {t("completed_status")}
                   </p>
                 </div>
               </div>
@@ -259,12 +259,11 @@ export default function VisitsPage() {
                   <div className="flex items-center gap-2 mb-2">
                     <FileText className="w-4 h-4 text-orange-400" />
                     <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                      Clinical Notes / Report
+                      {t("clinical_notes_report")}
                     </span>
                   </div>
                   <p className="text-sm text-foreground/85 leading-relaxed bg-white/5 p-4 rounded-2xl border border-white/5">
-                    {selectedVisit.notes ||
-                      "No additional clinical notes recorded for this visit session."}
+                    {selectedVisit.notes || t("no_clinical_notes")}
                   </p>
                 </div>
 
@@ -273,7 +272,7 @@ export default function VisitsPage() {
                     <div className="flex items-center gap-2 mb-2">
                       <Pill className="w-4 h-4 text-cyan-400" />
                       <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                        Prescribed Medicine
+                        {t("prescribed_medicine")}
                       </span>
                     </div>
                     <ul className="space-y-2">

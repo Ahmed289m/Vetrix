@@ -51,6 +51,7 @@ import {
 } from "@/app/_hooks/queries/use-appointments";
 import { usePets } from "@/app/_hooks/queries/use-pets";
 import { useUsers } from "@/app/_hooks/queries/use-users";
+import { useLang } from "@/app/_hooks/useLanguage";
 
 export default function AppointmentsPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -58,6 +59,7 @@ export default function AppointmentsPage() {
   const [statusFilter, setStatusFilter] = React.useState("all");
   const [dateFilter, setDateFilter] = React.useState<DateRangeFilter>("all");
   const { user } = useAuth();
+  const { t } = useLang();
 
   const { data: appData, isLoading: appLoading } = useAppointments();
   const { data: petsData } = usePets();
@@ -162,15 +164,14 @@ export default function AppointmentsPage() {
           <div className="flex items-center gap-2 mb-2">
             <Calendar className="w-5 h-5 text-emerald" />
             <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald">
-              Scheduling Portal
+              {t("scheduling_portal")}
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground">
-            Bookings & <span className="text-emerald">Appointments</span>
+            {t("bookings_and_appointments")}
           </h1>
           <p className="text-muted-foreground font-medium">
-            Manage your daily clinic schedule, patient arrivals and
-            availability.
+            {t("manage_daily_schedule")}
           </p>
         </div>
         <Button
@@ -178,7 +179,7 @@ export default function AppointmentsPage() {
           className="bg-emerald hover:bg-emerald/90 text-white font-black px-6 h-12 shadow-xl shadow-emerald/20 flex items-center gap-2 group transition-all duration-300"
         >
           <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-          Book Appointment
+          {t("book_appointment")}
         </Button>
       </div>
 
@@ -187,7 +188,7 @@ export default function AppointmentsPage() {
         <div className="relative group md:col-span-2">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-emerald transition-colors" />
           <Input
-            placeholder="Search by ID, pet or owner..."
+            placeholder={t("search_appointments")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-12 h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
@@ -198,9 +199,9 @@ export default function AppointmentsPage() {
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5">
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="confirmed">Confirmed</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="all">{t("all_statuses_filter")}</SelectItem>
+            <SelectItem value="confirmed">{t("confirmed")}</SelectItem>
+            <SelectItem value="pending">{t("pending")}</SelectItem>
           </SelectContent>
         </Select>
         <Select
@@ -211,10 +212,10 @@ export default function AppointmentsPage() {
             <SelectValue placeholder="Date" />
           </SelectTrigger>
           <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5">
-            <SelectItem value="today">Today</SelectItem>
-            <SelectItem value="week">This Week</SelectItem>
-            <SelectItem value="month">This Month</SelectItem>
-            <SelectItem value="all">All Time</SelectItem>
+            <SelectItem value="today">{t("today_filter")}</SelectItem>
+            <SelectItem value="week">{t("this_week")}</SelectItem>
+            <SelectItem value="month">{t("this_month")}</SelectItem>
+            <SelectItem value="all">{t("all_time")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -227,10 +228,10 @@ export default function AppointmentsPage() {
             <TableHeader className="bg-white/5">
               <TableRow className="border-b border-white/5 hover:bg-transparent">
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
-                  Schedule ID & Pet
+                  {t("schedule_id_pet")}
                 </TableHead>
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
-                  Owner
+                  {t("owner")}
                 </TableHead>
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
                   Status
@@ -245,7 +246,7 @@ export default function AppointmentsPage() {
                     colSpan={4}
                     className="text-center py-8 text-muted-foreground"
                   >
-                    Loading appointments...
+                    {t("loading_appointments")}
                   </TableCell>
                 </TableRow>
               ) : filteredAppointments.length === 0 ? (
@@ -254,7 +255,7 @@ export default function AppointmentsPage() {
                     colSpan={4}
                     className="text-center py-8 text-muted-foreground"
                   >
-                    No appointments found.
+                    {t("no_appointments_found")}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -308,13 +309,13 @@ export default function AppointmentsPage() {
                           className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2 w-56 shadow-2xl"
                         >
                           <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
-                            Operations
+                            {t("operations")}
                           </DropdownMenuLabel>
                           <DropdownMenuItem
                             onClick={() => handleCheckIn(app.appointment_id)}
                             className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2"
                           >
-                            <CheckCircle className="w-4 h-4" /> Check In Patient
+                            <CheckCircle className="w-4 h-4" /> {t("check_in_patient")}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="bg-white/5 mx-2" />
                           {(user?.role === "staff" ||
@@ -324,7 +325,7 @@ export default function AppointmentsPage() {
                               onClick={() => handleDelete(app.appointment_id)}
                               className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
                             >
-                              Cancel
+                              {t("cancel_appointment")}
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
@@ -340,26 +341,26 @@ export default function AppointmentsPage() {
 
       {/* CRUD Form */}
       <DashboardForm
-        title="Book Appointment"
-        description="Schedule a new clinical session for a patient."
+        title={t("book_appointment_title")}
+        description={t("schedule_new_session")}
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
         onSubmit={(e) =>
           formik.handleSubmit(e as React.FormEvent<HTMLFormElement>)
         }
-        submitLabel={formik.isSubmitting ? "Booking..." : "Confirm Booking"}
+        submitLabel={formik.isSubmitting ? t("booking") : t("confirm_booking")}
       >
         <div className="space-y-8">
           <div className="space-y-3">
             <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-              Client Owner
+              {t("client_owner")}
             </Label>
             <Select
               value={formik.values.client_id}
               onValueChange={(val) => formik.setFieldValue("client_id", val)}
             >
               <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold">
-                <SelectValue placeholder="Select Client" />
+                <SelectValue placeholder={t("select_client")} />
               </SelectTrigger>
               <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
                 {clientsList.map((client) => (
@@ -377,7 +378,7 @@ export default function AppointmentsPage() {
 
           <div className="space-y-3">
             <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-              Select Pet
+              {t("select_pet_label")}
             </Label>
             <Select
               value={formik.values.pet_id}
@@ -385,7 +386,7 @@ export default function AppointmentsPage() {
               disabled={!formik.values.client_id}
             >
               <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold">
-                <SelectValue placeholder="Select Pet (Choose Client First)" />
+                <SelectValue placeholder={t("select_pet_choose_client")} />
               </SelectTrigger>
               <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
                 {petsList

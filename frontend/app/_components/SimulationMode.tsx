@@ -85,7 +85,7 @@ export default function SimulationMode({ role }: Props) {
   const [visitNotes, setVisitNotes] = useState("");
   const [selectedDrugId, setSelectedDrugId] = useState<string>("");
   const [drugDose, setDrugDose] = useState("");
-  const wsRef = useRef<WebSocket | null>(null);
+
 
   // Fetch real data
   const { t } = useLang();
@@ -103,67 +103,7 @@ export default function SimulationMode({ role }: Props) {
   // Initialize websocket connection for real-time updates
   useWebSocket();
 
-  // Setup websocket listener for appointment updates
-  useEffect(() => {
-    const WS_URL =
-      process.env.NEXT_PUBLIC_API_URL?.replace(/^http/, "ws") ??
-      "ws://localhost:8000";
-
-    const connectWebSocket = () => {
-      try {
-        const ws = new WebSocket(`${WS_URL}/ws`);
-        wsRef.current = ws;
-
-        ws.onmessage = (event) => {
-          try {
-            const message = JSON.parse(event.data) as {
-              event: string;
-              data?: unknown;
-            };
-
-            // Listen for appointment updates
-            if (
-              message.event === "appointments:updated" ||
-              message.event === "appointments:created" ||
-              message.event === "appointments:deleted"
-            ) {
-              console.log(
-                "[SimulationMode] Received websocket event:",
-                message.event,
-              );
-              // Trigger refetch to get updated data
-              refetchAppointments();
-            }
-          } catch (err) {
-            console.error(
-              "[SimulationMode] Error parsing websocket message:",
-              err,
-            );
-          }
-        };
-
-        ws.onerror = (error) => {
-          console.error("[SimulationMode] WebSocket error:", error);
-        };
-
-        ws.onclose = () => {
-          console.log("[SimulationMode] WebSocket connection closed");
-          // Attempt to reconnect after 3 seconds
-          setTimeout(connectWebSocket, 3000);
-        };
-      } catch (err) {
-        console.error("[SimulationMode] Failed to connect websocket:", err);
-      }
-    };
-
-    connectWebSocket();
-
-    return () => {
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.close();
-      }
-    };
-  }, [refetchAppointments]);
+  // WebSocket is handled globally by useWebSocket() above — no duplicate needed.
 
   // Convert real appointments to simulation cases
   const confirmedCases = useMemo(() => {

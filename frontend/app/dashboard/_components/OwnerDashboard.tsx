@@ -109,7 +109,7 @@ export function OwnerDashboard() {
       border: "border-cyan/20",
     },
     {
-      label: "Appointments",
+      label: t("appointments"),
       value: appointments.length,
       icon: CalendarCheck,
       color: "text-orange",
@@ -117,7 +117,7 @@ export function OwnerDashboard() {
       border: "border-orange/20",
     },
     {
-      label: "Prescriptions",
+      label: t("prescriptions"),
       value: prescriptions.length,
       icon: FileText,
       color: "text-coral",

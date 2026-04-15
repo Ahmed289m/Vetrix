@@ -50,12 +50,14 @@ import { useDrugs } from "@/app/_hooks/queries/use-drugs";
 import { usePets } from "@/app/_hooks/queries/use-pets";
 import { useUsers } from "@/app/_hooks/queries/use-users";
 import { useAuth } from "@/app/_hooks/useAuth";
+import { useLang } from "@/app/_hooks/useLanguage";
 
 export default function PrescriptionsPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("all");
   const { user } = useAuth();
+  const { t } = useLang();
 
   const { data: rxData, isLoading: rxLoading } = usePrescriptions();
   const { data: rxItemsData } = usePrescriptionItems();
@@ -135,15 +137,14 @@ export default function PrescriptionsPage() {
           <div className="flex items-center gap-2 mb-2">
             <FileText className="w-5 h-5 text-emerald" />
             <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald">
-              Pharmacy Portal
+              {t("pharmacy_portal")}
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground">
-            Medical <span className="text-emerald">Prescriptions</span>
+            {t("medical_prescriptions")}
           </h1>
           <p className="text-muted-foreground font-medium">
-            Review patient medication history and issue new clinical
-            prescriptions.
+            {t("review_medication_history")}
           </p>
         </div>
         {user?.role !== "staff" && (
@@ -152,7 +153,7 @@ export default function PrescriptionsPage() {
             className="bg-emerald hover:bg-emerald/90 text-white font-black px-6 h-12 shadow-xl shadow-emerald/20 flex items-center gap-2 group transition-all duration-300"
           >
             <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-            New Prescription
+            {t("new_prescription_btn")}
           </Button>
         )}
       </div>
@@ -161,7 +162,7 @@ export default function PrescriptionsPage() {
         <div className="relative group md:col-span-2">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-emerald transition-colors" />
           <Input
-            placeholder="Search by Rx ID, patient or medication..."
+            placeholder={t("search_prescriptions")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-12 h-14 bg-muted/40 border-border/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
@@ -172,8 +173,8 @@ export default function PrescriptionsPage() {
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent className="bg-popover/95 backdrop-blur-xl border-border/10">
-            <SelectItem value="all">All Prescriptions</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="all">{t("all_prescriptions")}</SelectItem>
+            <SelectItem value="active">{t("active")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -185,10 +186,10 @@ export default function PrescriptionsPage() {
             <TableHeader className="bg-muted/40">
               <TableRow className="border-b border-border/10 hover:bg-transparent">
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
-                  Rx ID & Patient
+                  {t("rx_id_patient")}
                 </TableHead>
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
-                  Primary Medication
+                  {t("primary_medication")}
                 </TableHead>
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
                   Details
@@ -206,7 +207,7 @@ export default function PrescriptionsPage() {
                     colSpan={5}
                     className="text-center py-8 text-muted-foreground"
                   >
-                    Loading prescriptions...
+                    {t("loading_prescriptions_text")}
                   </TableCell>
                 </TableRow>
               ) : filteredPrescriptions.length === 0 ? (
@@ -215,7 +216,7 @@ export default function PrescriptionsPage() {
                     colSpan={5}
                     className="text-center py-8 text-muted-foreground"
                   >
-                    No prescriptions found.
+                    {t("no_prescriptions_found")}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -245,7 +246,7 @@ export default function PrescriptionsPage() {
                     <TableCell className="py-6 px-8">
                       <div className="flex flex-col gap-0.5">
                         <span className="text-sm font-bold text-muted-foreground/80 leading-none">
-                          Owner: {getClientName(rx.client_id)}
+                         {t("owner_label")} {getClientName(rx.client_id)}
                         </span>
                       </div>
                     </TableCell>
@@ -276,17 +277,17 @@ export default function PrescriptionsPage() {
                           className="bg-popover/95 backdrop-blur-xl border-border/10 rounded-2xl p-2 w-56 shadow-2xl"
                         >
                           <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
-                            Pharmacy Actions
+                            {t("pharmacy_actions")}
                           </DropdownMenuLabel>
                           <DropdownMenuItem className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2">
-                            <Download className="w-4 h-4" /> Export PDF
+                            <Download className="w-4 h-4" /> {t("export_pdf")}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="bg-muted/40 mx-2" />
                           <DropdownMenuItem
                             onClick={() => handleDelete(rx.prescription_id)}
                             className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold flex items-center gap-2"
                           >
-                            <Trash2 className="w-4 h-4" /> Revoke
+                            <Trash2 className="w-4 h-4" /> {t("revoke")}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -300,26 +301,26 @@ export default function PrescriptionsPage() {
       </div>
 
       <DashboardForm
-        title="Issue Prescription"
-        description="Select a patient and formulation to generate a clinical prescription."
+        title={t("issue_prescription")}
+        description={t("select_formulation")}
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
         onSubmit={(e) =>
           formik.handleSubmit(e as React.FormEvent<HTMLFormElement>)
         }
-        submitLabel={formik.isSubmitting ? "Generating..." : "Generate Rx"}
+        submitLabel={formik.isSubmitting ? t("generating") : t("generate_rx")}
       >
         <div className="space-y-6">
           <div className="space-y-2">
             <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-              Client
+              {t("select_client")}
             </Label>
             <Select
               value={formik.values.client_id}
               onValueChange={(val) => formik.setFieldValue("client_id", val)}
             >
               <SelectTrigger className="h-14 bg-muted/40 border-border/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
-                <SelectValue placeholder="Select Client" />
+                <SelectValue placeholder={t("select_client")} />
               </SelectTrigger>
               <SelectContent className="bg-popover/95 backdrop-blur-xl border-border/10">
                 {clients.map((c) => (
@@ -333,7 +334,7 @@ export default function PrescriptionsPage() {
 
           <div className="space-y-2">
             <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-              Patient
+              {t("select_pet_label")}
             </Label>
             <Select
               value={formik.values.pet_id}
@@ -341,7 +342,7 @@ export default function PrescriptionsPage() {
               disabled={!formik.values.client_id}
             >
               <SelectTrigger className="h-14 bg-muted/40 border-border/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
-                <SelectValue placeholder="Select Pet" />
+                <SelectValue placeholder={t("select_pet_label")} />
               </SelectTrigger>
               <SelectContent className="bg-popover/95 backdrop-blur-xl border-border/10">
                 {pets
@@ -357,7 +358,7 @@ export default function PrescriptionsPage() {
 
           <div className="space-y-2 pt-4 border-t border-border/10">
             <Label className="text-sm font-black uppercase tracking-widest text-emerald ml-1">
-              Medication Formulation
+              {t("medication_formulation")}
             </Label>
             <Select
               value={formik.values.prescriptionItem_id}
@@ -366,7 +367,7 @@ export default function PrescriptionsPage() {
               }
             >
               <SelectTrigger className="h-14 bg-muted/40 border-border/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold mt-2">
-                <SelectValue placeholder="Select Existing Formulation" />
+                <SelectValue placeholder={t("select_existing_formulation")} />
               </SelectTrigger>
               <SelectContent className="bg-popover/95 backdrop-blur-xl border-border/10">
                 {rxItems.map((item) => {
@@ -383,7 +384,7 @@ export default function PrescriptionsPage() {
               </SelectContent>
             </Select>
             <p className="px-2 pt-2 text-[10px] font-black text-muted-foreground/40 italic flex items-center gap-1.5 uppercase tracking-widest">
-              Please define new drugs/formulations in the inventory manager.
+              {t("define_drugs_notice")}
             </p>
           </div>
         </div>
