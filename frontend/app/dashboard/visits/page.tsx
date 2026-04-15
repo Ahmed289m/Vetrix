@@ -75,7 +75,7 @@ export default function VisitsPage() {
     );
     if (!item) return [];
     const drug = drugsList.find((d) => d.drug_id === item.drug_id);
-    return [`${drug?.drugName || "Unknown Drug"} - ${item.drugDose}`];
+    return [`${drug?.name || "Unknown Drug"} - ${item.drugDose}`];
   };
 
   return (

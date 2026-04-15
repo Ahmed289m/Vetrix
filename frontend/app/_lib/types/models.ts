@@ -161,18 +161,39 @@ export interface VisitUpdate {
 
 export interface Drug {
   drug_id: string;
-  drugName: string;
-  clinic_id: string;
-  quantity?: number;
-  min_quantity?: number;
+  name: string;
+  drugClass: string;
+  indications: string[];
+  dosage: Record<string, any>;
+  sideEffects: string[];
+  contraindications: string[];
+  drugInteractions: string[];
+  toxicity: Record<string, any>;
+  clinic_id?: string | null;
 }
 
 export interface DrugCreate {
-  drugName: string;
+  name: string;
+  drugClass: string;
+  indications: string[];
+  dosage: Record<string, any>;
+  sideEffects: string[];
+  contraindications: string[];
+  drugInteractions: string[];
+  toxicity: Record<string, any>;
+  clinic_id?: string | null;
 }
 
 export interface DrugUpdate {
-  drugName?: string;
+  name?: string;
+  drugClass?: string;
+  indications?: string[];
+  dosage?: Record<string, any>;
+  sideEffects?: string[];
+  contraindications?: string[];
+  drugInteractions?: string[];
+  toxicity?: Record<string, any>;
+  clinic_id?: string | null;
 }
 
 /* ── Prescription ─────────────────────────────────────────────────── */

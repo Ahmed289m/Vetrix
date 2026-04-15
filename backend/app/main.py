@@ -23,7 +23,6 @@ from app.services.admin_bootstrap_service import AdminBootstrapService
 from app.websocket import router as ws_router
 
 
-# ── Lifespan ──────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await connect_to_mongo()
@@ -37,7 +36,6 @@ async def lifespan(_: FastAPI):
         await close_mongo_connection()
 
 
-# ── App ───────────────────────────────────────────────────────────────
 app = FastAPI(title=settings.app_name, debug=settings.app_debug, lifespan=lifespan)
 
 

@@ -4,6 +4,9 @@ from app.services.drug_service import DrugService
 
 
 class DrugController:
+    """
+    Controller for Drug endpoints. Updated for new drug schema fields as of 2026.
+    """
     def __init__(self, service: DrugService) -> None:
         self.service = service
 

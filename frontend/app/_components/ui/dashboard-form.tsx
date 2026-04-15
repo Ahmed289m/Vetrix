@@ -51,7 +51,7 @@ export function DashboardForm({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="flex flex-col h-full max-h-[92vh]"
+              className="flex flex-col h-auto max-h-[92vh]"
             >
               <DialogHeader className="p-4 sm:p-6 border-b border-white/5 bg-white/5 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-emerald/0 via-emerald/50 to-emerald/0" />

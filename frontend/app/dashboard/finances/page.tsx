@@ -104,7 +104,9 @@ export default function FinancesPage() {
             Monthly Revenue
           </p>
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-foreground">$14,250.00</h2>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-foreground">
+              $14,250.00
+            </h2>
             <div className="w-12 h-12 rounded-2xl bg-emerald/10 flex items-center justify-center text-emerald">
               <ArrowUpRight className="w-6 h-6" />
             </div>
@@ -115,7 +117,9 @@ export default function FinancesPage() {
             Expenses
           </p>
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-foreground">$4,120.50</h2>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-foreground">
+              $4,120.50
+            </h2>
             <div className="w-12 h-12 rounded-2xl bg-muted/40 flex items-center justify-center text-red-400">
               <ArrowDownLeft className="w-6 h-6" />
             </div>
@@ -126,7 +130,9 @@ export default function FinancesPage() {
             Profit Projection
           </p>
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-foreground">$10,129.50</h2>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-foreground">
+              $10,129.50
+            </h2>
             <div className="w-12 h-12 rounded-2xl bg-muted/40 flex items-center justify-center text-blue-400">
               <DollarSign className="w-6 h-6" />
             </div>

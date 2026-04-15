@@ -29,6 +29,7 @@ import {
   Wallet,
   ChevronRight,
   LogOut,
+  Pill,
 } from "lucide-react";
 import { useAuth } from "@/app/_hooks/useAuth";
 
@@ -108,6 +109,12 @@ const navItems: NavItem[] = [
     icon: Wallet,
     roles: ["owner"],
   },
+  {
+    href: "/dashboard/drugs",
+    labelKey: "drugs",
+    icon: Pill,
+    roles: ["staff", "owner", "admin"],
+  },
 ];
 
 export function DashboardSidebar({ role }: { role: Role }) {
@@ -174,7 +181,11 @@ export function DashboardSidebar({ role }: { role: Role }) {
                           : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
                       }`}
                     >
-                      <Link href={item.href} prefetch={true} onClick={handleNavClick}>
+                      <Link
+                        href={item.href}
+                        prefetch={true}
+                        onClick={handleNavClick}
+                      >
                         {isActive && (
                           <div className="absolute left-0 top-1/4 bottom-1/4 w-1 gradient-emerald-cyan rounded-r-full shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
                         )}

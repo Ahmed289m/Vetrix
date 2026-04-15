@@ -111,8 +111,11 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
         Permissions.APPOINTMENTS_READ,
         Permissions.APPOINTMENTS_UPDATE,
         Permissions.APPOINTMENTS_DELETE,
-        # Drug management
+        # Drug management (own clinic only — service enforces scoping)
+        Permissions.DRUGS_CREATE,
         Permissions.DRUGS_READ,
+        Permissions.DRUGS_UPDATE,
+        Permissions.DRUGS_DELETE,
     },
     UserRole.DOCTOR: {
         # Visit management
@@ -159,8 +162,11 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
         # User management (can create client users only)
         Permissions.USERS_CREATE,
         Permissions.USERS_READ,
-        # Drug management (read-only)
+        # Drug management (own clinic only — service enforces scoping)
+        Permissions.DRUGS_CREATE,
         Permissions.DRUGS_READ,
+        Permissions.DRUGS_UPDATE,
+        Permissions.DRUGS_DELETE,
     },
     UserRole.CLIENT: {
         # Appointment management - own only

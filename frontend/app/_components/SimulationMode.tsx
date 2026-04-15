@@ -778,7 +778,7 @@ export default function SimulationMode({ role }: Props) {
                     <option value="">{t("select_a_drug")}</option>
                     {(drugsData?.data || []).map((drug: Drug) => (
                       <option key={drug.drug_id} value={drug.drug_id}>
-                        {drug.drugName}
+                        {drug.name}
                       </option>
                     ))}
                   </select>
