@@ -182,6 +182,8 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
         Permissions.PRESCRIPTIONS_READ_OWN,
         # Prescription Item management - own only
         Permissions.PRESCRIPTION_ITEMS_READ_OWN,
+        # Drug management - read only (needed to resolve linked prescription drug details)
+        Permissions.DRUGS_READ,
         # Pet management - own only
         Permissions.PETS_CREATE_OWN,
         Permissions.PETS_READ_OWN,
