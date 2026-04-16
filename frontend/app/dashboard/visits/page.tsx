@@ -122,11 +122,16 @@ export default function VisitsPage() {
       | undefined;
     if (!rx) return [];
 
+    const legacyPrescriptionItemId =
+      "prescriptionItem_id" in rx && typeof rx.prescriptionItem_id === "string"
+        ? rx.prescriptionItem_id
+        : undefined;
+
     const itemIds =
       rx.prescriptionItem_ids && rx.prescriptionItem_ids.length > 0
         ? rx.prescriptionItem_ids
-        : typeof rx.prescriptionItem_id === "string"
-          ? rx.prescriptionItem_id
+        : legacyPrescriptionItemId
+          ? legacyPrescriptionItemId
               .split(",")
               .map((id) => id.trim())
               .filter(Boolean)
