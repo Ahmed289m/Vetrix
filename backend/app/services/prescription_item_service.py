@@ -21,6 +21,22 @@ class PrescriptionItemService:
         self.repository = repository
         self.prescription_repository = prescription_repository
 
+    @staticmethod
+    def _extract_prescription_item_ids(prescription: dict) -> list[str]:
+        ids: list[str] = []
+
+        raw_ids = prescription.get("prescriptionItem_ids")
+        if isinstance(raw_ids, list):
+            ids.extend([str(item_id).strip() for item_id in raw_ids if str(item_id).strip()])
+
+        # Backward compatibility for legacy documents.
+        legacy_id = prescription.get("prescriptionItem_id")
+        if isinstance(legacy_id, str) and legacy_id.strip():
+            ids.extend([part.strip() for part in legacy_id.split(",") if part.strip()])
+
+        # Preserve order while removing duplicates.
+        return list(dict.fromkeys(ids))
+
     async def create_prescription_item(self, request: PrescriptionItemCreate, current_user: TokenData) -> dict:
         """
         Create a prescription item with authorization.
@@ -62,7 +78,7 @@ class PrescriptionItemService:
             prescriptions = await self.prescription_repository.list_by_client_only(current_user.user_id)
             item_ids: list[str] = []
             for prescription in prescriptions:
-                item_ids.extend(prescription.get("prescriptionItem_ids") or [])
+                item_ids.extend(self._extract_prescription_item_ids(prescription))
             if not item_ids:
                 return []
             items = await self.repository.list_by_ids(list(set(item_ids)))
@@ -89,7 +105,7 @@ class PrescriptionItemService:
                 prescriptions = await self.prescription_repository.list_by_client_only(current_user.user_id)
                 allowed_ids: set[str] = set()
                 for prescription in prescriptions:
-                    allowed_ids.update(prescription.get("prescriptionItem_ids") or [])
+                    allowed_ids.update(self._extract_prescription_item_ids(prescription))
                 if prescriptionItem_id not in allowed_ids:
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
