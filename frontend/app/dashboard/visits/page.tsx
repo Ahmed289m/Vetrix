@@ -113,17 +113,44 @@ export default function VisitsPage() {
     if (!visit.prescription_id) return [];
     const rx = prescriptionsList.find(
       (p) => p.prescription_id === visit.prescription_id,
-    );
-    if (!rx || !rx.prescriptionItem_ids?.length) return [];
+    ) as
+      | (typeof prescriptionsList)[number]
+      | {
+          prescriptionItem_ids?: string[];
+          prescriptionItem_id?: string;
+        }
+      | undefined;
+    if (!rx) return [];
 
-    const itemIds = rx.prescriptionItem_ids;
+    const itemIds =
+      rx.prescriptionItem_ids && rx.prescriptionItem_ids.length > 0
+        ? rx.prescriptionItem_ids
+        : typeof rx.prescriptionItem_id === "string"
+          ? rx.prescriptionItem_id
+              .split(",")
+              .map((id) => id.trim())
+              .filter(Boolean)
+          : [];
+    if (!itemIds.length) return [];
+
     const items = presItemsList.filter((pi) =>
       itemIds.includes(pi.prescriptionItem_id),
-    );
+    ) as Array<
+      (typeof presItemsList)[number] & {
+        drug_ids?: string[];
+        drug_id?: string;
+      }
+    >;
 
     const result: { drug: Drug; dose: string }[] = [];
     for (const item of items) {
-      for (const drugId of item.drug_ids || []) {
+      const drugIds =
+        item.drug_ids && item.drug_ids.length > 0
+          ? item.drug_ids
+          : item.drug_id
+            ? [item.drug_id]
+            : [];
+      for (const drugId of drugIds) {
         const drug = drugsList.find((d) => d.drug_id === drugId);
         if (drug) {
           result.push({ drug, dose: item.drugDose });
@@ -685,12 +712,28 @@ export default function VisitsPage() {
                   </SelectTrigger>
                   <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
                     {clientPrescriptions.map((rx) => {
+                      const itemIds =
+                        rx.prescriptionItem_ids &&
+                        rx.prescriptionItem_ids.length > 0
+                          ? rx.prescriptionItem_ids
+                          : (
+                              rx as { prescriptionItem_id?: string }
+                            ).prescriptionItem_id
+                              ?.split(",")
+                              .map((id) => id.trim())
+                              .filter(Boolean) || [];
+
                       const firstItem = presItemsList.find((pi) =>
-                        (rx.prescriptionItem_ids || []).includes(
-                          pi.prescriptionItem_id,
-                        ),
-                      );
-                      const firstDrugId = firstItem?.drug_ids?.[0];
+                        itemIds.includes(pi.prescriptionItem_id),
+                      ) as
+                        | ((typeof presItemsList)[number] & {
+                            drug_ids?: string[];
+                            drug_id?: string;
+                          })
+                        | undefined;
+
+                      const firstDrugId =
+                        firstItem?.drug_ids?.[0] || firstItem?.drug_id;
                       const drug = drugsList.find(
                         (d) => d.drug_id === firstDrugId,
                       );

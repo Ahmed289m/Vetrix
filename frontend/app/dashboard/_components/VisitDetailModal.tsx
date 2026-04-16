@@ -418,32 +418,6 @@ export function VisitDetailModal({
                         </ul>
                       </div>
                     )}
-
-                    {/* Full dosage by species (non-client) */}
-                    {!isClient &&
-                      drug.dosage &&
-                      Object.keys(drug.dosage).length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1">
-                            <Activity className="w-3 h-3" /> All species dosages
-                          </p>
-                          <div className="grid grid-cols-2 gap-2">
-                            {Object.entries(drug.dosage).map(([k, v]) => (
-                              <div
-                                key={k}
-                                className="flex justify-between items-center p-2 rounded-xl bg-white/5 text-xs"
-                              >
-                                <span className="text-muted-foreground capitalize font-semibold">
-                                  {k}
-                                </span>
-                                <span className="font-bold text-emerald">
-                                  {formatDose(v)}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                   </div>
                 );
               })}
