@@ -134,8 +134,9 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
         Permissions.PETS_READ,
         # Drug management (read-only)
         Permissions.DRUGS_READ,
-        # Appointment management (for simulation mode)
+        # Appointment management (read + update for simulation: accept/complete cases)
         Permissions.APPOINTMENTS_READ,
+        Permissions.APPOINTMENTS_UPDATE,
         # User management (for viewing patient/client info)
         Permissions.USERS_READ,
     },
