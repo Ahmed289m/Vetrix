@@ -53,23 +53,53 @@ export function ClientDashboard() {
   const hasAnnounced    = useRef(false);
   const announcedForPos = useRef<string | null>(null);
 
-  // ── TTS announcement: fires when client reaches position #1 ──
+  // ── TTS announcement: fires when client's case becomes in-progress ──
   const playAnnouncement = useCallback(() => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
+
+    // ── Airport-style 3-tone chime via Web Audio API ──
+    const playChime = (): Promise<void> => {
+      return new Promise((resolve) => {
+        try {
+          const ctx   = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const tones = [
+            { freq: 880,  start: 0,    dur: 0.35 },   // A5
+            { freq: 740,  start: 0.3,  dur: 0.35 },   // F#5
+            { freq: 587,  start: 0.58, dur: 0.55 },   // D5 (resolving)
+          ];
+          tones.forEach(({ freq, start, dur }) => {
+            const osc  = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type      = "sine";
+            osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+            gain.gain.setValueAtTime(0, ctx.currentTime + start);
+            gain.gain.linearRampToValueAtTime(0.22, ctx.currentTime + start + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(ctx.currentTime + start);
+            osc.stop(ctx.currentTime + start + dur);
+          });
+          // Resolve after all tones finish + small buffer
+          setTimeout(() => { ctx.close(); resolve(); }, 1300);
+        } catch {
+          resolve(); // Web Audio not supported — skip silently
+        }
+      });
+    };
+
     const synth = window.speechSynthesis;
-    synth.cancel(); // clear any queued speech
+    synth.cancel();
 
     const EN_TEXT = "Your turn is now. Please proceed to the doctor room.";
     const AR_TEXT = "\u062d\u0627\u0646 \u062f\u0648\u0631\u0643 \u0627\u0644\u0622\u0646. \u0645\u0646 \u0641\u0636\u0644\u0643 \u062a\u0648\u062c\u0647 \u0625\u0644\u0649 \u063a\u0631\u0641\u0629 \u0627\u0644\u0637\u0628\u064a\u0628.";
 
     const makeUtterance = (text: string, lang: string) => {
       const utt = new SpeechSynthesisUtterance(text);
-      utt.lang  = lang;
-      utt.rate  = 0.88;    // slightly slower — clear & calm
-      utt.pitch = 1.05;    // slightly warm
+      utt.lang   = lang;
+      utt.rate   = 0.88;
+      utt.pitch  = 1.05;
       utt.volume = 1;
-
-      // Pick a female voice for this language
       const voices = synth.getVoices();
       const female =
         voices.find((v) => v.lang === lang && /female|zira|samantha|karen|moira|victoria|tessa/i.test(v.name)) ??
@@ -82,20 +112,18 @@ export function ClientDashboard() {
     const doSpeak = () => {
       const enUtt = makeUtterance(EN_TEXT, "en-US");
       const arUtt = makeUtterance(AR_TEXT, "ar-SA");
-
-      // Chain: English → pause → Arabic
-      enUtt.onend = () => {
-        setTimeout(() => synth.speak(arUtt), 600);
-      };
+      enUtt.onend = () => setTimeout(() => synth.speak(arUtt), 150); // 150ms gap
       synth.speak(enUtt);
     };
 
-    // Voices may not be loaded yet on first render
-    if (synth.getVoices().length === 0) {
-      synth.addEventListener("voiceschanged", doSpeak, { once: true } as any);
-    } else {
-      doSpeak();
-    }
+    // Play chime first, then speak
+    playChime().then(() => {
+      if (synth.getVoices().length === 0) {
+        synth.addEventListener("voiceschanged", doSpeak, { once: true } as any);
+      } else {
+        doSpeak();
+      }
+    });
   }, []);
 
   // ── Live sync – WebSocket invalidates React Query caches on every backend event
@@ -303,19 +331,23 @@ export function ClientDashboard() {
                 </div>
               </div>
 
-              {/* No active appointment */}
+              {/* No active appointment / Completion state */}
               {!myCase && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="p-8 rounded-xl border-2 border-dashed border-border/30 bg-muted/5 text-center space-y-3"
+                  className="p-8 rounded-xl border-2 border-dashed border-emerald/30 bg-emerald/5 text-center space-y-3"
                 >
-                  <CheckCircle2 className="w-10 h-10 text-muted-foreground/40 mx-auto" />
-                  <p className="text-sm font-semibold text-muted-foreground">
-                    {t("no_active_appointments")}
+                  <CheckCircle2 className="w-10 h-10 text-emerald/60 mx-auto" />
+                  <p className="text-sm font-bold text-foreground">
+                    {caseQueue.length === 0 
+                      ? "Simulation Complete" 
+                      : t("no_active_appointments")}
                   </p>
-                  <p className="text-xs text-muted-foreground/70">
-                    {t("waiting_for_your_turn")}
+                  <p className="text-xs text-muted-foreground/80">
+                    {caseQueue.length === 0 
+                      ? "All clinic cases have been completed." 
+                      : t("waiting_for_your_turn")}
                   </p>
                 </motion.div>
               )}

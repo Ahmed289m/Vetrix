@@ -413,16 +413,31 @@ export default function VisitsPage() {
 
   const getDrugForVisit = (visit: Visit): Drug | undefined => {
     if (!visit.prescription_id) return undefined;
-    const rx   = prescriptionsList.find((p) => p.prescription_id === visit.prescription_id);
+    const rx = prescriptionsList.find((p) => p.prescription_id === visit.prescription_id);
     if (!rx) return undefined;
-    const item = presItemsList.find((pi) => pi.prescriptionItem_id === rx.prescriptionItem_id);
-    if (!item) return undefined;
-    return drugsList.find((d) => d.drug_id === item.drug_id);
+    // Find any prescription item linked to this prescription
+    // Strategy 1: via prescriptionItem_id on the prescription (may be set)
+    if (rx.prescriptionItem_id) {
+      const item = presItemsList.find((pi) => pi.prescriptionItem_id === rx.prescriptionItem_id);
+      if (item) {
+        const drug = drugsList.find((d) => d.drug_id === item.drug_id);
+        if (drug) return drug;
+      }
+    }
+    // Strategy 2: find prescription items that belong to this prescription's drug
+    // by searching all items (backend may link differently)
+    const item = presItemsList.find((pi) =>
+      pi.prescriptionItem_id === rx.prescriptionItem_id ||
+      // fallback: match by drug on any item — pick first
+      drugsList.some((d) => d.drug_id === pi.drug_id),
+    );
+    if (item) return drugsList.find((d) => d.drug_id === item.drug_id);
+    return undefined;
   };
 
   const getDrugDoseForVisit = (visit: Visit): string => {
     if (!visit.prescription_id) return "";
-    const rx   = prescriptionsList.find((p) => p.prescription_id === visit.prescription_id);
+    const rx = prescriptionsList.find((p) => p.prescription_id === visit.prescription_id);
     if (!rx) return "";
     const item = presItemsList.find((pi) => pi.prescriptionItem_id === rx.prescriptionItem_id);
     return item?.drugDose || "";
