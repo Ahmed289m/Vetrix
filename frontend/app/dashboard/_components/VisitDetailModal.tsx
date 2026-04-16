@@ -317,13 +317,19 @@ export function VisitDetailModal({
                           <Pill className="w-5 h-5 text-emerald" />
                         </div>
                         <div>
-                          <p className="font-black text-base">{drug.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {drug.drugClass}
-                          </p>
+                          {isClient ? (
+                            <p className="font-black text-base">Medication #{idx + 1}</p>
+                          ) : (
+                            <>
+                              <p className="font-black text-base">{drug.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {drug.drugClass}
+                              </p>
+                            </>
+                          )}
                         </div>
                       </div>
-                      {sev && <SeverityBadge severity={sev} />}
+                      {!isClient && sev && <SeverityBadge severity={sev} />}
                     </div>
 
                     {/* Species-specific dosage */}
@@ -344,7 +350,7 @@ export function VisitDetailModal({
                     ) : null}
 
                     {/* Species-specific toxicity */}
-                    {specTox && (
+                    {!isClient && specTox && (
                       <div
                         className={`p-3 rounded-xl border ${styles.bg} ${styles.border}`}
                       >
@@ -361,7 +367,7 @@ export function VisitDetailModal({
                     )}
 
                     {/* Interactions */}
-                    {drug.drugInteractions?.length > 0 && (
+                    {!isClient && drug.drugInteractions?.length > 0 && (
                       <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/15">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-amber-400 mb-1.5 flex items-center gap-1">
                           <Zap className="w-3 h-3" /> Known Drug Interactions
@@ -380,7 +386,7 @@ export function VisitDetailModal({
                     )}
 
                     {/* Contraindications */}
-                    {drug.contraindications?.length > 0 && (
+                    {!isClient && drug.contraindications?.length > 0 && (
                       <div className="p-3 rounded-xl bg-red-500/5 border border-red-500/10">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-red-400 mb-1.5 flex items-center gap-1">
                           <Shield className="w-3 h-3" /> Contraindications
