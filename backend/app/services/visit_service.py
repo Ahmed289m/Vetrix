@@ -66,7 +66,8 @@ class VisitService:
                 return []
             visits = await self.repository.list_by_clinic(current_user.clinic_id)
 
-        return [serialize_mongo_doc(visit, "visit_id") for visit in visits]
+        serialized = [serialize_mongo_doc(visit, "visit_id") for visit in visits]
+        return await self._attach_user_names(serialized)
 
     async def get_visit(self, visit_id: str, current_user: TokenData) -> dict:
         """
@@ -93,7 +94,37 @@ class VisitService:
                         detail="Access denied",
                     )
 
-        return visit
+        enriched_list = await self._attach_user_names([visit])
+        return enriched_list[0]
+
+    async def _attach_user_names(self, visits: list[dict]) -> list[dict]:
+        if not visits:
+            return visits
+
+        user_ids: set[str] = set()
+        for visit in visits:
+            doctor_id = visit.get("doctor_id")
+            client_id = visit.get("client_id")
+            if doctor_id:
+                user_ids.add(doctor_id)
+            if client_id:
+                user_ids.add(client_id)
+
+        users_by_id: dict[str, str] = {}
+        for user_id in user_ids:
+            user_doc = await self.user_repository.get_by_user_id(user_id)
+            if user_doc:
+                users_by_id[user_id] = user_doc.get("fullname") or ""
+
+        for visit in visits:
+            doctor_id = visit.get("doctor_id")
+            client_id = visit.get("client_id")
+            if doctor_id:
+                visit["doctor_name"] = users_by_id.get(doctor_id) or "Assigned"
+            if client_id:
+                visit["client_name"] = users_by_id.get(client_id) or "Unknown"
+
+        return visits
 
     async def update_visit(self, visit_id: str, request: VisitUpdate, current_user: TokenData) -> dict:
         """

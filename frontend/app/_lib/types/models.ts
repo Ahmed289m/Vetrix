@@ -133,9 +133,11 @@ export interface Visit {
   prescription_id?: string;
   clinic_id: string;
   client_id: string;
+  client_name?: string;
   notes?: string;
   pet_id: string;
   doctor_id: string;
+  doctor_name?: string;
   date: string;
 }
 
@@ -203,42 +205,40 @@ export interface Prescription {
   clinic_id: string;
   client_id: string;
   pet_id: string;
-  prescriptionItem_id: string;
+  prescriptionItem_ids: string[];
   status?: string;
 }
 
 export interface PrescriptionCreate {
   client_id: string;
   pet_id: string;
-  /** Pass drug_id to auto-create the prescription item from the drug's dosage info */
-  drug_id?: string;
-  /** Pass drug_ids to auto-create multiple items on a single prescription */
-  drug_ids?: string[];
-  /** Or pass an existing prescriptionItem_id directly */
-  prescriptionItem_id?: string;
+  /** One or more groups; each group becomes one prescription item */
+  item_drug_ids?: string[][];
+  /** Or link existing item ids directly */
+  prescriptionItem_ids?: string[];
 }
 
 export interface PrescriptionUpdate {
   client_id?: string;
   pet_id?: string;
-  prescriptionItem_id?: string;
+  prescriptionItem_ids?: string[];
 }
 
 /* ── Prescription Item ────────────────────────────────────────────── */
 
 export interface PrescriptionItem {
   prescriptionItem_id: string;
-  drug_id: string;
+  drug_ids: string[];
   drugDose: string;
   clinic_id: string;
 }
 
 export interface PrescriptionItemCreate {
-  drug_id: string;
+  drug_ids: string[];
   drugDose: string;
 }
 
 export interface PrescriptionItemUpdate {
-  drug_id?: string;
+  drug_ids?: string[];
   drugDose?: string;
 }

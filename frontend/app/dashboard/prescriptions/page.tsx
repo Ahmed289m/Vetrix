@@ -84,7 +84,8 @@ export default function PrescriptionsPage() {
   const { t } = useLang();
 
   const isClient = user?.role === "client";
-  const canCreate = user?.role === "doctor" || user?.role === "owner" || user?.role === "admin";
+  const canCreate =
+    user?.role === "doctor" || user?.role === "owner" || user?.role === "admin";
 
   const { data: rxData, isLoading: rxLoading } = usePrescriptions();
   const { data: rxItemsData } = usePrescriptionItems();
@@ -99,7 +100,9 @@ export default function PrescriptionsPage() {
   const rxItems = rxItemsData?.data || [];
   const drugs = drugsData?.data || [];
   const pets = petsData?.data || [];
-  const clients = isClient ? [] : (usersData?.data || []).filter((u) => u.role === "client");
+  const clients = isClient
+    ? []
+    : (usersData?.data || []).filter((u) => u.role === "client");
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   const getPet = (id: string) => pets.find((p) => p.pet_id === id);
@@ -111,13 +114,21 @@ export default function PrescriptionsPage() {
 
   /** Resolve drug info for a prescription via its prescription item */
   const getDrugsForRx = (rx: Prescription): { drug: Drug; dose: string }[] => {
-    if (!rx.prescriptionItem_id) return [];
-    const itemIds = rx.prescriptionItem_id.split(',');
-    const items = rxItems.filter((i) => itemIds.includes(i.prescriptionItem_id));
-    return items.map((item) => {
-      const drug = drugs.find((d) => d.drug_id === item.drug_id);
-      return drug ? { drug, dose: item.drugDose } : null;
-    }).filter(Boolean) as { drug: Drug; dose: string }[];
+    if (!rx.prescriptionItem_ids?.length) return [];
+    const itemIds = rx.prescriptionItem_ids;
+    const items = rxItems.filter((i) =>
+      itemIds.includes(i.prescriptionItem_id),
+    );
+    const result: { drug: Drug; dose: string }[] = [];
+    items.forEach((item) => {
+      (item.drug_ids || []).forEach((drugId) => {
+        const drug = drugs.find((d) => d.drug_id === drugId);
+        if (drug) {
+          result.push({ drug, dose: item.drugDose });
+        }
+      });
+    });
+    return result;
   };
 
   // ── Filter / search ───────────────────────────────────────────────────────
@@ -125,7 +136,8 @@ export default function PrescriptionsPage() {
     const q = searchQuery.trim().toLowerCase();
     return prescriptions.filter((rx) => {
       const effectiveStatus = (rx.status || "active").toLowerCase();
-      const matchesStatus = statusFilter === "all" || effectiveStatus === statusFilter;
+      const matchesStatus =
+        statusFilter === "all" || effectiveStatus === statusFilter;
       const pDrugs = getDrugsForRx(rx);
       const matchesSearch =
         q.length === 0 ||
@@ -143,29 +155,39 @@ export default function PrescriptionsPage() {
     initialValues: {
       client_id: "",
       pet_id: "",
-      drug_id: "",
+      drug_ids: [] as string[],
     },
     validate: (values) => {
       const errors: Record<string, string> = {};
       if (!values.client_id) errors.client_id = "Select a client";
       if (!values.pet_id) errors.pet_id = "Select a pet";
-      if (!values.drug_id) errors.drug_id = "Select a drug";
+      if (!values.drug_ids?.length)
+        errors.drug_ids = "Select at least one drug";
       return errors;
     },
     onSubmit: (values, { setSubmitting, resetForm }) => {
       createPrescription.mutate(
-        { client_id: values.client_id, pet_id: values.pet_id, drug_id: values.drug_id },
+        {
+          client_id: values.client_id,
+          pet_id: values.pet_id,
+          item_drug_ids: [values.drug_ids],
+        },
         {
           onSuccess: () => {
-            toast.success(t("prescription_created_success") || "Prescription issued successfully.");
+            toast.success(
+              t("prescription_created_success") ||
+                "Prescription issued successfully.",
+            );
             setIsFormOpen(false);
             resetForm();
             setSubmitting(false);
           },
           onError: (err: unknown) => {
             const msg =
-              (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
-              t("prescription_create_failed") || "Failed to issue prescription.";
+              (err as { response?: { data?: { detail?: string } } })?.response
+                ?.data?.detail ||
+              t("prescription_create_failed") ||
+              "Failed to issue prescription.";
             toast.error(msg);
             setSubmitting(false);
           },
@@ -174,8 +196,12 @@ export default function PrescriptionsPage() {
     },
   });
 
-  const clientPets = pets.filter((p) => p.client_id === formik.values.client_id);
-  const selectedDrugInForm = drugs.find((d) => d.drug_id === formik.values.drug_id);
+  const clientPets = pets.filter(
+    (p) => p.client_id === formik.values.client_id,
+  );
+  const selectedDrugInForm = formik.values.drug_ids.length
+    ? drugs.find((d) => d.drug_id === formik.values.drug_ids[0])
+    : undefined;
 
   const handleOpenForm = () => {
     formik.resetForm();
@@ -183,10 +209,14 @@ export default function PrescriptionsPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm(t("confirm_revoke_prescription") || "Revoke this prescription?")) {
+    if (
+      confirm(t("confirm_revoke_prescription") || "Revoke this prescription?")
+    ) {
       deletePrescription.mutate(id, {
-        onSuccess: () => toast.success(t("prescription_revoked") || "Prescription revoked."),
-        onError: () => toast.error(t("prescription_revoke_failed") || "Failed to revoke."),
+        onSuccess: () =>
+          toast.success(t("prescription_revoked") || "Prescription revoked."),
+        onError: () =>
+          toast.error(t("prescription_revoke_failed") || "Failed to revoke."),
       });
     }
   };
@@ -285,13 +315,19 @@ export default function PrescriptionsPage() {
                 <TableBody>
                   {rxLoading ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell
+                        colSpan={5}
+                        className="text-center py-8 text-muted-foreground"
+                      >
                         {t("loading_prescriptions_text")}
                       </TableCell>
                     </TableRow>
                   ) : filteredPrescriptions.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell
+                        colSpan={5}
+                        className="text-center py-8 text-muted-foreground"
+                      >
                         {t("no_prescriptions_found")}
                       </TableCell>
                     </TableRow>
@@ -302,7 +338,9 @@ export default function PrescriptionsPage() {
                         <TableRow
                           key={rx.prescription_id}
                           className="border-b border-white/5 hover:bg-white/5 transition-colors group/row cursor-pointer"
-                          onClick={() => { setSelectedRx(rx); }}
+                          onClick={() => {
+                            setSelectedRx(rx);
+                          }}
                         >
                           <TableCell className="py-6 px-8">
                             <div className="flex flex-col gap-1">
@@ -319,10 +357,16 @@ export default function PrescriptionsPage() {
                               <Pill className="w-4 h-4 text-emerald shrink-0" />
                               <div className="flex flex-col gap-0.5">
                                 <span className="text-sm font-black uppercase tracking-tight text-foreground/80">
-                                  {pDrugs.length > 0 ? (pDrugs.length === 1 ? pDrugs[0].drug.name : `${pDrugs[0].drug.name} + ${pDrugs.length - 1} more`) : "Unknown Drug"}
+                                  {pDrugs.length > 0
+                                    ? pDrugs.length === 1
+                                      ? pDrugs[0].drug.name
+                                      : `${pDrugs[0].drug.name} + ${pDrugs.length - 1} more`
+                                    : "Unknown Drug"}
                                 </span>
                                 <span className="text-[10px] text-muted-foreground font-medium">
-                                  {pDrugs.length > 0 ? pDrugs[0].drug.drugClass : ""}
+                                  {pDrugs.length > 0
+                                    ? pDrugs[0].drug.drugClass
+                                    : ""}
                                 </span>
                               </div>
                             </div>
@@ -344,7 +388,10 @@ export default function PrescriptionsPage() {
                               {rx.status || "active"}
                             </Badge>
                           </TableCell>
-                          <TableCell className="py-6 px-8 text-right" onClick={(e) => e.stopPropagation()}>
+                          <TableCell
+                            className="py-6 px-8 text-right"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
@@ -366,11 +413,14 @@ export default function PrescriptionsPage() {
                                   onClick={() => setSelectedRx(rx)}
                                   className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2"
                                 >
-                                  <FileText className="w-4 h-4" /> {t("view_details") || "View Details"}
+                                  <FileText className="w-4 h-4" />{" "}
+                                  {t("view_details") || "View Details"}
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator className="bg-white/5 mx-2" />
                                 <DropdownMenuItem
-                                  onClick={() => handleDelete(rx.prescription_id)}
+                                  onClick={() =>
+                                    handleDelete(rx.prescription_id)
+                                  }
                                   className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold flex items-center gap-2"
                                 >
                                   <Trash2 className="w-4 h-4" /> {t("revoke")}
@@ -397,7 +447,10 @@ export default function PrescriptionsPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-background/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => { setSelectedRx(null); setSelectedDrug(null); }}
+            onClick={() => {
+              setSelectedRx(null);
+              setSelectedDrug(null);
+            }}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 16 }}
@@ -412,13 +465,19 @@ export default function PrescriptionsPage() {
                   <span className="text-[10px] font-black tracking-widest text-emerald bg-emerald/10 px-2 py-0.5 rounded-md uppercase">
                     RX-{selectedRx.prescription_id.slice(0, 8)}
                   </span>
-                  <h3 className="text-xl font-black mt-2">Prescription Details</h3>
+                  <h3 className="text-xl font-black mt-2">
+                    Prescription Details
+                  </h3>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    {getPetName(selectedRx.pet_id)} · {getClientName(selectedRx.client_id)}
+                    {getPetName(selectedRx.pet_id)} ·{" "}
+                    {getClientName(selectedRx.client_id)}
                   </p>
                 </div>
                 <button
-                  onClick={() => { setSelectedRx(null); setSelectedDrug(null); }}
+                  onClick={() => {
+                    setSelectedRx(null);
+                    setSelectedDrug(null);
+                  }}
                   className="p-2 rounded-full hover:bg-white/10 transition-colors"
                 >
                   <X className="w-5 h-5" />
@@ -438,18 +497,26 @@ export default function PrescriptionsPage() {
                 return (
                   <div className="space-y-4">
                     <p className="text-[10px] font-black uppercase tracking-widest text-emerald flex items-center gap-1.5">
-                      <Pill className="w-3.5 h-3.5" /> Prescribed Medications ({rxDrugs.length})
+                      <Pill className="w-3.5 h-3.5" /> Prescribed Medications (
+                      {rxDrugs.length})
                     </p>
-                    
+
                     {rxDrugs.map(({ drug, dose }, idx) => (
-                      <div key={idx} className="space-y-4 border border-emerald/10 rounded-2xl p-4 bg-emerald/5">
+                      <div
+                        key={idx}
+                        className="space-y-4 border border-emerald/10 rounded-2xl p-4 bg-emerald/5"
+                      >
                         <div className="flex items-center gap-3 rounded-2xl">
                           <div className="w-10 h-10 rounded-xl bg-emerald/10 flex items-center justify-center shrink-0">
                             <Pill className="w-5 h-5 text-emerald" />
                           </div>
                           <div>
-                            <p className="font-black text-foreground">{drug.name}</p>
-                            <p className="text-xs text-muted-foreground">{drug.drugClass}</p>
+                            <p className="font-black text-foreground">
+                              {drug.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {drug.drugClass}
+                            </p>
                           </div>
                           <Badge className="ml-auto rounded-full px-3 py-1 text-[10px] font-black uppercase bg-emerald/10 text-emerald border-none">
                             {selectedRx.status || "active"}
@@ -463,9 +530,16 @@ export default function PrescriptionsPage() {
                           </p>
                           <div className="space-y-1">
                             {Object.entries(drug.dosage || {}).map(([k, v]) => (
-                              <div key={k} className="flex justify-between text-sm">
-                                <span className="text-muted-foreground capitalize">{k}</span>
-                                <span className="font-bold text-emerald">{formatDose(v)}</span>
+                              <div
+                                key={k}
+                                className="flex justify-between text-sm"
+                              >
+                                <span className="text-muted-foreground capitalize">
+                                  {k}
+                                </span>
+                                <span className="font-bold text-emerald">
+                                  {formatDose(v)}
+                                </span>
                               </div>
                             ))}
                           </div>
@@ -479,7 +553,10 @@ export default function PrescriptionsPage() {
                             </p>
                             <ul className="space-y-1">
                               {drug.indications.map((ind, i) => (
-                                <li key={i} className="text-sm text-foreground/80 flex items-start gap-2">
+                                <li
+                                  key={i}
+                                  className="text-sm text-foreground/80 flex items-start gap-2"
+                                >
                                   <ChevronRight className="w-3.5 h-3.5 text-emerald shrink-0 mt-0.5" />
                                   {ind}
                                 </li>
@@ -492,11 +569,15 @@ export default function PrescriptionsPage() {
                         {drug.sideEffects?.length > 0 && (
                           <div className="p-4 rounded-2xl bg-orange-500/5 border border-orange-500/10 space-y-2">
                             <p className="text-[10px] font-black uppercase tracking-widest text-orange-400 flex items-center gap-1.5">
-                              <AlertCircle className="w-3.5 h-3.5" /> Side Effects
+                              <AlertCircle className="w-3.5 h-3.5" /> Side
+                              Effects
                             </p>
                             <ul className="space-y-1">
                               {drug.sideEffects.map((se, i) => (
-                                <li key={i} className="text-sm text-foreground/80 flex items-start gap-2">
+                                <li
+                                  key={i}
+                                  className="text-sm text-foreground/80 flex items-start gap-2"
+                                >
                                   <ChevronRight className="w-3.5 h-3.5 text-orange-400 shrink-0 mt-0.5" />
                                   {se}
                                 </li>
@@ -518,10 +599,15 @@ export default function PrescriptionsPage() {
       {canCreate && (
         <DashboardForm
           title={t("issue_prescription")}
-          description={t("select_drug_auto_dose") || "Select client, pet, and drug — dosage is auto-filled from the drug record"}
+          description={
+            t("select_drug_auto_dose") ||
+            "Select client, pet, and drug — dosage is auto-filled from the drug record"
+          }
           isOpen={isFormOpen}
           onOpenChange={setIsFormOpen}
-          onSubmit={(e) => formik.handleSubmit(e as React.FormEvent<HTMLFormElement>)}
+          onSubmit={(e) =>
+            formik.handleSubmit(e as React.FormEvent<HTMLFormElement>)
+          }
           submitLabel={formik.isSubmitting ? t("generating") : t("generate_rx")}
         >
           <div className="space-y-5">
@@ -537,12 +623,23 @@ export default function PrescriptionsPage() {
                   formik.setFieldValue("pet_id", "");
                 }}
               >
-                <SelectTrigger className={cn("h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold", formik.errors.client_id && formik.touched.client_id && "border-red-500/50")}>
+                <SelectTrigger
+                  className={cn(
+                    "h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold",
+                    formik.errors.client_id &&
+                      formik.touched.client_id &&
+                      "border-red-500/50",
+                  )}
+                >
                   <SelectValue placeholder={t("select_client")} />
                 </SelectTrigger>
                 <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
                   {clients.map((c) => (
-                    <SelectItem key={c.user_id} value={c.user_id} className="rounded-xl font-bold">
+                    <SelectItem
+                      key={c.user_id}
+                      value={c.user_id}
+                      className="rounded-xl font-bold"
+                    >
                       {c.fullname}
                     </SelectItem>
                   ))}
@@ -560,12 +657,23 @@ export default function PrescriptionsPage() {
                 onValueChange={(val) => formik.setFieldValue("pet_id", val)}
                 disabled={!formik.values.client_id}
               >
-                <SelectTrigger className={cn("h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold", formik.errors.pet_id && formik.touched.pet_id && "border-red-500/50")}>
+                <SelectTrigger
+                  className={cn(
+                    "h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold",
+                    formik.errors.pet_id &&
+                      formik.touched.pet_id &&
+                      "border-red-500/50",
+                  )}
+                >
                   <SelectValue placeholder={t("select_pet_label")} />
                 </SelectTrigger>
                 <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
                   {clientPets.map((p) => (
-                    <SelectItem key={p.pet_id} value={p.pet_id} className="rounded-xl font-bold">
+                    <SelectItem
+                      key={p.pet_id}
+                      value={p.pet_id}
+                      className="rounded-xl font-bold"
+                    >
                       {p.name}
                     </SelectItem>
                   ))}
@@ -576,18 +684,34 @@ export default function PrescriptionsPage() {
             {/* Drug — no manual dose entry */}
             <div className="space-y-2 pt-2 border-t border-white/5">
               <Label className="text-xs font-black uppercase tracking-widest text-emerald ml-1 flex items-center gap-1.5">
-                <Pill className="w-3.5 h-3.5" /> {t("select_drug") || "Select Drug"} *
+                <Pill className="w-3.5 h-3.5" />{" "}
+                {t("select_drug") || "Select Drug"} *
               </Label>
               <Select
-                value={formik.values.drug_id}
-                onValueChange={(val) => formik.setFieldValue("drug_id", val)}
+                value={formik.values.drug_ids[0] || ""}
+                onValueChange={(val) =>
+                  formik.setFieldValue("drug_ids", val ? [val] : [])
+                }
               >
-                <SelectTrigger className={cn("h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold", formik.errors.drug_id && formik.touched.drug_id && "border-red-500/50")}>
-                  <SelectValue placeholder={t("search_drug") || "Choose a drug from formulary"} />
+                <SelectTrigger
+                  className={cn(
+                    "h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold",
+                    formik.errors.drug_ids && "border-red-500/50",
+                  )}
+                >
+                  <SelectValue
+                    placeholder={
+                      t("search_drug") || "Choose a drug from formulary"
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
                   {drugs.map((d) => (
-                    <SelectItem key={d.drug_id} value={d.drug_id} className="rounded-xl font-bold">
+                    <SelectItem
+                      key={d.drug_id}
+                      value={d.drug_id}
+                      className="rounded-xl font-bold"
+                    >
                       {d.name}
                       <span className="ml-2 text-muted-foreground font-normal text-xs">
                         · {d.drugClass}
@@ -608,12 +732,18 @@ export default function PrescriptionsPage() {
                     Drug Info • Auto-filled
                   </p>
                   <div className="space-y-1.5">
-                    {Object.entries(selectedDrugInForm.dosage || {}).map(([k, v]) => (
-                      <div key={k} className="flex justify-between text-sm">
-                        <span className="text-muted-foreground capitalize">{k}</span>
-                        <span className="font-bold text-foreground">{formatDose(v)}</span>
-                      </div>
-                    ))}
+                    {Object.entries(selectedDrugInForm.dosage || {}).map(
+                      ([k, v]) => (
+                        <div key={k} className="flex justify-between text-sm">
+                          <span className="text-muted-foreground capitalize">
+                            {k}
+                          </span>
+                          <span className="font-bold text-foreground">
+                            {formatDose(v)}
+                          </span>
+                        </div>
+                      ),
+                    )}
                   </div>
                   {selectedDrugInForm.indications?.length > 0 && (
                     <p className="text-xs text-muted-foreground">
@@ -625,7 +755,8 @@ export default function PrescriptionsPage() {
                 </motion.div>
               )}
               <p className="px-2 pt-1 text-[10px] font-black text-muted-foreground/40 italic uppercase tracking-widest">
-                {t("dosage_auto_from_drug") || "Dosage is pulled automatically from the drug formulary — no manual entry needed"}
+                {t("dosage_auto_from_drug") ||
+                  "Dosage is pulled automatically from the drug formulary — no manual entry needed"}
               </p>
             </div>
           </div>
@@ -667,9 +798,12 @@ function ClientPrescriptionView({
         <div className="w-16 h-16 rounded-2xl bg-muted/20 flex items-center justify-center">
           <Pill className="w-8 h-8 text-muted-foreground/30" />
         </div>
-        <p className="text-muted-foreground font-medium">{t("no_prescriptions_found")}</p>
+        <p className="text-muted-foreground font-medium">
+          {t("no_prescriptions_found")}
+        </p>
         <p className="text-sm text-muted-foreground/60">
-          {t("no_prescriptions_client_hint") || "Your prescription history will appear here after a clinic visit."}
+          {t("no_prescriptions_client_hint") ||
+            "Your prescription history will appear here after a clinic visit."}
         </p>
       </div>
     );
@@ -712,13 +846,19 @@ function ClientPrescriptionView({
                   <Pill className="w-5 h-5 text-emerald" />
                 </div>
                 <div className="min-w-0">
-                  <p className="font-black text-foreground truncate">{drug.name}</p>
-                  <p className="text-xs text-emerald truncate">Dose: {dose !== "See drug info" ? dose : "View details"}</p>
+                  <p className="font-black text-foreground truncate">
+                    {drug.name}
+                  </p>
+                  <p className="text-xs text-emerald truncate">
+                    Dose: {dose !== "See drug info" ? dose : "View details"}
+                  </p>
                 </div>
               </div>
             ))}
             {pDrugs.length > 2 && (
-              <p className="text-xs text-muted-foreground font-bold pl-2">+{pDrugs.length - 2} more medications</p>
+              <p className="text-xs text-muted-foreground font-bold pl-2">
+                +{pDrugs.length - 2} more medications
+              </p>
             )}
 
             {/* Footer */}

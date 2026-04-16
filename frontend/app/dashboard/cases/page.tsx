@@ -63,7 +63,8 @@ type CaseItem = {
 export default function CasesPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [selectedCase, setSelectedCase] = React.useState<CaseItem | null>(null);
-  const [selectedVisitDetails, setSelectedVisitDetails] = React.useState<Visit | null>(null);
+  const [selectedVisitDetails, setSelectedVisitDetails] =
+    React.useState<Visit | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [doctorFilter, setDoctorFilter] = React.useState("all");
   const { user } = useAuth();
@@ -117,16 +118,27 @@ export default function CasesPage() {
 
   const getDrugsForVisit = (visit: Visit): { drug: Drug; dose: string }[] => {
     if (!visit.prescription_id) return [];
-    const rx = prescriptionsList.find((p: any) => p.prescription_id === visit.prescription_id);
-    if (!rx || !rx.prescriptionItem_id) return [];
-    
-    const itemIds = rx.prescriptionItem_id.split(',');
-    const items = presItemsList.filter((pi: any) => itemIds.includes(pi.prescriptionItem_id));
-    
-    return items.map((item: any) => {
-      const drug = drugsList.find((d: any) => d.drug_id === item.drug_id);
-      return drug ? { drug, dose: item.drugDose } : null;
-    }).filter(Boolean) as { drug: Drug; dose: string }[];
+    const rx = prescriptionsList.find(
+      (p: any) => p.prescription_id === visit.prescription_id,
+    );
+    if (!rx || !rx.prescriptionItem_ids?.length) return [];
+
+    const itemIds = rx.prescriptionItem_ids;
+    const items = presItemsList.filter((pi: any) =>
+      itemIds.includes(pi.prescriptionItem_id),
+    );
+
+    const result: { drug: Drug; dose: string }[] = [];
+    items.forEach((item: any) => {
+      (item.drug_ids || []).forEach((drugId: string) => {
+        const drug = drugsList.find((d: any) => d.drug_id === drugId);
+        if (drug) {
+          result.push({ drug, dose: item.drugDose });
+        }
+      });
+    });
+
+    return result;
   };
 
   const doctors = React.useMemo(() => {
@@ -163,7 +175,6 @@ export default function CasesPage() {
     const allUsers = usersData?.data || [];
     return allUsers.filter((u: any) => u.role === "client");
   }, [usersData]);
-
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -254,7 +265,9 @@ export default function CasesPage() {
                   <TableRow
                     key={caseItem.id}
                     className="border-b border-white/5 hover:bg-white/5 transition-colors group/row cursor-pointer"
-                    onClick={() => setSelectedVisitDetails(caseItem.originalVisit)}
+                    onClick={() =>
+                      setSelectedVisitDetails(caseItem.originalVisit)
+                    }
                   >
                     <TableCell className="py-6 px-8">
                       <div className="flex flex-col gap-1">
@@ -310,7 +323,9 @@ export default function CasesPage() {
                             {t("case_operations")}
                           </DropdownMenuLabel>
                           <DropdownMenuItem
-                            onClick={() => setSelectedVisitDetails(caseItem.originalVisit)}
+                            onClick={() =>
+                              setSelectedVisitDetails(caseItem.originalVisit)
+                            }
                             className="rounded-xl py-3 focus:bg-cyan/10 focus:text-cyan-400 cursor-pointer font-bold flex items-center gap-2"
                           >
                             <Eye className="w-4 h-4" />
@@ -359,15 +374,21 @@ export default function CasesPage() {
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-3">
               <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-              {t("client_id_label")}
+                {t("client_id_label")}
               </Label>
               <Select>
                 <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold">
-                  <SelectValue placeholder={t("select_client") || "Select Client"} />
+                  <SelectValue
+                    placeholder={t("select_client") || "Select Client"}
+                  />
                 </SelectTrigger>
                 <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
                   {clients.map((doc: any) => (
-                    <SelectItem key={doc.user_id} value={doc.user_id} className="rounded-xl font-bold">
+                    <SelectItem
+                      key={doc.user_id}
+                      value={doc.user_id}
+                      className="rounded-xl font-bold"
+                    >
                       {doc.fullname}
                     </SelectItem>
                   ))}
@@ -377,15 +398,21 @@ export default function CasesPage() {
 
             <div className="space-y-3">
               <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-              {t("pet_id_label")}
+                {t("pet_id_label")}
               </Label>
               <Select>
                 <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold">
-                  <SelectValue placeholder={t("select_pet_label") || "Select Pet"} />
+                  <SelectValue
+                    placeholder={t("select_pet_label") || "Select Pet"}
+                  />
                 </SelectTrigger>
                 <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
                   {petsList.map((p: any) => (
-                    <SelectItem key={p.pet_id} value={p.pet_id} className="rounded-xl font-bold">
+                    <SelectItem
+                      key={p.pet_id}
+                      value={p.pet_id}
+                      className="rounded-xl font-bold"
+                    >
                       {p.name}
                     </SelectItem>
                   ))}
@@ -397,15 +424,21 @@ export default function CasesPage() {
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-3">
               <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-              {t("doctor_id_label")}
+                {t("doctor_id_label")}
               </Label>
               <Select>
                 <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold">
-                  <SelectValue placeholder={t("assign_doctor") || "Assign Doctor"} />
+                  <SelectValue
+                    placeholder={t("assign_doctor") || "Assign Doctor"}
+                  />
                 </SelectTrigger>
                 <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
                   {doctors.map((doc: any) => (
-                    <SelectItem key={doc.user_id} value={doc.user_id} className="rounded-xl font-bold">
+                    <SelectItem
+                      key={doc.user_id}
+                      value={doc.user_id}
+                      className="rounded-xl font-bold"
+                    >
                       {doc.fullname}
                     </SelectItem>
                   ))}
@@ -414,11 +447,13 @@ export default function CasesPage() {
             </div>
             <div className="space-y-3">
               <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-              {t("visit_date")}
+                {t("visit_date")}
               </Label>
               <Input
                 type="date"
-                defaultValue={selectedCase?.date ? selectedCase.date.split('T')[0] : ""}
+                defaultValue={
+                  selectedCase?.date ? selectedCase.date.split("T")[0] : ""
+                }
                 className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
               />
             </div>
@@ -430,7 +465,9 @@ export default function CasesPage() {
             </Label>
             <Input
               defaultValue={selectedCase?.reason}
-              placeholder={t("chief_complaint") || "Chief complaint or symptoms..."}
+              placeholder={
+                t("chief_complaint") || "Chief complaint or symptoms..."
+              }
               className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
             />
           </div>

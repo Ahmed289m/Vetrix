@@ -5,10 +5,26 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "@/app/_components/fast-motion";
 import type { MouseEvent } from "react";
 import {
-  Dog, Cat, Eye, X, FileText, Pill, Plus, Stethoscope,
-  Calendar, User, ChevronRight, Activity, AlertCircle,
-  AlertTriangle, Zap, FlaskConical, Shield, ShieldCheck,
-  ClipboardList, Clock,
+  Dog,
+  Cat,
+  Eye,
+  X,
+  FileText,
+  Pill,
+  Plus,
+  Stethoscope,
+  Calendar,
+  User,
+  ChevronRight,
+  Activity,
+  AlertCircle,
+  AlertTriangle,
+  Zap,
+  FlaskConical,
+  Shield,
+  ShieldCheck,
+  ClipboardList,
+  Clock,
 } from "lucide-react";
 import type { Visit, Drug, Pet } from "@/app/_lib/types/models";
 import { cn } from "@/app/_lib/utils";
@@ -17,14 +33,23 @@ import { cn } from "@/app/_lib/utils";
 
 export const fmtDate = (d?: string | null) =>
   d
-    ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+    ? new Date(d).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
     : "—";
 
 export const formatDose = (val: any): string => {
   if (!val) return "—";
   if (typeof val === "object") {
-    try { return JSON.stringify(val).replace(/["{}\[\]]/g, "").replace(/:/g, ": "); }
-    catch { return String(val); }
+    try {
+      return JSON.stringify(val)
+        .replace(/["{}\[\]]/g, "")
+        .replace(/:/g, ": ");
+    } catch {
+      return String(val);
+    }
   }
   return String(val);
 };
@@ -33,25 +58,65 @@ export const speciesKey = (petType?: string) =>
   petType === "dog" ? "dog" : petType === "cat" ? "cat" : null;
 
 export const severityStyle = (sev?: any) => {
-  const sText = typeof sev === "object" && sev !== null ? sev.status || "" : (typeof sev === "string" ? sev : "");
+  const sText =
+    typeof sev === "object" && sev !== null
+      ? sev.status || ""
+      : typeof sev === "string"
+        ? sev
+        : "";
   const s = sText.toLowerCase();
-  if (s === "high")   return { bg: "bg-red-500/10",   text: "text-red-400",   border: "border-red-500/20",   label: "High Risk" };
-  if (s === "medium") return { bg: "bg-amber-500/10", text: "text-amber-400", border: "border-amber-500/20", label: "Medium Risk" };
-  if (s === "low")    return { bg: "bg-yellow-500/10",text: "text-yellow-400",border: "border-yellow-500/20",label: "Low Risk" };
-  return { bg: "bg-emerald/10", text: "text-emerald", border: "border-emerald/20", label: "No Risk" };
+  if (s === "high")
+    return {
+      bg: "bg-red-500/10",
+      text: "text-red-400",
+      border: "border-red-500/20",
+      label: "High Risk",
+    };
+  if (s === "medium")
+    return {
+      bg: "bg-amber-500/10",
+      text: "text-amber-400",
+      border: "border-amber-500/20",
+      label: "Medium Risk",
+    };
+  if (s === "low")
+    return {
+      bg: "bg-yellow-500/10",
+      text: "text-yellow-400",
+      border: "border-yellow-500/20",
+      label: "Low Risk",
+    };
+  return {
+    bg: "bg-emerald/10",
+    text: "text-emerald",
+    border: "border-emerald/20",
+    label: "No Risk",
+  };
 };
 
 // ── Portal wrapper ─────────────────────────────────────────────────────────────
-function Portal({ children, open, onBgClick }: { children: React.ReactNode; open: boolean; onBgClick?: () => void }) {
+function Portal({
+  children,
+  open,
+  onBgClick,
+}: {
+  children: React.ReactNode;
+  open: boolean;
+  onBgClick?: () => void;
+}) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   if (!mounted || !open) return null;
   return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
           key="visit-modal-bg"
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           style={{ position: "fixed", inset: 0, zIndex: 9999 }}
           className="bg-background/70 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={onBgClick}
@@ -68,7 +133,9 @@ function Portal({ children, open, onBgClick }: { children: React.ReactNode; open
 export function SeverityBadge({ severity }: { severity?: any }) {
   const s = severityStyle(severity);
   return (
-    <span className={`text-[10px] px-2 py-0.5 rounded-lg font-black uppercase border ${s.bg} ${s.text} ${s.border}`}>
+    <span
+      className={`text-[10px] px-2 py-0.5 rounded-lg font-black uppercase border ${s.bg} ${s.text} ${s.border}`}
+    >
       {s.label}
     </span>
   );
@@ -92,12 +159,14 @@ export function VisitDetailModal({
 }) {
   if (!visit) return null;
 
-  const pet    = getPet(visit.pet_id);
+  const pet = getPet(visit.pet_id);
   const doctor = getUser(visit.doctor_id);
-  const owner  = getUser(visit.client_id);
+  const doctorName = visit.doctor_name || doctor?.fullname || "Not assigned";
+  const owner = getUser(visit.client_id);
   const pDrugs = getDrugsForVisit(visit);
 
-  const PetIcon = pet?.type === "cat" ? Cat : pet?.type === "dog" ? Dog : FlaskConical;
+  const PetIcon =
+    pet?.type === "cat" ? Cat : pet?.type === "dog" ? Dog : FlaskConical;
 
   return (
     <Portal open={!!visit} onBgClick={onClose}>
@@ -112,7 +181,7 @@ export function VisitDetailModal({
         {/* ── Header ── */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald/25 to-cyan-500/15 flex items-center justify-center shadow-inner shrink-0">
+            <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-emerald/25 to-cyan-500/15 flex items-center justify-center shadow-inner shrink-0">
               <PetIcon className="w-7 h-7 text-emerald" />
             </div>
             <div>
@@ -121,12 +190,14 @@ export function VisitDetailModal({
               </h3>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
                 {pet?.type && (
-                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase bg-white/5 border border-white/5 text-muted-foreground capitalize">
+                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase bg-white/5 border border-white/5 text-muted-foreground">
                     {pet.type}
                   </span>
                 )}
                 {pet?.breed && (
-                  <span className="text-xs text-muted-foreground">{pet.breed}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {pet.breed}
+                  </span>
                 )}
                 <span className="px-2 py-0.5 rounded-lg text-[10px] font-black uppercase bg-emerald/15 text-emerald border border-emerald/20">
                   Completed
@@ -137,7 +208,10 @@ export function VisitDetailModal({
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/10 transition-colors text-muted-foreground shrink-0">
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl hover:bg-white/10 transition-colors text-muted-foreground shrink-0"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -165,9 +239,7 @@ export function VisitDetailModal({
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1">
               <User className="w-3 h-3" /> Attending Doctor
             </p>
-            <p className="text-sm font-bold text-cyan">
-              Dr. {doctor?.fullname || "Not assigned"}
-            </p>
+            <p className="text-sm font-bold text-cyan">Dr. {doctorName}</p>
           </div>
 
           {/* Owner — hidden for client (they are the owner) */}
@@ -208,16 +280,25 @@ export function VisitDetailModal({
 
             <div className="space-y-4">
               {pDrugs.map(({ drug, dose }, idx) => {
-                const sKey    = speciesKey(pet?.type);
+                const sKey = speciesKey(pet?.type);
                 const specDose = sKey ? (drug.dosage as any)?.[sKey] : null;
                 const specToxObj = sKey ? (drug.toxicity as any)?.[sKey] : null;
 
-                const specTox  = typeof specToxObj === "object" && specToxObj !== null ? specToxObj.description : specToxObj;
-                const sev      = typeof specToxObj === "object" && specToxObj !== null ? specToxObj.status : undefined;
-                const styles   = severityStyle(sev);
+                const specTox =
+                  typeof specToxObj === "object" && specToxObj !== null
+                    ? specToxObj.description
+                    : specToxObj;
+                const sev =
+                  typeof specToxObj === "object" && specToxObj !== null
+                    ? specToxObj.status
+                    : undefined;
+                const styles = severityStyle(sev);
 
                 return (
-                  <div key={idx} className="p-4 rounded-2xl bg-emerald/5 border border-emerald/15 space-y-4">
+                  <div
+                    key={idx}
+                    className="p-4 rounded-2xl bg-emerald/5 border border-emerald/15 space-y-4"
+                  >
                     {/* Drug header */}
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
@@ -226,7 +307,9 @@ export function VisitDetailModal({
                         </div>
                         <div>
                           <p className="font-black text-base">{drug.name}</p>
-                          <p className="text-xs text-muted-foreground">{drug.drugClass}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {drug.drugClass}
+                          </p>
                         </div>
                       </div>
                       {sev && <SeverityBadge severity={sev} />}
@@ -235,11 +318,13 @@ export function VisitDetailModal({
                     {/* Species-specific dosage */}
                     {specDose ? (
                       <div className="p-3 rounded-xl bg-cyan/5 border border-cyan/15">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-cyan mb-1 capitalize">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-cyan mb-1">
                           <FlaskConical className="w-3 h-3 inline mr-1" />
                           Dosage for {pet?.type}
                         </p>
-                        <p className="text-sm font-bold text-cyan">{specDose}</p>
+                        <p className="text-sm font-bold text-cyan">
+                          {specDose}
+                        </p>
                       </div>
                     ) : dose ? (
                       <div className="p-3 rounded-xl bg-emerald/5 border border-emerald/10 font-mono text-xs text-emerald">
@@ -249,12 +334,18 @@ export function VisitDetailModal({
 
                     {/* Species-specific toxicity */}
                     {specTox && (
-                      <div className={`p-3 rounded-xl border ${styles.bg} ${styles.border}`}>
-                        <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 capitalize flex items-center gap-1 ${styles.text}`}>
+                      <div
+                        className={`p-3 rounded-xl border ${styles.bg} ${styles.border}`}
+                      >
+                        <p
+                          className={`text-[10px] font-bold uppercase tracking-widest mb-1 flex items-center gap-1 ${styles.text}`}
+                        >
                           <AlertTriangle className="w-3 h-3" />
                           Toxicity for {pet?.type}
                         </p>
-                        <p className={`text-sm font-bold ${styles.text}`}>{specTox}</p>
+                        <p className={`text-sm font-bold ${styles.text}`}>
+                          {specTox}
+                        </p>
                       </div>
                     )}
 
@@ -266,7 +357,10 @@ export function VisitDetailModal({
                         </p>
                         <div className="flex flex-wrap gap-1.5">
                           {drug.drugInteractions.map((name, i) => (
-                            <span key={i} className="px-2 py-0.5 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/15">
+                            <span
+                              key={i}
+                              className="px-2 py-0.5 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/15"
+                            >
                               {name}
                             </span>
                           ))}
@@ -282,7 +376,10 @@ export function VisitDetailModal({
                         </p>
                         <div className="flex flex-wrap gap-1.5">
                           {drug.contraindications.slice(0, 4).map((c, i) => (
-                            <span key={i} className="px-2 py-0.5 rounded-lg text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/10">
+                            <span
+                              key={i}
+                              className="px-2 py-0.5 rounded-lg text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/10"
+                            >
                               {c}
                             </span>
                           ))}
@@ -294,11 +391,15 @@ export function VisitDetailModal({
                     {isClient && drug.sideEffects?.length > 0 && (
                       <div className="p-3 rounded-xl bg-orange-500/5 border border-orange-500/10">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-orange-400 mb-1.5 flex items-center gap-1">
-                          <AlertCircle className="w-3 h-3" /> Watch for these side effects
+                          <AlertCircle className="w-3 h-3" /> Watch for these
+                          side effects
                         </p>
                         <ul className="space-y-1">
                           {drug.sideEffects.slice(0, 4).map((se, i) => (
-                            <li key={i} className="text-xs text-foreground/70 flex items-start gap-1.5">
+                            <li
+                              key={i}
+                              className="text-xs text-foreground/70 flex items-start gap-1.5"
+                            >
                               <ChevronRight className="w-3 h-3 text-orange-400 shrink-0 mt-0.5" />
                               {se}
                             </li>
@@ -308,21 +409,30 @@ export function VisitDetailModal({
                     )}
 
                     {/* Full dosage by species (non-client) */}
-                    {!isClient && drug.dosage && Object.keys(drug.dosage).length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1">
-                          <Activity className="w-3 h-3" /> All species dosages
-                        </p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {Object.entries(drug.dosage).map(([k, v]) => (
-                            <div key={k} className="flex justify-between items-center p-2 rounded-xl bg-white/5 text-xs">
-                              <span className="text-muted-foreground capitalize font-semibold">{k}</span>
-                              <span className="font-bold text-emerald">{formatDose(v)}</span>
-                            </div>
-                          ))}
+                    {!isClient &&
+                      drug.dosage &&
+                      Object.keys(drug.dosage).length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1">
+                            <Activity className="w-3 h-3" /> All species dosages
+                          </p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {Object.entries(drug.dosage).map(([k, v]) => (
+                              <div
+                                key={k}
+                                className="flex justify-between items-center p-2 rounded-xl bg-white/5 text-xs"
+                              >
+                                <span className="text-muted-foreground capitalize font-semibold">
+                                  {k}
+                                </span>
+                                <span className="font-bold text-emerald">
+                                  {formatDose(v)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
                   </div>
                 );
               })}

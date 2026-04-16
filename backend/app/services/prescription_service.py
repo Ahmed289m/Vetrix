@@ -33,9 +33,8 @@ class PrescriptionService:
         """
         Create a prescription with authorization.
 
-        Accepts `drug_id` directly — the prescription item is auto-created from
-        the drug's own dosage info, so the doctor doesn't need to manually enter
-        a dose string (it lives on the drug record).
+        Accepts structured item payloads where a prescription can contain
+        one or more prescription items and each item can include one or more drugs.
 
         - DOCTOR/STAFF can create prescriptions in their clinic
         - ADMIN can create in any clinic
@@ -55,57 +54,113 @@ class PrescriptionService:
                 detail="Cannot create prescriptions in other clinics",
             )
 
-        # ── Resolve prescription item from drug ────────────────────────────
-        # The frontend now sends drug_id. We pull the drug's dosage info and
-        # auto-create a PrescriptionItem so the doctor doesn't have to enter
-        # duplicate dose information.
-        drug_id = getattr(request, "drug_id", None)
-        drug_ids = getattr(request, "drug_ids", None)
-        prescriptionItem_id = getattr(request, "prescriptionItem_id", None)
+        item_drug_groups = request.item_drug_ids or []
+        draft_items = request.items or []
+        input_item_ids = request.prescriptionItem_ids or []
 
-        all_drug_ids = drug_ids if drug_ids else ([drug_id] if drug_id else [])
+        sources_count = sum(bool(src) for src in [item_drug_groups, draft_items, input_item_ids])
+        if sources_count != 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Provide exactly one of: item_drug_ids, items, or prescriptionItem_ids",
+            )
 
-        if all_drug_ids and not prescriptionItem_id:
-            created_item_ids = []
-            for d_id in all_drug_ids:
-                drug = await self.drug_repository.get_by_id(d_id)
-                if not drug:
+        created_item_ids: list[str] = []
+
+        if input_item_ids:
+            for item_id in input_item_ids:
+                item = await self.prescription_item_repository.get_by_id(item_id)
+                if not item:
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,
-                        detail=f"Drug not found: {d_id}",
+                        detail=f"Prescription item not found: {item_id}",
                     )
+                if item.get("clinic_id") != clinic_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Cannot attach item from another clinic",
+                    )
+            created_item_ids = input_item_ids
 
-                # Build a human-readable dose string from the drug's dosage dict.
-                dosage_dict = drug.get("dosage", {})
+        if item_drug_groups:
+            for group in item_drug_groups:
+                if not group:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Each item in item_drug_ids must include one or more drugs",
+                    )
+                for d_id in group:
+                    drug = await self.drug_repository.get_by_id(d_id)
+                    if not drug:
+                        raise HTTPException(
+                            status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Drug not found: {d_id}",
+                        )
+
+                first_drug = await self.drug_repository.get_by_id(group[0])
+                dosage_dict = first_drug.get("dosage", {}) if first_drug else {}
                 if isinstance(dosage_dict, dict):
                     dose_str = " | ".join(f"{k}: {v}" for k, v in dosage_dict.items()) or "See drug info"
                 else:
                     dose_str = str(dosage_dict) if dosage_dict else "See drug info"
 
-                # Create the prescription item
                 item_id = generate_prefixed_id("prescriptionItem")
                 item_model = PrescriptionItem(
                     prescriptionItem_id=item_id,
-                    drug_id=d_id,
+                    drug_ids=group,
                     drugDose=dose_str,
                     clinic_id=clinic_id,
                 )
                 item_payload = normalize_for_mongo(item_model.model_dump())
                 await self.prescription_item_repository.create(item_payload)
                 created_item_ids.append(item_id)
-            
-            prescriptionItem_id = ",".join(created_item_ids)
 
-        if not prescriptionItem_id:
+        if draft_items:
+            for draft in draft_items:
+                if not draft.drug_ids:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Each item must include one or more drugs",
+                    )
+                for d_id in draft.drug_ids:
+                    drug = await self.drug_repository.get_by_id(d_id)
+                    if not drug:
+                        raise HTTPException(
+                            status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Drug not found: {d_id}",
+                        )
+
+                if draft.drugDose:
+                    dose_str = draft.drugDose
+                else:
+                    first_drug = await self.drug_repository.get_by_id(draft.drug_ids[0])
+                    dosage_dict = first_drug.get("dosage", {}) if first_drug else {}
+                    if isinstance(dosage_dict, dict):
+                        dose_str = " | ".join(f"{k}: {v}" for k, v in dosage_dict.items()) or "See drug info"
+                    else:
+                        dose_str = str(dosage_dict) if dosage_dict else "See drug info"
+
+                item_id = generate_prefixed_id("prescriptionItem")
+                item_model = PrescriptionItem(
+                    prescriptionItem_id=item_id,
+                    drug_ids=draft.drug_ids,
+                    drugDose=dose_str,
+                    clinic_id=clinic_id,
+                )
+                item_payload = normalize_for_mongo(item_model.model_dump())
+                await self.prescription_item_repository.create(item_payload)
+                created_item_ids.append(item_id)
+
+        if not created_item_ids:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Either drug_id(s) or prescriptionItem_id is required",
+                detail="Prescription must include one or more prescription items",
             )
 
         payload = {
             "client_id": request.client_id,
             "pet_id": request.pet_id,
-            "prescriptionItem_id": prescriptionItem_id,
+            "prescriptionItem_ids": created_item_ids,
             "clinic_id": clinic_id,
         }
         return await self.crud.create(Prescription(**payload))

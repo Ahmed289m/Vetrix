@@ -117,19 +117,23 @@ export default function VisitsPage() {
     const rx = prescriptionsList.find(
       (p) => p.prescription_id === visit.prescription_id,
     );
-    if (!rx || !rx.prescriptionItem_id) return [];
+    if (!rx || !rx.prescriptionItem_ids?.length) return [];
 
-    const itemIds = rx.prescriptionItem_id.split(",");
+    const itemIds = rx.prescriptionItem_ids;
     const items = presItemsList.filter((pi) =>
       itemIds.includes(pi.prescriptionItem_id),
     );
 
-    return items
-      .map((item) => {
-        const drug = drugsList.find((d) => d.drug_id === item.drug_id);
-        return drug ? { drug, dose: item.drugDose } : null;
-      })
-      .filter(Boolean) as { drug: Drug; dose: string }[];
+    const result: { drug: Drug; dose: string }[] = [];
+    for (const item of items) {
+      for (const drugId of item.drug_ids || []) {
+        const drug = drugsList.find((d) => d.drug_id === drugId);
+        if (drug) {
+          result.push({ drug, dose: item.drugDose });
+        }
+      }
+    }
+    return result;
   };
 
   // ── Filtering ──────────────────────────────────────────────────────────────
@@ -290,6 +294,8 @@ export default function VisitsPage() {
                 const pet = getPet(visit.pet_id);
                 const pDrugs = getDrugsForVisit(visit);
                 const doctor = getUser(visit.doctor_id);
+                const doctorName =
+                  visit.doctor_name || doctor?.fullname || "Assigned";
                 const PetIcon = pet?.type === "cat" ? Cat : Dog;
                 return (
                   <motion.div
@@ -336,7 +342,7 @@ export default function VisitsPage() {
                           <User className="w-3 h-3" /> Doctor
                         </p>
                         <p className="text-xs font-bold text-cyan truncate">
-                          Dr. {doctor?.fullname || "Assigned"}
+                          Dr. {doctorName}
                         </p>
                       </div>
                     </div>
@@ -400,6 +406,8 @@ export default function VisitsPage() {
               const pet = getPet(visit.pet_id);
               const owner = getUser(visit.client_id);
               const doctor = getUser(visit.doctor_id);
+              const doctorName =
+                visit.doctor_name || doctor?.fullname || "Assigned";
               const pDrugs = getDrugsForVisit(visit);
               const PetIcon = pet?.type === "cat" ? Cat : Dog;
 
@@ -443,8 +451,7 @@ export default function VisitsPage() {
                           {pet?.name || "Unknown Pet"}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {owner?.fullname || "Unknown"} · Dr.{" "}
-                          {doctor?.fullname || "Assigned"}
+                          {owner?.fullname || "Unknown"} · Dr. {doctorName}
                         </p>
                       </div>
                     </div>
@@ -654,12 +661,14 @@ export default function VisitsPage() {
                   </SelectTrigger>
                   <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
                     {clientPrescriptions.map((rx) => {
-                      const item = presItemsList.find(
-                        (pi) =>
-                          pi.prescriptionItem_id === rx.prescriptionItem_id,
+                      const firstItem = presItemsList.find((pi) =>
+                        (rx.prescriptionItem_ids || []).includes(
+                          pi.prescriptionItem_id,
+                        ),
                       );
+                      const firstDrugId = firstItem?.drug_ids?.[0];
                       const drug = drugsList.find(
-                        (d) => d.drug_id === item?.drug_id,
+                        (d) => d.drug_id === firstDrugId,
                       );
                       return (
                         <SelectItem

@@ -6,6 +6,6 @@ class Prescription(BaseModel):
     clinic_id: str
     client_id: str
     pet_id: str
-    prescriptionItem_id: str
+    prescriptionItem_ids: list[str]
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
