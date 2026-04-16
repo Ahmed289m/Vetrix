@@ -126,6 +126,7 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
         Permissions.PRESCRIPTIONS_CREATE,
         Permissions.PRESCRIPTIONS_READ,
         Permissions.PRESCRIPTIONS_UPDATE,
+        Permissions.PRESCRIPTIONS_DELETE,
         # Prescription Item management
         Permissions.PRESCRIPTION_ITEMS_CREATE,
         Permissions.PRESCRIPTION_ITEMS_READ,

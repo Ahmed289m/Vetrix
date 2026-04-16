@@ -45,9 +45,14 @@ type SimStatus = "confirmed" | "pending-doctor" | "in-progress" | "completed";
 
 interface Props { role: "staff" | "doctor"; }
 
-// ── Portal wrapper — renders modals at document.body to avoid overflow clipping ──
+// ── Portal wrapper — renders at document.body, avoids overflow clipping ────
 function Modal({ children, open }: { children: React.ReactNode; open: boolean }) {
-  if (!open || typeof document === "undefined") return null;
+  const [mounted, setMounted] = useState(false);
+  // Only mount on client side to avoid SSR mismatch that could crash the app
+  // and trigger the axios 401 interceptor → logout flow
+  useState(() => { setMounted(true); });
+
+  if (!mounted || !open || typeof document === "undefined") return null;
   return createPortal(
     <AnimatePresence>
       {open && (
@@ -67,7 +72,9 @@ function Modal({ children, open }: { children: React.ReactNode; open: boolean })
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function SimulationMode({ role }: Props) {
-  // ── Visit modal state ──
+  // ── Session prescription tracking ──
+  // Track IDs of prescriptions created during this simulation session (cleared on accept/complete)
+  const [sessionRxIds, setSessionRxIds] = useState<Set<string>>(new Set());
   const [visitMode,           setVisitMode]           = useState<"create" | "edit">("create");
   const [showVisitModal,      setShowVisitModal]      = useState(false);
   const [activeVisitApptId,   setActiveVisitApptId]   = useState("");
@@ -197,8 +204,11 @@ export default function SimulationMode({ role }: Props) {
     updateAppointment.mutate(
       { id: apptId, data: { status: "in-progress", doctor_id: user.userId } },
       {
-        onSuccess: () => toast.success("Case accepted — you are the assigned doctor"),
-        onError:   () => toast.error("Failed to accept case"),
+        onSuccess: () => {
+          setSessionRxIds(new Set()); // fresh session for new case
+          toast.success("Case accepted — you are the assigned doctor");
+        },
+        onError: () => toast.error("Failed to accept case"),
       },
     );
   };
@@ -207,8 +217,11 @@ export default function SimulationMode({ role }: Props) {
     updateAppointment.mutate(
       { id: apptId, data: { status: "completed" } },
       {
-        onSuccess: () => toast.success("Case completed"),
-        onError:   () => toast.error("Failed to complete case"),
+        onSuccess: () => {
+          setSessionRxIds(new Set());
+          toast.success("Case completed");
+        },
+        onError: () => toast.error("Failed to complete case"),
       },
     );
   };
@@ -292,35 +305,66 @@ export default function SimulationMode({ role }: Props) {
     if (!selectedDrugId) { toast.warning("Select a drug first"); return; }
 
     if (pressMode === "edit") {
-      updatePrescription.mutate(
-        { id: editingPressId, data: { pet_id: appt?.petId, client_id: appt?.clientId } },
-        {
-          onSuccess: () => { toast.success("Prescription updated."); setShowPressModal(false); setSelectedDrugId(""); },
-          onError:   () => toast.error("Failed to update prescription."),
+      // PrescriptionUpdate has no drug_id field — delete old then create new with new drug
+      deletePrescription.mutate(editingPressId, {
+        onSuccess: () => {
+          if (!appt) return;
+          // Remove old from session tracking
+          setSessionRxIds((prev) => { const next = new Set(prev); next.delete(editingPressId); return next; });
+          createPrescription.mutate(
+            { client_id: appt.clientId, pet_id: appt.petId, drug_id: selectedDrugId } satisfies PrescriptionCreate,
+            {
+              onSuccess: (res: any) => {
+                const newId = res?.data?.prescription_id;
+                if (newId) setSessionRxIds((prev) => new Set([...prev, newId]));
+                toast.success("Prescription updated.");
+                setShowPressModal(false);
+                setSelectedDrugId("");
+              },
+              onError: () => toast.error("Failed to re-create prescription."),
+            },
+          );
         },
-      );
+        onError: () => toast.error("Failed to delete old prescription."),
+      });
     } else {
       if (!appt) return;
       createPrescription.mutate(
         { client_id: appt.clientId, pet_id: appt.petId, drug_id: selectedDrugId } satisfies PrescriptionCreate,
         {
-          onSuccess: () => { toast.success("Prescription issued."); setShowPressModal(false); setSelectedDrugId(""); },
-          onError:   (err: any) => toast.error(err?.response?.data?.detail || "Failed."),
+          onSuccess: (res: any) => {
+            const newId = res?.data?.prescription_id;
+            if (newId) setSessionRxIds((prev) => new Set([...prev, newId]));
+            toast.success("Prescription issued.");
+            setShowPressModal(false);
+            setSelectedDrugId("");
+          },
+          onError: (err: any) => toast.error(err?.response?.data?.detail || "Failed."),
         },
       );
     }
   };
 
-  // Lookup helpers for modals
-  const visitAppt  = simAppointments.find((a) => a.appointment_id === activeVisitApptId);
-  const pressAppt  = simAppointments.find((a) => a.appointment_id === activePressApptId);
+  // Session-only prescriptions (created since doctor accepted this case)
+  const sessionCasePrescriptions = myActiveCase
+    ? allPrescriptions.filter((rx) => sessionRxIds.has(rx.prescription_id))
+    : [];
 
-  // Case prescriptions for the prescription modal (for current case only)
+  // All prescriptions for the case (used in visit dropdown and prescription modal)
+  const myCasePrescriptions = myActiveCase
+    ? getCasePrescriptions(myActiveCase.petId, myActiveCase.clientId)
+    : [];
+
+  // Lookup helpers for modals
+  const visitAppt = simAppointments.find((a) => a.appointment_id === activeVisitApptId);
+  const pressAppt = simAppointments.find((a) => a.appointment_id === activePressApptId);
+
+  // Prescriptions for the prescription modal (case scope)
   const pressCasePrescriptions = pressAppt
     ? getCasePrescriptions(pressAppt.petId, pressAppt.clientId)
     : [];
 
-  // Case visits for the active doctor's case
+  // Case visits for the active doctor's case (kept for internal use, not displayed on card)
   const myCaseVisits = myActiveCase
     ? allVisits.filter((v) => v.pet_id === myActiveCase.petId && v.client_id === myActiveCase.clientId)
     : [];
@@ -459,16 +503,16 @@ export default function SimulationMode({ role }: Props) {
                 <span className="font-bold">Assigned to you · Dr. {user?.fullname}</span>
               </div>
 
-              {/* ── Prescriptions for this case ── */}
+              {/* ── Prescriptions created this session ── */}
               {(() => {
-                const rxs = getCasePrescriptions(myActiveCase.petId, myActiveCase.clientId);
+                const rxs = sessionCasePrescriptions;
                 if (!rxs.length) return (
-                  <div className="text-xs text-muted-foreground/60 italic px-1">No prescriptions issued yet for this case.</div>
+                  <div className="text-xs text-muted-foreground/60 italic px-1">No prescriptions issued in this session yet.</div>
                 );
                 return (
                   <div className="space-y-2">
                     <p className="text-[10px] font-black uppercase tracking-widest text-emerald flex items-center gap-1">
-                      <Pill className="w-3 h-3" /> Prescriptions for this case
+                      <Pill className="w-3 h-3" /> This session’s prescriptions
                     </p>
                     {rxs.map((rx) => {
                       const drug = getDrugForRx(rx.prescription_id);
@@ -496,27 +540,7 @@ export default function SimulationMode({ role }: Props) {
                 );
               })()}
 
-              {/* ── Visits for this case ── */}
-              {myCaseVisits.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-cyan flex items-center gap-1">
-                    <Stethoscope className="w-3 h-3" /> Visits for this case
-                  </p>
-                  {myCaseVisits.map((v) => (
-                    <div key={v.visit_id} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-cyan/5 border border-cyan/15 text-xs group">
-                      <Stethoscope className="w-3.5 h-3.5 text-cyan shrink-0" />
-                      <span className="font-bold text-cyan flex-1 truncate">{v.notes || "Visit"}</span>
-                      <span className="text-muted-foreground opacity-60">{fmtDate(v.date)}</span>
-                      <button
-                        onClick={() => openEditVisit(v)}
-                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/10 rounded-lg transition-all ml-1"
-                      >
-                        <Pencil className="w-3 h-3 text-muted-foreground" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+
 
               {/* Doctor action buttons */}
               <div className="flex items-center gap-2.5 flex-wrap pt-1">
