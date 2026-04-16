@@ -253,7 +253,8 @@ export default function CasesPage() {
                 filteredCases.map((caseItem) => (
                   <TableRow
                     key={caseItem.id}
-                    className="border-b border-white/5 hover:bg-white/5 transition-colors group/row"
+                    className="border-b border-white/5 hover:bg-white/5 transition-colors group/row cursor-pointer"
+                    onClick={() => setSelectedVisitDetails(caseItem.originalVisit)}
                   >
                     <TableCell className="py-6 px-8">
                       <div className="flex flex-col gap-1">

@@ -32,8 +32,9 @@ export const formatDose = (val: any): string => {
 export const speciesKey = (petType?: string) =>
   petType === "dog" ? "dog" : petType === "cat" ? "cat" : null;
 
-export const severityStyle = (sev?: string) => {
-  const s = (sev || "").toLowerCase();
+export const severityStyle = (sev?: any) => {
+  const sText = typeof sev === "object" && sev !== null ? sev.status || "" : (typeof sev === "string" ? sev : "");
+  const s = sText.toLowerCase();
   if (s === "high")   return { bg: "bg-red-500/10",   text: "text-red-400",   border: "border-red-500/20",   label: "High Risk" };
   if (s === "medium") return { bg: "bg-amber-500/10", text: "text-amber-400", border: "border-amber-500/20", label: "Medium Risk" };
   if (s === "low")    return { bg: "bg-yellow-500/10",text: "text-yellow-400",border: "border-yellow-500/20",label: "Low Risk" };
@@ -64,7 +65,7 @@ function Portal({ children, open, onBgClick }: { children: React.ReactNode; open
 }
 
 // ── Severity badge ─────────────────────────────────────────────────────────────
-export function SeverityBadge({ severity }: { severity?: string }) {
+export function SeverityBadge({ severity }: { severity?: any }) {
   const s = severityStyle(severity);
   return (
     <span className={`text-[10px] px-2 py-0.5 rounded-lg font-black uppercase border ${s.bg} ${s.text} ${s.border}`}>
@@ -209,9 +210,10 @@ export function VisitDetailModal({
               {pDrugs.map(({ drug, dose }, idx) => {
                 const sKey    = speciesKey(pet?.type);
                 const specDose = sKey ? (drug.dosage as any)?.[sKey] : null;
-                const specTox  = sKey ? (drug.toxicity as any)?.[sKey] : null;
-                const sevKey   = sKey ? `severity${sKey.charAt(0).toUpperCase() + sKey.slice(1)}` : null;
-                const sev      = sevKey ? (drug.toxicity as any)?.[sevKey] : undefined;
+                const specToxObj = sKey ? (drug.toxicity as any)?.[sKey] : null;
+
+                const specTox  = typeof specToxObj === "object" && specToxObj !== null ? specToxObj.description : specToxObj;
+                const sev      = typeof specToxObj === "object" && specToxObj !== null ? specToxObj.status : undefined;
                 const styles   = severityStyle(sev);
 
                 return (

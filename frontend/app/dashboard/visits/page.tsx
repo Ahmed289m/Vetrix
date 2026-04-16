@@ -284,7 +284,8 @@ export default function VisitsPage() {
                     {/* Drug badges */}
                     {pDrugs.map(({ drug }, idx: number) => {
                       const sK = speciesKey(pet?.type);
-                      const s = sK ? (drug.toxicity as any)?.[`severity${sK.charAt(0).toUpperCase() + sK.slice(1)}`] : undefined;
+                      const tObj = sK ? (drug.toxicity as any)?.[sK] : null;
+                      const s = typeof tObj === "object" && tObj !== null ? tObj.status : null;
                       return (
                         <div key={idx} className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald/5 border border-emerald/10 mb-2">
                           <Pill className="w-4 h-4 text-emerald shrink-0" />
