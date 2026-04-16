@@ -536,7 +536,7 @@ export default function AppointmentsPage() {
               {t("appointment_date")}
             </Label>
             <Input
-              type="datetime-local"
+              type="date"
               name="appointment_date"
               value={formik.values.appointment_date}
               onChange={formik.handleChange}

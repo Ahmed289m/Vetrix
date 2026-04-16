@@ -110,7 +110,7 @@ export default function VisitsPage() {
       client_id: "",
       pet_id: "",
       doctor_id: user?.userId || "",
-      date: new Date().toISOString().slice(0, 16),
+      date: new Date().toISOString().slice(0, 10),
       notes: "",
       prescription_id: "",
     },
@@ -262,7 +262,7 @@ export default function VisitsPage() {
                           <Calendar className="w-3 h-3" /> Date
                         </p>
                         <p className="text-xs font-bold">
-                          {visit.date ? new Date(visit.date).toLocaleDateString() : "—"}
+                          {visit.date ? new Date(visit.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                         </p>
                       </div>
                       <div className="p-2.5 rounded-xl bg-white/5 border border-white/5">
@@ -351,7 +351,7 @@ export default function VisitsPage() {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-xs text-muted-foreground bg-white/5 py-1 px-3 rounded-full">
-                        {visit.date ? new Date(visit.date).toLocaleDateString() : t("no_date_recorded")}
+                        {visit.date ? new Date(visit.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : t("no_date_recorded")}
                       </span>
                       <button
                         onClick={() => setSelectedVisit(visit)}
@@ -412,7 +412,7 @@ export default function VisitsPage() {
                     <Calendar className="w-3 h-3" /> {t("date_label")}
                   </p>
                   <p className="text-sm font-semibold">
-                    {selectedVisit.date ? new Date(selectedVisit.date).toLocaleDateString() : "—"}
+                    {selectedVisit.date ? new Date(selectedVisit.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                   </p>
                 </div>
                 <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
@@ -599,7 +599,7 @@ export default function VisitsPage() {
                 <Calendar className="w-3.5 h-3.5" /> {t("appointment_date")} *
               </Label>
               <Input
-                type="datetime-local"
+                type="date"
                 name="date"
                 value={formik.values.date}
                 onChange={formik.handleChange}

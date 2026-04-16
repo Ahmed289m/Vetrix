@@ -251,7 +251,7 @@ export default function CasesPage() {
                         <span className="text-sm font-bold text-muted-foreground/80">
                           {new Date(caseItem.date).toLocaleDateString("en-GB", {
                             day: "2-digit",
-                            month: "long",
+                            month: "short",
                             year: "numeric",
                           })}
                         </span>
