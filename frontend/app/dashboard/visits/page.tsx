@@ -5,10 +5,26 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "@/app/_components/fast-motion";
 import type { MouseEvent } from "react";
 import {
-  Dog, Cat, Eye, X, FileText, Pill, Plus, Stethoscope,
-  Calendar, User, ChevronRight, Activity, AlertCircle,
-  AlertTriangle, Zap, FlaskConical, Shield, ShieldCheck,
-  ClipboardList, Clock,
+  Dog,
+  Cat,
+  Eye,
+  X,
+  FileText,
+  Pill,
+  Plus,
+  Stethoscope,
+  Calendar,
+  User,
+  ChevronRight,
+  Activity,
+  AlertCircle,
+  AlertTriangle,
+  Zap,
+  FlaskConical,
+  Shield,
+  ShieldCheck,
+  ClipboardList,
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useFormik } from "formik";
@@ -19,7 +35,11 @@ import { Button } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
 import { Label } from "@/app/_components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/app/_components/ui/select";
 import { DashboardForm } from "@/app/_components/ui/dashboard-form";
 import { cn } from "@/app/_lib/utils";
@@ -32,13 +52,22 @@ import { usePrescriptionItems } from "@/app/_hooks/queries/use-prescription-item
 import { useDrugs } from "@/app/_hooks/queries/use-drugs";
 import type { Visit, Drug, Pet } from "@/app/_lib/types/models";
 
-import { VisitDetailModal, fmtDate, speciesKey, SeverityBadge } from "@/app/dashboard/_components/VisitDetailModal";
+import {
+  VisitDetailModal,
+  fmtDate,
+  speciesKey,
+  SeverityBadge,
+} from "@/app/dashboard/_components/VisitDetailModal";
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" as const } },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4, ease: "easeOut" as const },
+  },
 };
 
 type StatusFilter = "all" | "completed";
@@ -51,47 +80,56 @@ export default function VisitsPage() {
   const { user } = useAuth();
 
   const isClient = user?.role === "client";
-  const canCreate = user?.role === "doctor" || user?.role === "staff" || user?.role === "owner";
+  const canCreate =
+    user?.role === "doctor" || user?.role === "staff" || user?.role === "owner";
 
   const { data: visitsData, isLoading: visitsLoading } = useVisits();
-  const { data: petsData }         = usePets();
-  const { data: usersData }        = useUsers({ enabled: !isClient });
-  const { data: prescriptionsData} = usePrescriptions();
-  const { data: presItemsData }    = usePrescriptionItems();
-  const { data: drugsData }        = useDrugs();
+  const { data: petsData } = usePets();
+  const { data: usersData } = useUsers({ enabled: !isClient });
+  const { data: prescriptionsData } = usePrescriptions();
+  const { data: presItemsData } = usePrescriptionItems();
+  const { data: drugsData } = useDrugs();
 
   const createVisit = useCreateVisit();
 
-  const visits          = visitsData?.data      || [];
+  const visits = visitsData?.data || [];
   const scopedVisits = isClient
     ? visits.filter((visit) => visit.client_id === user?.userId)
     : visits;
-  const petsList        = petsData?.data         || [];
-  const usersList       = isClient ? [] : (usersData?.data || []);
+  const petsList = petsData?.data || [];
+  const usersList = isClient ? [] : usersData?.data || [];
   const prescriptionsList = prescriptionsData?.data || [];
-  const presItemsList   = presItemsData?.data    || [];
-  const drugsList       = drugsData?.data         || [];
+  const presItemsList = presItemsData?.data || [];
+  const drugsList = drugsData?.data || [];
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   const getPet = (id: string) => petsList.find((p) => p.pet_id === id);
 
   const getUser = (id: string) =>
     isClient
-      ? (id === user?.userId ? { fullname: user.fullname } : null)
+      ? id === user?.userId
+        ? { fullname: user.fullname }
+        : null
       : usersList.find((u) => u.user_id === id);
 
   const getDrugsForVisit = (visit: Visit): { drug: Drug; dose: string }[] => {
     if (!visit.prescription_id) return [];
-    const rx = prescriptionsList.find((p) => p.prescription_id === visit.prescription_id);
+    const rx = prescriptionsList.find(
+      (p) => p.prescription_id === visit.prescription_id,
+    );
     if (!rx || !rx.prescriptionItem_id) return [];
-    
-    const itemIds = rx.prescriptionItem_id.split(',');
-    const items = presItemsList.filter((pi) => itemIds.includes(pi.prescriptionItem_id));
-    
-    return items.map((item) => {
-      const drug = drugsList.find((d) => d.drug_id === item.drug_id);
-      return drug ? { drug, dose: item.drugDose } : null;
-    }).filter(Boolean) as { drug: Drug; dose: string }[];
+
+    const itemIds = rx.prescriptionItem_id.split(",");
+    const items = presItemsList.filter((pi) =>
+      itemIds.includes(pi.prescriptionItem_id),
+    );
+
+    return items
+      .map((item) => {
+        const drug = drugsList.find((d) => d.drug_id === item.drug_id);
+        return drug ? { drug, dose: item.drugDose } : null;
+      })
+      .filter(Boolean) as { drug: Drug; dose: string }[];
   };
 
   // ── Filtering ──────────────────────────────────────────────────────────────
@@ -99,45 +137,53 @@ export default function VisitsPage() {
 
   // ── Form ───────────────────────────────────────────────────────────────────
   const clients = isClient ? [] : usersList.filter((u) => u.role === "client");
-  const doctors = isClient ? [] : usersList.filter((u) => u.role === "doctor" || u.role === "staff");
+  const doctors = isClient
+    ? []
+    : usersList.filter((u) => u.role === "doctor" || u.role === "staff");
 
   const formik = useFormik({
     initialValues: {
-      client_id:       "",
-      pet_id:          "",
-      doctor_id:       user?.userId || "",
-      date:            new Date().toISOString().slice(0, 10),
-      notes:           "",
+      client_id: "",
+      pet_id: "",
+      doctor_id: user?.userId || "",
+      date: new Date().toISOString().slice(0, 10),
+      notes: "",
       prescription_id: "",
     },
     validate: (values) => {
       const errors: Record<string, string> = {};
       if (!values.client_id) errors.client_id = "Select a client";
-      if (!values.pet_id)    errors.pet_id    = "Select a pet";
+      if (!values.pet_id) errors.pet_id = "Select a pet";
       if (!values.doctor_id) errors.doctor_id = "Select a doctor";
-      if (!values.date)      errors.date      = "Enter visit date";
+      if (!values.date) errors.date = "Enter visit date";
       return errors;
     },
     onSubmit: (values, { setSubmitting, resetForm }) => {
       const payload = {
         client_id: values.client_id,
-        pet_id:    values.pet_id,
+        pet_id: values.pet_id,
         doctor_id: values.doctor_id,
-        date:      new Date(values.date).toISOString(),
-        ...(values.notes           && { notes: values.notes }),
-        ...(values.prescription_id && { prescription_id: values.prescription_id }),
+        date: new Date(values.date).toISOString(),
+        ...(values.notes && { notes: values.notes }),
+        ...(values.prescription_id && {
+          prescription_id: values.prescription_id,
+        }),
       };
       createVisit.mutate(payload, {
         onSuccess: () => {
-          toast.success(t("visit_created_success") || "Visit recorded successfully.");
+          toast.success(
+            t("visit_created_success") || "Visit recorded successfully.",
+          );
           setIsFormOpen(false);
           resetForm();
           setSubmitting(false);
         },
         onError: (err: unknown) => {
           const msg =
-            (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
-            t("visit_create_failed") || "Failed to record visit.";
+            (err as { response?: { data?: { detail?: string } } })?.response
+              ?.data?.detail ||
+            t("visit_create_failed") ||
+            "Failed to record visit.";
           toast.error(msg);
           setSubmitting(false);
         },
@@ -145,8 +191,12 @@ export default function VisitsPage() {
     },
   });
 
-  const formClientPets     = petsList.filter((p) => p.client_id === formik.values.client_id);
-  const clientPrescriptions = prescriptionsList.filter((rx) => rx.client_id === formik.values.client_id);
+  const formClientPets = petsList.filter(
+    (p) => p.client_id === formik.values.client_id,
+  );
+  const clientPrescriptions = prescriptionsList.filter(
+    (rx) => rx.client_id === formik.values.client_id,
+  );
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -157,7 +207,10 @@ export default function VisitsPage() {
       className="space-y-6 max-w-6xl mx-auto p-4 sm:p-6 lg:p-8"
     >
       {/* Header */}
-      <motion.div variants={fadeUp} className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <motion.div
+        variants={fadeUp}
+        className="flex flex-col sm:flex-row sm:items-end justify-between gap-4"
+      >
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Stethoscope className="w-4 h-4 text-emerald" />
@@ -176,7 +229,10 @@ export default function VisitsPage() {
         </div>
         {canCreate && (
           <Button
-            onClick={() => { formik.resetForm(); setIsFormOpen(true); }}
+            onClick={() => {
+              formik.resetForm();
+              setIsFormOpen(true);
+            }}
             className="bg-emerald hover:bg-emerald/90 text-white font-black px-5 h-11 shadow-xl shadow-emerald/20 flex items-center gap-2 group shrink-0"
           >
             <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
@@ -209,7 +265,10 @@ export default function VisitsPage() {
           {visitsLoading ? (
             <div className="space-y-3">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-36 rounded-2xl bg-white/5 border border-white/5 animate-pulse" />
+                <div
+                  key={i}
+                  className="h-36 rounded-2xl bg-white/5 border border-white/5 animate-pulse"
+                />
               ))}
             </div>
           ) : sortedVisits.length === 0 ? (
@@ -220,21 +279,23 @@ export default function VisitsPage() {
               <div className="text-center space-y-1">
                 <p className="font-bold text-foreground">No visits yet</p>
                 <p className="text-sm text-muted-foreground max-w-xs">
-                  {t("no_visits_client_hint") || "Your clinical visit history will appear here after your appointments."}
+                  {t("no_visits_client_hint") ||
+                    "Your clinical visit history will appear here after your appointments."}
                 </p>
               </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {sortedVisits.map((visit, i) => {
-                const pet  = getPet(visit.pet_id);
+                const pet = getPet(visit.pet_id);
                 const pDrugs = getDrugsForVisit(visit);
                 const doctor = getUser(visit.doctor_id);
                 const PetIcon = pet?.type === "cat" ? Cat : Dog;
                 return (
                   <motion.div
                     key={visit.visit_id}
-                    initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
                     onClick={() => setSelectedVisit(visit)}
                     className="glass-card p-5 space-y-4 cursor-pointer hover:border-emerald/30 hover:shadow-[0_0_30px_-10px_rgba(16,185,129,0.15)] transition-all group"
@@ -250,7 +311,8 @@ export default function VisitsPage() {
                             {pet?.name || "Unknown Pet"}
                           </p>
                           <p className="text-xs text-muted-foreground capitalize">
-                            {pet?.type || "pet"} {pet?.breed ? `· ${pet.breed}` : ""}
+                            {pet?.type || "pet"}{" "}
+                            {pet?.breed ? `· ${pet.breed}` : ""}
                           </p>
                         </div>
                       </div>
@@ -265,7 +327,9 @@ export default function VisitsPage() {
                         <p className="text-[10px] font-bold uppercase text-muted-foreground/60 mb-0.5 flex items-center gap-1">
                           <Calendar className="w-3 h-3" /> Date
                         </p>
-                        <p className="text-xs font-bold">{fmtDate(visit.date)}</p>
+                        <p className="text-xs font-bold">
+                          {fmtDate(visit.date)}
+                        </p>
                       </div>
                       <div className="p-2.5 rounded-xl bg-cyan/5 border border-cyan/15">
                         <p className="text-[10px] font-bold uppercase text-muted-foreground/60 mb-0.5 flex items-center gap-1">
@@ -288,11 +352,19 @@ export default function VisitsPage() {
                     {pDrugs.map(({ drug }, idx: number) => {
                       const sK = speciesKey(pet?.type);
                       const tObj = sK ? (drug.toxicity as any)?.[sK] : null;
-                      const s = typeof tObj === "object" && tObj !== null ? tObj.status : null;
+                      const s =
+                        typeof tObj === "object" && tObj !== null
+                          ? tObj.status
+                          : null;
                       return (
-                        <div key={idx} className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald/5 border border-emerald/10 mb-2">
+                        <div
+                          key={idx}
+                          className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald/5 border border-emerald/10 mb-2"
+                        >
                           <Pill className="w-4 h-4 text-emerald shrink-0" />
-                          <span className="text-xs font-bold text-emerald flex-1 truncate">{drug.name}</span>
+                          <span className="text-xs font-bold text-emerald flex-1 truncate">
+                            {drug.name}
+                          </span>
                           {s && <SeverityBadge severity={s} />}
                         </div>
                       );
@@ -313,7 +385,10 @@ export default function VisitsPage() {
           {visitsLoading ? (
             <div className="space-y-2">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-20 rounded-2xl bg-white/5 border border-white/5 animate-pulse" />
+                <div
+                  key={i}
+                  className="h-20 rounded-2xl bg-white/5 border border-white/5 animate-pulse"
+                />
               ))}
             </div>
           ) : sortedVisits.length === 0 ? (
@@ -322,16 +397,17 @@ export default function VisitsPage() {
             </div>
           ) : (
             sortedVisits.map((visit, i) => {
-              const pet    = getPet(visit.pet_id);
-              const owner  = getUser(visit.client_id);
+              const pet = getPet(visit.pet_id);
+              const owner = getUser(visit.client_id);
               const doctor = getUser(visit.doctor_id);
               const pDrugs = getDrugsForVisit(visit);
-              const PetIcon= pet?.type === "cat" ? Cat : Dog;
+              const PetIcon = pet?.type === "cat" ? Cat : Dog;
 
               return (
                 <motion.div
                   key={visit.visit_id}
-                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.04 }}
                   onClick={() => setSelectedVisit(visit)}
                   className="glass-card p-4 sm:p-5 border border-border/30 hover:border-emerald/20 hover:shadow-[0_0_24px_-8px_rgba(16,185,129,0.12)] cursor-pointer transition-all group"
@@ -350,17 +426,25 @@ export default function VisitsPage() {
                             {t("completed_status") || "Completed"}
                           </span>
                           {pDrugs.slice(0, 2).map(({ drug }, idx) => (
-                            <span key={idx} className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase bg-blue-500/10 text-blue-400 flex items-center gap-1">
+                            <span
+                              key={idx}
+                              className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase bg-blue-500/10 text-blue-400 flex items-center gap-1"
+                            >
                               <Pill className="w-2.5 h-2.5" /> {drug.name}
                             </span>
                           ))}
                           {pDrugs.length > 2 && (
-                            <span className="text-[10px] text-muted-foreground font-bold">+{pDrugs.length - 2} more</span>
+                            <span className="text-[10px] text-muted-foreground font-bold">
+                              +{pDrugs.length - 2} more
+                            </span>
                           )}
                         </div>
-                        <p className="text-sm font-bold mt-0.5">{pet?.name || "Unknown Pet"}</p>
+                        <p className="text-sm font-bold mt-0.5">
+                          {pet?.name || "Unknown Pet"}
+                        </p>
                         <p className="text-xs text-muted-foreground">
-                          {owner?.fullname || "Unknown"} · Dr. {doctor?.fullname || "Assigned"}
+                          {owner?.fullname || "Unknown"} · Dr.{" "}
+                          {doctor?.fullname || "Assigned"}
                         </p>
                       </div>
                     </div>
@@ -369,7 +453,8 @@ export default function VisitsPage() {
                         <Clock className="w-3 h-3" /> {fmtDate(visit.date)}
                       </span>
                       <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-muted/30 border border-border/50 group-hover:border-emerald/30 group-hover:text-emerald transition-all">
-                        <Eye className="w-3.5 h-3.5" /> {t("details_btn") || "Details"}
+                        <Eye className="w-3.5 h-3.5" />{" "}
+                        {t("details_btn") || "Details"}
                         <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                       </div>
                     </div>
@@ -395,11 +480,20 @@ export default function VisitsPage() {
       {canCreate && (
         <DashboardForm
           title={t("record_visit") || "Record Clinical Visit"}
-          description={t("log_clinical_encounter") || "Log a new clinical encounter for a patient"}
+          description={
+            t("log_clinical_encounter") ||
+            "Log a new clinical encounter for a patient"
+          }
           isOpen={isFormOpen}
           onOpenChange={setIsFormOpen}
-          onSubmit={(e) => formik.handleSubmit(e as React.FormEvent<HTMLFormElement>)}
-          submitLabel={formik.isSubmitting ? (t("recording") || "Recording…") : (t("record_visit") || "Record Visit")}
+          onSubmit={(e) =>
+            formik.handleSubmit(e as React.FormEvent<HTMLFormElement>)
+          }
+          submitLabel={
+            formik.isSubmitting
+              ? t("recording") || "Recording…"
+              : t("record_visit") || "Record Visit"
+          }
         >
           <div className="space-y-5">
             {/* Client */}
@@ -415,12 +509,25 @@ export default function VisitsPage() {
                   formik.setFieldValue("prescription_id", "");
                 }}
               >
-                <SelectTrigger className={cn("h-14 bg-white/5 border-white/5 rounded-2xl font-bold", formik.errors.client_id && formik.touched.client_id && "border-red-500/50")}>
+                <SelectTrigger
+                  className={cn(
+                    "h-14 bg-white/5 border-white/5 rounded-2xl font-bold",
+                    formik.errors.client_id &&
+                      formik.touched.client_id &&
+                      "border-red-500/50",
+                  )}
+                >
                   <SelectValue placeholder={t("select_client")} />
                 </SelectTrigger>
                 <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
                   {clients.map((c) => (
-                    <SelectItem key={c.user_id} value={c.user_id} className="rounded-xl font-bold">{c.fullname}</SelectItem>
+                    <SelectItem
+                      key={c.user_id}
+                      value={c.user_id}
+                      className="rounded-xl font-bold"
+                    >
+                      {c.fullname}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -436,12 +543,25 @@ export default function VisitsPage() {
                 onValueChange={(val) => formik.setFieldValue("pet_id", val)}
                 disabled={!formik.values.client_id}
               >
-                <SelectTrigger className={cn("h-14 bg-white/5 border-white/5 rounded-2xl font-bold", formik.errors.pet_id && formik.touched.pet_id && "border-red-500/50")}>
+                <SelectTrigger
+                  className={cn(
+                    "h-14 bg-white/5 border-white/5 rounded-2xl font-bold",
+                    formik.errors.pet_id &&
+                      formik.touched.pet_id &&
+                      "border-red-500/50",
+                  )}
+                >
                   <SelectValue placeholder={t("select_pet_label")} />
                 </SelectTrigger>
                 <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
                   {formClientPets.map((p) => (
-                    <SelectItem key={p.pet_id} value={p.pet_id} className="rounded-xl font-bold">{p.name}</SelectItem>
+                    <SelectItem
+                      key={p.pet_id}
+                      value={p.pet_id}
+                      className="rounded-xl font-bold"
+                    >
+                      {p.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -456,12 +576,25 @@ export default function VisitsPage() {
                 value={formik.values.doctor_id}
                 onValueChange={(val) => formik.setFieldValue("doctor_id", val)}
               >
-                <SelectTrigger className={cn("h-14 bg-white/5 border-white/5 rounded-2xl font-bold", formik.errors.doctor_id && formik.touched.doctor_id && "border-red-500/50")}>
+                <SelectTrigger
+                  className={cn(
+                    "h-14 bg-white/5 border-white/5 rounded-2xl font-bold",
+                    formik.errors.doctor_id &&
+                      formik.touched.doctor_id &&
+                      "border-red-500/50",
+                  )}
+                >
                   <SelectValue placeholder={t("select_doctor_optional")} />
                 </SelectTrigger>
                 <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
                   {doctors.map((d) => (
-                    <SelectItem key={d.user_id} value={d.user_id} className="rounded-xl font-bold">{d.fullname}</SelectItem>
+                    <SelectItem
+                      key={d.user_id}
+                      value={d.user_id}
+                      className="rounded-xl font-bold"
+                    >
+                      {d.fullname}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -490,7 +623,10 @@ export default function VisitsPage() {
                 name="notes"
                 value={formik.values.notes}
                 onChange={formik.handleChange}
-                placeholder={t("clinical_notes_placeholder") || "Symptoms, diagnosis, treatment notes…"}
+                placeholder={
+                  t("clinical_notes_placeholder") ||
+                  "Symptoms, diagnosis, treatment notes…"
+                }
                 className="h-14 bg-white/5 border-white/5 rounded-2xl font-bold"
               />
             </div>
@@ -499,22 +635,40 @@ export default function VisitsPage() {
             {clientPrescriptions.length > 0 && (
               <div className="space-y-2 pt-2 border-t border-white/5">
                 <Label className="text-xs font-black uppercase tracking-widest text-emerald ml-1 flex items-center gap-1.5">
-                  <Pill className="w-3.5 h-3.5" /> {t("link_prescription") || "Link Prescription"} (optional)
+                  <Pill className="w-3.5 h-3.5" />{" "}
+                  {t("link_prescription") || "Link Prescription"} (optional)
                 </Label>
                 <Select
                   value={formik.values.prescription_id}
-                  onValueChange={(val) => formik.setFieldValue("prescription_id", val)}
+                  onValueChange={(val) =>
+                    formik.setFieldValue("prescription_id", val)
+                  }
                 >
                   <SelectTrigger className="h-14 bg-white/5 border-white/5 rounded-2xl font-bold">
-                    <SelectValue placeholder={t("select_prescription") || "Link an existing prescription"} />
+                    <SelectValue
+                      placeholder={
+                        t("select_prescription") ||
+                        "Link an existing prescription"
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
                     {clientPrescriptions.map((rx) => {
-                      const item = presItemsList.find((pi) => pi.prescriptionItem_id === rx.prescriptionItem_id);
-                      const drug = drugsList.find((d) => d.drug_id === item?.drug_id);
+                      const item = presItemsList.find(
+                        (pi) =>
+                          pi.prescriptionItem_id === rx.prescriptionItem_id,
+                      );
+                      const drug = drugsList.find(
+                        (d) => d.drug_id === item?.drug_id,
+                      );
                       return (
-                        <SelectItem key={rx.prescription_id} value={rx.prescription_id} className="rounded-xl font-bold">
-                          {drug?.name || "Prescription"} · RX-{rx.prescription_id.slice(0, 6)}
+                        <SelectItem
+                          key={rx.prescription_id}
+                          value={rx.prescription_id}
+                          className="rounded-xl font-bold"
+                        >
+                          {drug?.name || "Prescription"} · RX-
+                          {rx.prescription_id.slice(0, 6)}
                         </SelectItem>
                       );
                     })}

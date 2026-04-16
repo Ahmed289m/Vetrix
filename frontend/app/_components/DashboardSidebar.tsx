@@ -230,7 +230,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald shadow-[0_0_5px_rgba(16,185,129,0.5)]" />
               <p className="text-[10px] text-muted-foreground/70 font-bold uppercase tracking-wider">
-              {t("online")}
+                {t("online")}
               </p>
             </div>
           </div>
