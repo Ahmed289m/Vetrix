@@ -1029,11 +1029,11 @@ export default function SimulationMode({ role }: Props) {
                             </div>
                             {dose && (
                               <p className="text-muted-foreground mt-0.5">
-                                <span className="text-cyan font-semibold capitalize">{pressPet?.type} dose:</span> {dose}
+                                <span className="text-cyan font-semibold capitalize">{pressPet?.type} dose:</span> {formatDose(dose)}
                               </p>
                             )}
                             {drug.indications?.length > 0 && (
-                              <p className="text-muted-foreground/60 truncate mt-0.5">{drug.indications.slice(0, 2).join(", ")}</p>
+                              <p className="text-muted-foreground/60 truncate mt-0.5">{drug.indications.slice(0, 2).map(String).join(", ")}</p>
                             )}
                           </div>
                         </button>
@@ -1065,13 +1065,13 @@ export default function SimulationMode({ role }: Props) {
                       <div className="flex items-center gap-1.5 text-xs">
                         <FlaskConical className="w-3 h-3 text-cyan" />
                         <span className="text-muted-foreground capitalize">{pressPet?.type || "Species"} dose:</span>
-                        <span className="font-bold text-cyan">{dose}</span>
+                        <span className="font-bold text-cyan">{formatDose(dose)}</span>
                       </div>
                     )}
                     {tox && (
                       <div className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg ${cl.bg} ${cl.border} border`}>
                         <AlertTriangle className={`w-3 h-3 ${cl.text}`} />
-                        <span className={`font-semibold ${cl.text}`}>Toxicity: {tox}</span>
+                        <span className={`font-semibold ${cl.text}`}>Toxicity: {formatDose(tox)}</span>
                       </div>
                     )}
                     {drug.contraindications?.length > 0 && (

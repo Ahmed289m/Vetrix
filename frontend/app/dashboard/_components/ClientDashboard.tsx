@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "@/app/_components/fast-motion";
 import {
   Cat,
@@ -11,6 +11,7 @@ import {
   Clock,
   Dog,
   ChevronRight,
+  Volume2,
   CheckCircle2,
   Play,
   Stethoscope,
@@ -49,6 +50,53 @@ export function ClientDashboard() {
   const { t } = useLang();
   const { user } = useAuth();
   const [showTracker, setShowTracker] = useState(false);
+  const hasAnnounced    = useRef(false);
+  const announcedForPos = useRef<string | null>(null);
+
+  // ── TTS announcement: fires when client reaches position #1 ──
+  const playAnnouncement = useCallback(() => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    const synth = window.speechSynthesis;
+    synth.cancel(); // clear any queued speech
+
+    const EN_TEXT = "Your turn is now. Please proceed to the doctor room.";
+    const AR_TEXT = "\u062d\u0627\u0646 \u062f\u0648\u0631\u0643 \u0627\u0644\u0622\u0646. \u0645\u0646 \u0641\u0636\u0644\u0643 \u062a\u0648\u062c\u0647 \u0625\u0644\u0649 \u063a\u0631\u0641\u0629 \u0627\u0644\u0637\u0628\u064a\u0628.";
+
+    const makeUtterance = (text: string, lang: string) => {
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.lang  = lang;
+      utt.rate  = 0.88;    // slightly slower — clear & calm
+      utt.pitch = 1.05;    // slightly warm
+      utt.volume = 1;
+
+      // Pick a female voice for this language
+      const voices = synth.getVoices();
+      const female =
+        voices.find((v) => v.lang === lang && /female|zira|samantha|karen|moira|victoria|tessa/i.test(v.name)) ??
+        voices.find((v) => v.lang === lang) ??
+        voices.find((v) => v.lang.startsWith(lang.split("-")[0]));
+      if (female) utt.voice = female;
+      return utt;
+    };
+
+    const doSpeak = () => {
+      const enUtt = makeUtterance(EN_TEXT, "en-US");
+      const arUtt = makeUtterance(AR_TEXT, "ar-SA");
+
+      // Chain: English → pause → Arabic
+      enUtt.onend = () => {
+        setTimeout(() => synth.speak(arUtt), 600);
+      };
+      synth.speak(enUtt);
+    };
+
+    // Voices may not be loaded yet on first render
+    if (synth.getVoices().length === 0) {
+      synth.addEventListener("voiceschanged", doSpeak, { once: true } as any);
+    } else {
+      doSpeak();
+    }
+  }, []);
 
   // ── Live sync – WebSocket invalidates React Query caches on every backend event
   useWebSocket();
@@ -88,14 +136,23 @@ export function ClientDashboard() {
     return { myPets, upcomingAppointments, myPrescriptions, myConfirmedAppointments };
   }, [pets, appointments, prescriptions, user?.userId]);
 
-  // ── Case queue (all active statuses, sorted by date) ──────────────────────
-  // Includes confirmed, pending-doctor, in-progress so client sees real position
+  // ── Case queue ─────────────────────────────────────────────────────────────
+  // Sort: in-progress first (being seen now), then by appointment date ascending.
+  // This gives the client an accurate picture of who is ahead of them.
   const ACTIVE_STATUSES = ["confirmed", "pending-doctor", "in-progress"];
 
   const caseQueue = useMemo(() => {
+    const statusOrder: Record<string, number> = {
+      "in-progress":   0,
+      "pending-doctor": 1,
+      "confirmed":     2,
+    };
     return appointments
       .filter((apt: Appointment) => ACTIVE_STATUSES.includes(apt.status))
       .sort((a: Appointment, b: Appointment) => {
+        const aPriority = statusOrder[a.status] ?? 9;
+        const bPriority = statusOrder[b.status] ?? 9;
+        if (aPriority !== bPriority) return aPriority - bPriority;
         const dateA = a.appointment_date ? new Date(a.appointment_date).getTime() : 0;
         const dateB = b.appointment_date ? new Date(b.appointment_date).getTime() : 0;
         return dateA - dateB;
@@ -110,17 +167,39 @@ export function ClientDashboard() {
           breed:           pet?.breed || t("mixed"),
           complaint:       apt.reason || t("regular_checkup"),
           status:          apt.status,
+          date:            apt.appointment_date ?? "",
           isMyAppointment: apt.client_id === user?.userId,
         };
       });
   }, [appointments, pets, user?.userId, t]);
 
-  const myQueuePosition = useMemo(() => {
-    const idx = caseQueue.findIndex((c) => c.isMyAppointment);
-    return idx >= 0 ? idx + 1 : null;
-  }, [caseQueue]);
+  // How many cases are actively waiting AHEAD of the client (not counting in-progress)
+  const myCase         = caseQueue.find((c) => c.isMyAppointment) ?? null;
+  const waitingCases   = caseQueue.filter((c) => c.status !== "in-progress");
+  const myWaitingIdx   = waitingCases.findIndex((c) => c.isMyAppointment);
+  // Position in the waiting queue: 1-based; null if already in-progress or not found
+  const myQueuePosition = myCase?.status === "in-progress"
+    ? null                                        // being seen right now — not "waiting"
+    : myWaitingIdx >= 0 ? myWaitingIdx + 1 : null;
 
-  const myCase = caseQueue.find((c) => c.isMyAppointment) ?? null;
+  // Total waiting (excluding the case currently in-progress)
+  const totalWaiting = waitingCases.length;
+
+  // Auto-trigger announcement when client's case becomes "in-progress" (doctor accepted)
+  useEffect(() => {
+    const triggerKey = myCase ? `${myCase.id}:in-progress` : null;
+    if (myCase?.status === "in-progress" && showTracker && announcedForPos.current !== triggerKey) {
+      announcedForPos.current = triggerKey;
+      const t = setTimeout(() => playAnnouncement(), 800);
+      return () => clearTimeout(t);
+    }
+    // Reset if case is no longer in-progress so it can re-fire if needed
+    if (!myCase || myCase.status !== "in-progress") {
+      if (announcedForPos.current?.endsWith(":in-progress")) {
+        announcedForPos.current = null;
+      }
+    }
+  }, [myCase?.status, myCase?.id, showTracker, playAnnouncement]);
 
   // ── Stat cards ─────────────────────────────────────────────────────────────
   const statCards = [
@@ -206,11 +285,13 @@ export function ClientDashboard() {
                     <div
                       key={c.id}
                       className={`w-2.5 h-2.5 rounded-full transition-all ${
-                        c.isMyAppointment
-                          ? "bg-emerald glow-emerald scale-125"
-                          : c.status === "in-progress"
-                            ? "bg-cyan animate-pulse"
-                            : "bg-muted/40"
+                        c.status === "in-progress" && c.isMyAppointment
+                          ? "bg-cyan glow-emerald scale-150 animate-pulse"
+                          : c.isMyAppointment
+                            ? "bg-emerald glow-emerald scale-125"
+                            : c.status === "in-progress"
+                              ? "bg-cyan animate-pulse"
+                              : "bg-muted/40"
                       }`}
                     />
                   ))}
@@ -239,7 +320,38 @@ export function ClientDashboard() {
                 </motion.div>
               )}
 
-              {/* My case in queue */}
+              {/* ── My case in-progress (being seen NOW) ── */}
+              {myCase?.status === "in-progress" && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.97 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="p-5 rounded-xl border-2 border-cyan/50 bg-cyan/10 shadow-[0_0_40px_-10px_rgba(34,211,238,0.3)] relative overflow-hidden space-y-3"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-tr from-cyan/15 to-transparent pointer-events-none" />
+                  <div className="flex items-center gap-2 relative z-10">
+                    <span className="w-2 h-2 rounded-full bg-cyan animate-ping" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-cyan animate-pulse">
+                      You are being seen now
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-muted/40 flex items-center justify-center shrink-0">
+                      {myCase.species === "dog" ? <Dog className="w-6 h-6" /> : <Cat className="w-6 h-6" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-lg font-extrabold">{myCase.petName}</p>
+                      <p className="text-xs text-muted-foreground">{myCase.breed} · {myCase.caseNumber}</p>
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-cyan text-primary-foreground shadow-[0_0_20px_-5px_rgba(34,211,238,0.5)]">
+                      <span className="w-2 h-2 rounded-full bg-primary-foreground animate-pulse" />
+                      In Progress
+                    </span>
+                  </div>
+                  <p className="text-sm text-foreground/80 relative z-10">{myCase.complaint}</p>
+                </motion.div>
+              )}
+
+              {/* ── My case still waiting in queue ── */}
               {myCase && myQueuePosition && (
                 <div className="space-y-4">
                   {/* Position grid */}
@@ -256,7 +368,7 @@ export function ClientDashboard() {
                           {myQueuePosition}
                         </span>
                         <span className="text-sm text-muted-foreground">
-                          {t("of_total")} {caseQueue.length}
+                          {t("of_total")} {totalWaiting}
                         </span>
                       </div>
                     </div>
@@ -270,10 +382,10 @@ export function ClientDashboard() {
                     </div>
                     <div className="p-4 rounded-xl border border-orange/20 bg-orange/5">
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
-                        {t("current_case_order")}
+                        Cases before you
                       </p>
-                      <p className="text-lg font-bold text-orange mt-2 truncate">
-                        {caseQueue[0]?.caseNumber ?? "—"}
+                      <p className="text-3xl font-extrabold text-orange mt-2">
+                        {myQueuePosition - 1}
                       </p>
                     </div>
                   </div>
@@ -299,14 +411,28 @@ export function ClientDashboard() {
                         )}
 
                         {/* Status row */}
-                        <div className="flex items-center gap-1.5 relative z-10">
-                          <Clock className={cn("w-3.5 h-3.5", isActive ? "text-cyan" : "text-muted-foreground")} />
+                        <div className="flex items-center gap-2 relative z-10">
+                          <Clock className={cn("w-3.5 h-3.5 shrink-0", isActive ? "text-cyan" : "text-muted-foreground")} />
                           <span className={cn(
-                            "text-[10px] font-bold uppercase tracking-widest",
+                            "text-[10px] font-bold uppercase tracking-widest flex-1",
                             isActive ? "text-cyan animate-pulse" : "text-muted-foreground",
                           )}>
                             {isActive ? (t("it_is_your_turn") || "YOUR TURN NOW") : t("your_appointment")}
                           </span>
+
+                          {/* 🔊 Replay announcement button */}
+                          {isActive && (
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.92 }}
+                              onClick={playAnnouncement}
+                              title="Replay announcement (EN + AR)"
+                              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-cyan/15 border border-cyan/30 text-cyan hover:bg-cyan/25 transition-colors text-[10px] font-bold shrink-0"
+                            >
+                              <Volume2 className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">Replay</span>
+                            </motion.button>
+                          )}
                         </div>
 
                         {/* Pet info */}

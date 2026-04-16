@@ -171,9 +171,10 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
         Permissions.DRUGS_DELETE,
     },
     UserRole.CLIENT: {
-        # Appointment management - own only
+        # Appointment management
         Permissions.APPOINTMENTS_CREATE_OWN,
         Permissions.APPOINTMENTS_READ_OWN,
+        Permissions.APPOINTMENTS_READ,      # Full read: needed to see clinic queue position
         # Visit management - own only
         Permissions.VISITS_READ_OWN,
         # Prescription management - own only
