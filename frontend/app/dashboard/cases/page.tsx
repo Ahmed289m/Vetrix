@@ -97,7 +97,7 @@ export default function CasesPage() {
           id: visit.visit_id,
           patientName: pet?.name || "Unknown",
           ownerName: ownerUser?.fullname || "Unknown",
-          doctorName: doctor?.fullname || "Unknown",
+          doctorName: visit.doctor_name || doctor?.fullname || "Unknown",
           reason: visit.reason || "Clinical Visit",
           date: visit.date || new Date().toISOString(),
           status: "Completed",

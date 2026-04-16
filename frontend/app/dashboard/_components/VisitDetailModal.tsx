@@ -40,6 +40,17 @@ export const fmtDate = (d?: string | null) =>
       })
     : "—";
 
+export const fmtDateTime = (d?: string | null) =>
+  d
+    ? new Date(d).toLocaleString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "—";
+
 export const formatDose = (val: any): string => {
   if (!val) return "—";
   if (typeof val === "object") {
@@ -223,7 +234,7 @@ export function VisitDetailModal({
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1">
               <Calendar className="w-3 h-3" /> Date
             </p>
-            <p className="text-sm font-bold">{fmtDate(visit.date)}</p>
+            <p className="text-sm font-bold">{fmtDateTime(visit.date)}</p>
           </div>
 
           {/* Status */}

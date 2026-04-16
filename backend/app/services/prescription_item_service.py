@@ -3,6 +3,7 @@ from fastapi import HTTPException, status
 from app.core.permission_checker import TokenData
 from app.models.enums.user_role import UserRole
 from app.models.prescription_item import PrescriptionItem
+from app.repositories.prescription_repository import PrescriptionRepository
 from app.repositories.prescription_item_repository import PrescriptionItemRepository
 from app.schemas.prescription_item import PrescriptionItemCreate, PrescriptionItemUpdate
 from app.services.base_crud_service import BaseCrudService
@@ -10,7 +11,7 @@ from app.utils.mongo_helpers import serialize_mongo_doc
 
 
 class PrescriptionItemService:
-    def __init__(self, repository: PrescriptionItemRepository) -> None:
+    def __init__(self, repository: PrescriptionItemRepository, prescription_repository: PrescriptionRepository) -> None:
         self.crud = BaseCrudService(
             repository,
             PrescriptionItem,
@@ -18,6 +19,7 @@ class PrescriptionItemService:
             id_prefix="prescriptionItem",
         )
         self.repository = repository
+        self.prescription_repository = prescription_repository
 
     async def create_prescription_item(self, request: PrescriptionItemCreate, current_user: TokenData) -> dict:
         """
@@ -56,10 +58,19 @@ class PrescriptionItemService:
         if current_user.is_superuser:
             return await self.crud.list()
         
-        # Regular users see items in their clinic only
-        if not current_user.clinic_id:
-            return []
-        items = await self.repository.list_by_clinic(current_user.clinic_id)
+        if current_user.role == UserRole.CLIENT:
+            prescriptions = await self.prescription_repository.list_by_client_only(current_user.user_id)
+            item_ids: list[str] = []
+            for prescription in prescriptions:
+                item_ids.extend(prescription.get("prescriptionItem_ids") or [])
+            if not item_ids:
+                return []
+            items = await self.repository.list_by_ids(list(set(item_ids)))
+        else:
+            # Regular clinic users see items in their clinic only
+            if not current_user.clinic_id:
+                return []
+            items = await self.repository.list_by_clinic(current_user.clinic_id)
         
         return [serialize_mongo_doc(item, "prescriptionItem_id") for item in items]
 
@@ -72,9 +83,19 @@ class PrescriptionItemService:
         """
         item = await self.crud.get(prescriptionItem_id)
         
-        # Clinic isolation check
+        # Clinic/ownership isolation check
         if not current_user.is_superuser:
-            if item.get("clinic_id") != current_user.clinic_id:
+            if current_user.role == UserRole.CLIENT:
+                prescriptions = await self.prescription_repository.list_by_client_only(current_user.user_id)
+                allowed_ids: set[str] = set()
+                for prescription in prescriptions:
+                    allowed_ids.update(prescription.get("prescriptionItem_ids") or [])
+                if prescriptionItem_id not in allowed_ids:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Access denied",
+                    )
+            elif item.get("clinic_id") != current_user.clinic_id:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Access denied",

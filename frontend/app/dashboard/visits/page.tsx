@@ -1,28 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "@/app/_components/fast-motion";
-import type { MouseEvent } from "react";
+import { useState } from "react";
+import { motion } from "@/app/_components/fast-motion";
 import {
   Dog,
   Cat,
   Eye,
-  X,
-  FileText,
   Pill,
   Plus,
   Stethoscope,
   Calendar,
   User,
   ChevronRight,
-  Activity,
-  AlertCircle,
-  AlertTriangle,
-  Zap,
   FlaskConical,
-  Shield,
-  ShieldCheck,
   ClipboardList,
   Clock,
 } from "lucide-react";
@@ -44,7 +34,11 @@ import {
 import { DashboardForm } from "@/app/_components/ui/dashboard-form";
 import { cn } from "@/app/_lib/utils";
 
-import { useVisits, useCreateVisit } from "@/app/_hooks/queries/use-visits";
+import {
+  useVisits,
+  useCreateVisit,
+  useDeleteVisit,
+} from "@/app/_hooks/queries/use-visits";
 import { usePets } from "@/app/_hooks/queries/use-pets";
 import { useUsers } from "@/app/_hooks/queries/use-users";
 import { usePrescriptions } from "@/app/_hooks/queries/use-prescriptions";
@@ -54,7 +48,7 @@ import type { Visit, Drug, Pet } from "@/app/_lib/types/models";
 
 import {
   VisitDetailModal,
-  fmtDate,
+  fmtDateTime,
   speciesKey,
   SeverityBadge,
 } from "@/app/dashboard/_components/VisitDetailModal";
@@ -91,6 +85,9 @@ export default function VisitsPage() {
   const { data: drugsData } = useDrugs();
 
   const createVisit = useCreateVisit();
+  const deleteVisit = useDeleteVisit();
+  const canDelete =
+    user?.role === "doctor" || user?.role === "staff" || user?.role === "admin";
 
   const visits = visitsData?.data || [];
   const scopedVisits = isClient
@@ -201,6 +198,19 @@ export default function VisitsPage() {
   const clientPrescriptions = prescriptionsList.filter(
     (rx) => rx.client_id === formik.values.client_id,
   );
+
+  const handleDeleteVisit = (visitId: string) => {
+    if (!confirm("Delete this visit?")) return;
+    deleteVisit.mutate(visitId, {
+      onSuccess: () => toast.success("Visit deleted."),
+      onError: (err: unknown) => {
+        const msg =
+          (err as { response?: { data?: { detail?: string } } })?.response?.data
+            ?.detail || "Failed to delete visit.";
+        toast.error(msg);
+      },
+    });
+  };
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -334,7 +344,7 @@ export default function VisitsPage() {
                           <Calendar className="w-3 h-3" /> Date
                         </p>
                         <p className="text-xs font-bold">
-                          {fmtDate(visit.date)}
+                          {fmtDateTime(visit.date)}
                         </p>
                       </div>
                       <div className="p-2.5 rounded-xl bg-cyan/5 border border-cyan/15">
@@ -457,12 +467,26 @@ export default function VisitsPage() {
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <span className="text-xs text-muted-foreground bg-white/5 py-1 px-3 rounded-full flex items-center gap-1.5">
-                        <Clock className="w-3 h-3" /> {fmtDate(visit.date)}
+                        <Clock className="w-3 h-3" /> {fmtDateTime(visit.date)}
                       </span>
-                      <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-muted/30 border border-border/50 group-hover:border-emerald/30 group-hover:text-emerald transition-all">
-                        <Eye className="w-3.5 h-3.5" />{" "}
-                        {t("details_btn") || "Details"}
-                        <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-muted/30 border border-border/50 group-hover:border-emerald/30 group-hover:text-emerald transition-all">
+                          <Eye className="w-3.5 h-3.5" />{" "}
+                          {t("details_btn") || "Details"}
+                          <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteVisit(visit.visit_id);
+                            }}
+                            className="px-3 py-2 rounded-xl text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                          >
+                            Delete
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -51,7 +51,13 @@ class VisitService:
         - CLIENT sees only visits of their pets (clinic_id resolved from DB)
         """
         if current_user.is_superuser:
-            return await self.crud.list()
+            visits = await self.crud.list()
+            sorted_visits = sorted(
+                visits,
+                key=lambda v: v.get("date") or "",
+                reverse=True,
+            )
+            return await self._attach_user_names(sorted_visits)
 
         if current_user.role == UserRole.CLIENT:
             # CLIENT has no clinic_id in JWT — look it up from user record

@@ -28,7 +28,6 @@ async def create_prescription_item(
 @router.get("")
 async def list_prescription_items(
     current_user: TokenData = Depends(require_permission(Permissions.PRESCRIPTION_ITEMS_READ)),
-    clinic_check: TokenData = Depends(require_clinic_id()),
     controller: PrescriptionItemController = Depends(get_prescription_item_controller),
 ) -> dict:
     """

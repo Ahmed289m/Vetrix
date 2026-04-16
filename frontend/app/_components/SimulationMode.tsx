@@ -42,6 +42,7 @@ import {
   useVisits,
   useCreateVisit,
   useUpdateVisit,
+  useDeleteVisit,
 } from "@/app/_hooks/queries/use-visits";
 import {
   useCreatePrescription,
@@ -71,6 +72,17 @@ const fmtDate = (d?: string | null) =>
         day: "2-digit",
         month: "short",
         year: "numeric",
+      })
+    : "—";
+
+const fmtDateTime = (d?: string | null) =>
+  d
+    ? new Date(d).toLocaleString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       })
     : "—";
 
@@ -225,6 +237,7 @@ export default function SimulationMode({ role }: Props) {
   const updateAppointment = useUpdateAppointment();
   const createVisit = useCreateVisit();
   const updateVisit = useUpdateVisit();
+  const deleteVisit = useDeleteVisit();
   const createPrescription = useCreatePrescription();
   const deletePrescription = useDeletePrescription();
 
@@ -252,7 +265,7 @@ export default function SimulationMode({ role }: Props) {
         const dB = b.appointment_date
           ? new Date(b.appointment_date).getTime()
           : 0;
-        return dA - dB;
+        return dB - dA;
       })
       .map((a, idx) => {
         const pet = allPets.find((p) => p.pet_id === a.pet_id);
@@ -312,6 +325,20 @@ export default function SimulationMode({ role }: Props) {
     return getCasePrescriptions(petId, clientId).filter(
       (rx) => !linked.has(rx.prescription_id),
     );
+  };
+
+  const getAutoLinkedPrescriptionId = (petId: string, clientId: string) => {
+    const unlinked = getUnlinkedCasePrescriptions(petId, clientId);
+    if (!unlinked.length) return "";
+    const unlinkedIds = new Set(unlinked.map((rx) => rx.prescription_id));
+    const sessionOrder = Array.from(sessionRxIds);
+    for (let i = sessionOrder.length - 1; i >= 0; i--) {
+      const rxId = sessionOrder[i];
+      if (unlinkedIds.has(rxId)) {
+        return rxId;
+      }
+    }
+    return unlinked[0]?.prescription_id || "";
   };
 
   // ── Session Rx list ───────────────────────────────────────────────────────
@@ -403,15 +430,24 @@ export default function SimulationMode({ role }: Props) {
 
   // ── Visit modal ───────────────────────────────────────────────────────────
   const openCreateVisit = (apptId: string, petId: string, clientId: string) => {
-    const unlinked = getUnlinkedCasePrescriptions(petId, clientId);
     setVisitMode("create");
     setActiveVisitApptId(apptId);
     setEditingVisitId("");
-    setVisitPrescriptionId(
-      unlinked[unlinked.length - 1]?.prescription_id || "",
-    );
+    setVisitPrescriptionId(getAutoLinkedPrescriptionId(petId, clientId));
     setVisitNotes("");
     setShowVisitModal(true);
+  };
+
+  const handleDeleteVisit = (visitId: string) => {
+    if (!confirm("Delete this visit?")) return;
+    deleteVisit.mutate(visitId, {
+      onSuccess: () => {
+        toast.success("Visit deleted.");
+        setShowVisitDetail(false);
+      },
+      onError: (err: any) =>
+        toast.error(err?.response?.data?.detail || "Failed to delete visit."),
+    });
   };
 
   const openEditVisit = (visit: Visit) => {
@@ -1100,6 +1136,8 @@ export default function SimulationMode({ role }: Props) {
             const client = allUsers.find(
               (u) => u.user_id === detailVisit.client_id,
             );
+            const doctorName =
+              detailVisit.doctor_name || doctor?.fullname || "Unknown";
             const drug = getDrugForRx(detailVisit.prescription_id || "");
             const sKey = pet ? speciesKey(pet.type) : null;
             const dosage =
@@ -1174,7 +1212,7 @@ export default function SimulationMode({ role }: Props) {
                       Attending Doctor
                     </p>
                     <p className="text-sm font-bold text-cyan">
-                      Dr. {doctor?.fullname || "Unknown"}
+                      Dr. {doctorName}
                     </p>
                   </div>
                   <div className="p-3 rounded-xl bg-white/5 border border-white/5">
@@ -1182,7 +1220,7 @@ export default function SimulationMode({ role }: Props) {
                       Visit Date
                     </p>
                     <p className="text-sm font-bold">
-                      {fmtDate(detailVisit.date)}
+                      {fmtDateTime(detailVisit.date)}
                     </p>
                   </div>
                 </div>
@@ -1271,6 +1309,14 @@ export default function SimulationMode({ role }: Props) {
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl gradient-cyan-blue text-primary-foreground text-sm font-bold"
                   >
                     <Pencil className="w-4 h-4" /> Edit Visit
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => handleDeleteVisit(detailVisit.visit_id)}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-bold hover:bg-red-500/20 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" /> Delete
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.02 }}

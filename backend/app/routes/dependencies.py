@@ -70,7 +70,8 @@ def get_pet_controller() -> PetController:
 def get_prescription_item_controller() -> PrescriptionItemController:
     db = get_database()
     repo = PrescriptionItemRepository(db)
-    service = PrescriptionItemService(repo)
+    prescription_repo = PrescriptionRepository(db)
+    service = PrescriptionItemService(repo, prescription_repo)
     return PrescriptionItemController(service)
 
 
