@@ -318,10 +318,14 @@ export function VisitDetailModal({
                         </div>
                         <div>
                           {isClient ? (
-                            <p className="font-black text-base">Medication #{idx + 1}</p>
+                            <p className="font-black text-base">
+                              Medication #{idx + 1}
+                            </p>
                           ) : (
                             <>
-                              <p className="font-black text-base">{drug.name}</p>
+                              <p className="font-black text-base">
+                                {drug.name}
+                              </p>
                               <p className="text-xs text-muted-foreground">
                                 {drug.drugClass}
                               </p>
