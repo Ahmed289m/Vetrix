@@ -63,6 +63,9 @@ export default function VisitsPage() {
   const createVisit = useCreateVisit();
 
   const visits          = visitsData?.data      || [];
+  const scopedVisits = isClient
+    ? visits.filter((visit) => visit.client_id === user?.userId)
+    : visits;
   const petsList        = petsData?.data         || [];
   const usersList       = isClient ? [] : (usersData?.data || []);
   const prescriptionsList = prescriptionsData?.data || [];
@@ -92,7 +95,7 @@ export default function VisitsPage() {
   };
 
   // ── Filtering ──────────────────────────────────────────────────────────────
-  const sortedVisits = sortByDate(visits, "date", "desc");
+  const sortedVisits = sortByDate(scopedVisits, "date", "desc");
 
   // ── Form ───────────────────────────────────────────────────────────────────
   const clients = isClient ? [] : usersList.filter((u) => u.role === "client");
@@ -211,7 +214,7 @@ export default function VisitsPage() {
             </div>
           ) : sortedVisits.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 space-y-4">
-              <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-emerald/15 to-cyan/10 border border-emerald/20 flex items-center justify-center">
+              <div className="w-20 h-20 rounded-3xl bg-linear-to-br from-emerald/15 to-cyan/10 border border-emerald/20 flex items-center justify-center">
                 <ClipboardList className="w-10 h-10 text-emerald/40" />
               </div>
               <div className="text-center space-y-1">
@@ -239,7 +242,7 @@ export default function VisitsPage() {
                     {/* Card header */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald/20 to-cyan/10 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <div className="w-11 h-11 rounded-xl bg-linear-to-br from-emerald/20 to-cyan/10 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                           <PetIcon className="w-6 h-6 text-emerald" />
                         </div>
                         <div>

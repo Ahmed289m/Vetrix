@@ -30,6 +30,7 @@ import {
   ChevronRight,
   LogOut,
   Pill,
+  Stethoscope,
 } from "lucide-react";
 import { useAuth } from "@/app/_hooks/useAuth";
 
@@ -78,6 +79,12 @@ const navItems: NavItem[] = [
     labelKey: "visits_cases",
     icon: Hash,
     roles: ["doctor", "staff", "owner"],
+  },
+  {
+    href: "/dashboard/visits",
+    labelKey: "visits",
+    icon: Stethoscope,
+    roles: ["client"],
   },
   {
     href: "/dashboard/appointments",
