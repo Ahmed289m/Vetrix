@@ -1,98 +1,91 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Play,
-  CheckCircle2,
-  Dog,
-  Cat,
-  Clock,
-  Activity,
-  ChevronRight,
-  Stethoscope,
-  Pill,
-  X,
-  AlertTriangle,
-  Calendar,
-  User as UserIcon,
-  FileText,
-  Info,
-  UserCheck,
-  Inbox,
-  ShieldCheck,
-  ClipboardList,
+  Play, CheckCircle2, Dog, Cat, Clock, Activity, ChevronRight,
+  Stethoscope, Pill, X, AlertTriangle, Calendar, User as UserIcon,
+  FileText, Info, UserCheck, Inbox, ShieldCheck, ClipboardList,
+  Pencil, Trash2, Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppointments, useUpdateAppointment } from "@/app/_hooks/queries/use-appointments";
 import { usePets } from "@/app/_hooks/queries/use-pets";
 import { useUsers } from "@/app/_hooks/queries/use-users";
-import { useCreateVisit } from "@/app/_hooks/queries/use-visits";
-import { useCreatePrescription, usePrescriptions } from "@/app/_hooks/queries/use-prescriptions";
+import { useVisits, useCreateVisit, useUpdateVisit } from "@/app/_hooks/queries/use-visits";
+import {
+  useCreatePrescription, usePrescriptions,
+  useUpdatePrescription, useDeletePrescription,
+} from "@/app/_hooks/queries/use-prescriptions";
 import { usePrescriptionItems } from "@/app/_hooks/queries/use-prescription-items";
 import { useDrugs } from "@/app/_hooks/queries/use-drugs";
-import { useAuth } from "@/app/_hooks/useAuth";
 import { useWebSocket } from "@/app/_hooks/useWebSocket";
+import { useAuth } from "@/app/_hooks/useAuth";
 import { useLang } from "@/app/_hooks/useLanguage";
 import type {
-  Appointment,
-  Drug,
-  Pet,
-  PrescriptionCreate,
-  User as UserModel,
-  VisitCreate,
+  Appointment, Drug, Pet, PrescriptionCreate, User as UserModel, VisitCreate, Visit,
 } from "@/app/_lib/types/models";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const fmtDate = (d?: string | null) =>
-  d
-    ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
-    : "—";
+  d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
 const formatDose = (val: any): string => {
   if (!val) return "—";
   if (typeof val === "object") {
-    try {
-      return JSON.stringify(val)
-        .replace(/["{}\[\]]/g, "")
-        .replace(/:/g, ": ")
-        .replace(/,/g, " · ");
-    } catch {
-      return String(val);
-    }
+    try { return JSON.stringify(val).replace(/["{}\[\]]/g, "").replace(/:/g, ": ").replace(/,/g, " · "); }
+    catch { return String(val); }
   }
   return String(val);
 };
 
-/** Appointment statuses used by the simulation */
 type SimStatus = "confirmed" | "pending-doctor" | "in-progress" | "completed";
 
-interface Props {
-  role: "staff" | "doctor";
+interface Props { role: "staff" | "doctor"; }
+
+// ── Portal wrapper — renders modals at document.body to avoid overflow clipping ──
+function Modal({ children, open }: { children: React.ReactNode; open: boolean }) {
+  if (!open || typeof document === "undefined") return null;
+  return createPortal(
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          style={{ position: "fixed", inset: 0, zIndex: 9999 }}
+          className="bg-background/60 backdrop-blur-sm flex items-center justify-center p-4"
+        >
+          {children}
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body,
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function SimulationMode({ role }: Props) {
-  // Visit modal
-  const [showVisitModal, setShowVisitModal]             = useState(false);
-  const [activeVisitApptId, setActiveVisitApptId]       = useState("");
-  const [visitNotes, setVisitNotes]                     = useState("");
-  const [visitPrescriptionId, setVisitPrescriptionId]   = useState("");
+  // ── Visit modal state ──
+  const [visitMode,           setVisitMode]           = useState<"create" | "edit">("create");
+  const [showVisitModal,      setShowVisitModal]      = useState(false);
+  const [activeVisitApptId,   setActiveVisitApptId]   = useState("");
+  const [editingVisitId,      setEditingVisitId]      = useState("");
+  const [visitNotes,          setVisitNotes]          = useState("");
+  const [visitPrescriptionId, setVisitPrescriptionId] = useState("");
 
-  // Prescription modal
-  const [showPressModal, setShowPressModal]   = useState(false);
-  const [activePressApptId, setActivePressApptId] = useState("");
-  const [selectedDrugId, setSelectedDrugId]   = useState("");
+  // ── Prescription modal state ──
+  const [pressMode,          setPressMode]          = useState<"create" | "edit">("create");
+  const [showPressModal,     setShowPressModal]     = useState(false);
+  const [activePressApptId,  setActivePressApptId]  = useState("");
+  const [editingPressId,     setEditingPressId]     = useState("");
+  const [selectedDrugId,     setSelectedDrugId]     = useState("");
 
   const { t }    = useLang();
   const { user } = useAuth();
 
-  // Keep React Query cache in sync with all other users in real-time.
-  // When Staff patches an appointment (pending-doctor / in-progress),
-  // the WS event "appointments:updated" fires → invalidates ["appointments"]
-  // → Doctor's useAppointments() refetches and the Accept button appears.
+  // Keep both roles in live sync via WebSocket → invalidates React Query cache
   useWebSocket();
 
   // ── Data ──────────────────────────────────────────────────────────────────
@@ -102,10 +95,14 @@ export default function SimulationMode({ role }: Props) {
   const { data: drugsData }     = useDrugs();
   const { data: presData }      = usePrescriptions();
   const { data: presItemsData } = usePrescriptionItems();
+  const { data: visitsData }    = useVisits();
 
   const updateAppointment  = useUpdateAppointment();
   const createVisit        = useCreateVisit();
+  const updateVisit        = useUpdateVisit();
   const createPrescription = useCreatePrescription();
+  const updatePrescription = useUpdatePrescription();
+  const deletePrescription = useDeletePrescription();
 
   const allAppointments: Appointment[] = apptData?.data      || [];
   const allPets: Pet[]                 = petsData?.data      || [];
@@ -113,12 +110,9 @@ export default function SimulationMode({ role }: Props) {
   const allDrugs: Drug[]               = drugsData?.data     || [];
   const allPrescriptions               = presData?.data      || [];
   const allPresItems                   = presItemsData?.data || [];
+  const allVisits: Visit[]             = visitsData?.data    || [];
 
-  // ── Build enriched appointment list ──────────────────────────────────────
-  /**
-   * Staff sees: confirmed + pending-doctor + in-progress (the full queue)
-   * Doctor sees: pending-doctor (requests) + their own in-progress case
-   */
+  // ── Build enriched simAppointments ──────────────────────────────────────
   const simAppointments = useMemo(() => {
     const relevant: SimStatus[] = ["confirmed", "pending-doctor", "in-progress"];
     return allAppointments
@@ -148,22 +142,29 @@ export default function SimulationMode({ role }: Props) {
       });
   }, [allAppointments, allPets, allUsers, t]);
 
-  // ── Role-specific filtered lists ─────────────────────────────────────────
-  /** My active case (doctor accepted it) */
+  // ── Role-specific derived data ──────────────────────────────────────────
   const myActiveCase = useMemo(
     () => simAppointments.find((a) => a.simStatus === "in-progress" && a.doctor_id === user?.userId),
     [simAppointments, user?.userId],
   );
 
-  /** Cases awaiting any doctor (no doctor assigned yet) */
   const pendingRequests = useMemo(
     () => simAppointments.filter((a) => a.simStatus === "pending-doctor" && !a.doctor_id),
     [simAppointments],
   );
 
-  // ── Prescription helpers ─────────────────────────────────────────────────
+  // ── Prescription & visit helpers ────────────────────────────────────────
+  /** All prescriptions written for a specific pet+client (this case) */
   const getCasePrescriptions = (petId: string, clientId: string) =>
     allPrescriptions.filter((rx) => rx.pet_id === petId && rx.client_id === clientId);
+
+  /** Prescriptions written for this case that are NOT yet linked to any visit */
+  const getUnlinkedCasePrescriptions = (petId: string, clientId: string) => {
+    const linkedPrescriptionIds = new Set(allVisits.map((v) => v.prescription_id).filter(Boolean));
+    return getCasePrescriptions(petId, clientId).filter(
+      (rx) => !linkedPrescriptionIds.has(rx.prescription_id),
+    );
+  };
 
   const getDrugForRx = (rxId: string): Drug | undefined => {
     const rx   = allPrescriptions.find((p) => p.prescription_id === rxId);
@@ -171,110 +172,162 @@ export default function SimulationMode({ role }: Props) {
     return allDrugs.find((d) => d.drug_id === item?.drug_id);
   };
 
+  const getDrugForItem = (itemId: string): Drug | undefined => {
+    const item = allPresItems.find((pi) => pi.prescriptionItem_id === itemId);
+    return allDrugs.find((d) => d.drug_id === item?.drug_id);
+  };
+
   const selectedDrug = allDrugs.find((d) => d.drug_id === selectedDrugId);
 
-  // ── Actions ───────────────────────────────────────────────────────────────
-
-  /** STAFF: dispatch case to doctors */
+  // ── Staff actions ────────────────────────────────────────────────────────
   const handleStart = (apptId: string) => {
     updateAppointment.mutate(
       { id: apptId, data: { status: "pending-doctor" } },
       {
         onSuccess: () => toast.info("Case dispatched — waiting for a doctor to accept"),
-        onError: ()   => toast.error("Failed to start case"),
+        onError:   () => toast.error("Failed to start case"),
       },
     );
   };
 
-  /** DOCTOR: accept a pending case */
+  // ── Doctor actions ───────────────────────────────────────────────────────
   const handleAccept = (apptId: string) => {
     if (!user?.userId) return;
-    if (myActiveCase) {
-      toast.error("Complete your current case before accepting another.");
-      return;
-    }
+    if (myActiveCase) { toast.error("Complete your current case before accepting another."); return; }
     updateAppointment.mutate(
       { id: apptId, data: { status: "in-progress", doctor_id: user.userId } },
       {
         onSuccess: () => toast.success("Case accepted — you are the assigned doctor"),
-        onError: ()   => toast.error("Failed to accept case"),
+        onError:   () => toast.error("Failed to accept case"),
       },
     );
   };
 
-  /** DOCTOR: complete active case */
   const handleComplete = (apptId: string) => {
     updateAppointment.mutate(
       { id: apptId, data: { status: "completed" } },
       {
         onSuccess: () => toast.success("Case completed"),
-        onError: ()   => toast.error("Failed to complete case"),
+        onError:   () => toast.error("Failed to complete case"),
       },
     );
   };
 
-  // ── Visit modal ───────────────────────────────────────────────────────────
-  const openVisitModal = (apptId: string, petId: string, clientId: string) => {
-    const rxs  = getCasePrescriptions(petId, clientId);
-    const last = rxs[rxs.length - 1];
+  // ── Visit modal ──────────────────────────────────────────────────────────
+  const openCreateVisit = (apptId: string, petId: string, clientId: string) => {
+    const unlinked = getUnlinkedCasePrescriptions(petId, clientId);
+    setVisitMode("create");
     setActiveVisitApptId(apptId);
-    setVisitPrescriptionId(last?.prescription_id || "");
+    setEditingVisitId("");
+    setVisitPrescriptionId(unlinked[unlinked.length - 1]?.prescription_id || "");
     setVisitNotes("");
     setShowVisitModal(true);
   };
 
-  const handleCreateVisit = () => {
-    const appt = simAppointments.find((a) => a.appointment_id === activeVisitApptId);
-    if (!appt || !user) return;
-    const payload: VisitCreate = {
-      pet_id:    appt.petId,
-      client_id: appt.clientId,
-      doctor_id: appt.doctor_id || user.userId,
-      notes:     visitNotes || t("visit_created_from_simulation_mode"),
-      date:      new Date().toISOString(),
-      ...(visitPrescriptionId && { prescription_id: visitPrescriptionId }),
-    };
-    createVisit.mutate(payload, {
-      onSuccess: () => {
-        toast.success(t("visit_created_success") || "Visit recorded.");
-        setShowVisitModal(false);
-      },
-      onError: (err: any) =>
-        toast.error(err?.response?.data?.detail || t("visit_create_failed") || "Failed."),
-    });
+  const openEditVisit = (visit: Visit) => {
+    setVisitMode("edit");
+    setEditingVisitId(visit.visit_id);
+    setActiveVisitApptId("");
+    setVisitNotes(visit.notes || "");
+    setVisitPrescriptionId(visit.prescription_id || "");
+    setShowVisitModal(true);
   };
 
-  // ── Prescription modal ────────────────────────────────────────────────────
-  const openPressModal = (apptId: string) => {
+  const handleSaveVisit = () => {
+    if (visitMode === "edit") {
+      updateVisit.mutate(
+        { id: editingVisitId, data: { notes: visitNotes, prescription_id: visitPrescriptionId || undefined } },
+        {
+          onSuccess: () => { toast.success("Visit updated."); setShowVisitModal(false); },
+          onError: (err: any) => toast.error(err?.response?.data?.detail || "Failed to update visit."),
+        },
+      );
+    } else {
+      const appt = simAppointments.find((a) => a.appointment_id === activeVisitApptId);
+      if (!appt || !user) return;
+      const payload: VisitCreate = {
+        pet_id:    appt.petId,
+        client_id: appt.clientId,
+        doctor_id: appt.doctor_id || user.userId,
+        notes:     visitNotes || t("visit_created_from_simulation_mode"),
+        date:      new Date().toISOString(),
+        ...(visitPrescriptionId && { prescription_id: visitPrescriptionId }),
+      };
+      createVisit.mutate(payload, {
+        onSuccess: () => { toast.success("Visit recorded."); setShowVisitModal(false); },
+        onError:   (err: any) => toast.error(err?.response?.data?.detail || "Failed to record visit."),
+      });
+    }
+  };
+
+  // ── Prescription modal ───────────────────────────────────────────────────
+  const openCreatePrescription = (apptId: string) => {
+    setPressMode("create");
     setActivePressApptId(apptId);
+    setEditingPressId("");
     setSelectedDrugId("");
     setShowPressModal(true);
   };
 
-  const handleCreatePrescription = () => {
-    const appt = simAppointments.find((a) => a.appointment_id === activePressApptId);
-    if (!appt || !selectedDrugId) { toast.warning("Select a drug first"); return; }
-    createPrescription.mutate(
-      { client_id: appt.clientId, pet_id: appt.petId, drug_id: selectedDrugId } satisfies PrescriptionCreate,
-      {
-        onSuccess: () => {
-          toast.success(t("prescription_created_success") || "Prescription issued.");
-          setShowPressModal(false);
-          setSelectedDrugId("");
-        },
-        onError: (err: any) =>
-          toast.error(err?.response?.data?.detail || "Failed to issue prescription."),
-      },
-    );
+  const openEditPrescription = (rxId: string, apptId: string) => {
+    setPressMode("edit");
+    setEditingPressId(rxId);
+    setActivePressApptId(apptId);
+    // Pre-select the current drug
+    const drug = getDrugForRx(rxId);
+    setSelectedDrugId(drug?.drug_id || "");
+    setShowPressModal(true);
   };
 
-  // Appointments used by modals
-  const visitAppt = simAppointments.find((a) => a.appointment_id === activeVisitApptId);
-  const pressAppt = simAppointments.find((a) => a.appointment_id === activePressApptId);
+  const handleDeletePrescription = (rxId: string) => {
+    if (!confirm("Delete this prescription?")) return;
+    deletePrescription.mutate(rxId, {
+      onSuccess: () => toast.success("Prescription deleted."),
+      onError:   () => toast.error("Failed to delete prescription."),
+    });
+  };
+
+  const handleSavePrescription = () => {
+    const appt = simAppointments.find((a) => a.appointment_id === activePressApptId);
+    if (!selectedDrugId) { toast.warning("Select a drug first"); return; }
+
+    if (pressMode === "edit") {
+      updatePrescription.mutate(
+        { id: editingPressId, data: { pet_id: appt?.petId, client_id: appt?.clientId } },
+        {
+          onSuccess: () => { toast.success("Prescription updated."); setShowPressModal(false); setSelectedDrugId(""); },
+          onError:   () => toast.error("Failed to update prescription."),
+        },
+      );
+    } else {
+      if (!appt) return;
+      createPrescription.mutate(
+        { client_id: appt.clientId, pet_id: appt.petId, drug_id: selectedDrugId } satisfies PrescriptionCreate,
+        {
+          onSuccess: () => { toast.success("Prescription issued."); setShowPressModal(false); setSelectedDrugId(""); },
+          onError:   (err: any) => toast.error(err?.response?.data?.detail || "Failed."),
+        },
+      );
+    }
+  };
+
+  // Lookup helpers for modals
+  const visitAppt  = simAppointments.find((a) => a.appointment_id === activeVisitApptId);
+  const pressAppt  = simAppointments.find((a) => a.appointment_id === activePressApptId);
+
+  // Case prescriptions for the prescription modal (for current case only)
+  const pressCasePrescriptions = pressAppt
+    ? getCasePrescriptions(pressAppt.petId, pressAppt.clientId)
+    : [];
+
+  // Case visits for the active doctor's case
+  const myCaseVisits = myActiveCase
+    ? allVisits.filter((v) => v.pet_id === myActiveCase.petId && v.client_id === myActiveCase.clientId)
+    : [];
 
   // ── RENDER ────────────────────────────────────────────────────────────────
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
+    <div className="space-y-5">
 
       {/* Header */}
       <div className="flex items-center gap-2">
@@ -293,7 +346,7 @@ export default function SimulationMode({ role }: Props) {
         </div>
       </div>
 
-      {/* ══════════════════════════ STAFF VIEW ══════════════════════════════ */}
+      {/* ══════════════════════ STAFF VIEW ══════════════════════════════════ */}
       {role === "staff" && (
         <div className="space-y-3">
           {simAppointments.length === 0 ? (
@@ -309,12 +362,11 @@ export default function SimulationMode({ role }: Props) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.04 }}
                 className={`p-4 rounded-xl border-2 space-y-3 ${
-                  a.simStatus === "confirmed"      ? "border-muted/40 bg-muted/5"          :
-                  a.simStatus === "pending-doctor" ? "border-orange/30 bg-orange/5"        :
+                  a.simStatus === "confirmed"      ? "border-muted/40 bg-muted/5"   :
+                  a.simStatus === "pending-doctor" ? "border-orange/30 bg-orange/5" :
                                                      "border-cyan/30 bg-cyan/5"
                 }`}
               >
-                {/* Identity row */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-muted/40 flex items-center justify-center shrink-0">
@@ -331,13 +383,10 @@ export default function SimulationMode({ role }: Props) {
                     a.simStatus === "pending-doctor" ? "bg-orange/15 text-orange"          :
                                                        "bg-cyan/15 text-cyan"
                   }`}>
-                    {a.simStatus === "confirmed"      ? t("waiting")     :
-                     a.simStatus === "pending-doctor" ? "Awaiting Doctor" :
-                                                        t("in_progress")}
+                    {a.simStatus === "confirmed" ? t("waiting") : a.simStatus === "pending-doctor" ? "Awaiting Doctor" : t("in_progress")}
                   </span>
                 </div>
 
-                {/* Doctor assignment strip */}
                 {a.simStatus === "in-progress" && a.doctorName && (
                   <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald/10 border border-emerald/20 text-xs text-emerald">
                     <UserCheck className="w-3.5 h-3.5 shrink-0" />
@@ -352,7 +401,6 @@ export default function SimulationMode({ role }: Props) {
                   </div>
                 )}
 
-                {/* Start button (confirmed only) */}
                 {a.simStatus === "confirmed" && (
                   <motion.button
                     whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
@@ -369,7 +417,7 @@ export default function SimulationMode({ role }: Props) {
         </div>
       )}
 
-      {/* ══════════════════════════ DOCTOR VIEW ═════════════════════════════ */}
+      {/* ══════════════════════ DOCTOR VIEW ═════════════════════════════════ */}
       {role === "doctor" && (
         <div className="space-y-4">
 
@@ -382,23 +430,14 @@ export default function SimulationMode({ role }: Props) {
               className="p-5 rounded-xl border-2 border-cyan/30 bg-cyan/5 space-y-4"
             >
               <div className="flex items-center gap-1.5">
-                <motion.div
-                  animate={{ scale: [1, 1.4, 1] }}
-                  transition={{ repeat: Infinity, duration: 1.2 }}
-                  className="w-2 h-2 rounded-full bg-cyan"
-                />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-cyan">
-                  {t("current_case")} — {t("in_progress")}
-                </span>
+                <motion.div animate={{ scale: [1, 1.4, 1] }} transition={{ repeat: Infinity, duration: 1.2 }} className="w-2 h-2 rounded-full bg-cyan" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-cyan">{t("current_case")} — {t("in_progress")}</span>
               </div>
 
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <motion.div
-                    animate={{ scale: [1, 1.08, 1] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                    className="w-12 h-12 rounded-xl bg-muted/40 flex items-center justify-center"
-                  >
+                  <motion.div animate={{ scale: [1, 1.08, 1] }} transition={{ repeat: Infinity, duration: 2 }}
+                    className="w-12 h-12 rounded-xl bg-muted/40 flex items-center justify-center">
                     {myActiveCase.species === "dog" ? <Dog className="w-6 h-6" /> : <Cat className="w-6 h-6" />}
                   </motion.div>
                   <div>
@@ -414,89 +453,114 @@ export default function SimulationMode({ role }: Props) {
 
               <p className="text-sm text-foreground/80">{myActiveCase.complaint}</p>
 
-              {/* Assigned-to-me badge */}
+              {/* Assigned badge */}
               <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-cyan/10 border border-cyan/20 text-xs text-cyan">
                 <UserCheck className="w-3.5 h-3.5" />
                 <span className="font-bold">Assigned to you · Dr. {user?.fullname}</span>
               </div>
 
-              {/* Prescriptions on case */}
+              {/* ── Prescriptions for this case ── */}
               {(() => {
-                const rxs  = getCasePrescriptions(myActiveCase.petId, myActiveCase.clientId);
-                if (!rxs.length) return null;
-                const drug = getDrugForRx(rxs[rxs.length - 1].prescription_id);
+                const rxs = getCasePrescriptions(myActiveCase.petId, myActiveCase.clientId);
+                if (!rxs.length) return (
+                  <div className="text-xs text-muted-foreground/60 italic px-1">No prescriptions issued yet for this case.</div>
+                );
                 return (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald/5 border border-emerald/15 text-xs">
-                    <Pill className="w-3.5 h-3.5 text-emerald" />
-                    <span className="font-bold text-emerald">{drug?.name || "Drug"}</span>
-                    <span className="text-muted-foreground ml-auto">{rxs.length} Rx issued</span>
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald flex items-center gap-1">
+                      <Pill className="w-3 h-3" /> Prescriptions for this case
+                    </p>
+                    {rxs.map((rx) => {
+                      const drug = getDrugForRx(rx.prescription_id);
+                      return (
+                        <div key={rx.prescription_id} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald/5 border border-emerald/15 text-xs group">
+                          <Pill className="w-3.5 h-3.5 text-emerald shrink-0" />
+                          <span className="font-bold text-emerald flex-1 truncate">{drug?.name || "Drug"}</span>
+                          <span className="text-muted-foreground opacity-60">RX-{rx.prescription_id.slice(0, 6)}</span>
+                          <button
+                            onClick={() => openEditPrescription(rx.prescription_id, myActiveCase.appointment_id)}
+                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/10 rounded-lg transition-all ml-1"
+                          >
+                            <Pencil className="w-3 h-3 text-muted-foreground" />
+                          </button>
+                          <button
+                            onClick={() => handleDeletePrescription(rx.prescription_id)}
+                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/10 rounded-lg transition-all"
+                          >
+                            <Trash2 className="w-3 h-3 text-coral" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })()}
 
-              {/* Clinical action buttons */}
-              <div className="flex items-center gap-3 flex-wrap pt-1">
-                <motion.button
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                  onClick={() => openVisitModal(myActiveCase.appointment_id, myActiveCase.petId, myActiveCase.clientId)}
-                  className="flex items-center gap-2 gradient-cyan-blue text-primary-foreground px-5 py-2.5 rounded-xl text-sm font-bold glow-cyan"
-                >
-                  <Stethoscope className="w-4 h-4" /> {t("create_visit")}
+              {/* ── Visits for this case ── */}
+              {myCaseVisits.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-cyan flex items-center gap-1">
+                    <Stethoscope className="w-3 h-3" /> Visits for this case
+                  </p>
+                  {myCaseVisits.map((v) => (
+                    <div key={v.visit_id} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-cyan/5 border border-cyan/15 text-xs group">
+                      <Stethoscope className="w-3.5 h-3.5 text-cyan shrink-0" />
+                      <span className="font-bold text-cyan flex-1 truncate">{v.notes || "Visit"}</span>
+                      <span className="text-muted-foreground opacity-60">{fmtDate(v.date)}</span>
+                      <button
+                        onClick={() => openEditVisit(v)}
+                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/10 rounded-lg transition-all ml-1"
+                      >
+                        <Pencil className="w-3 h-3 text-muted-foreground" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Doctor action buttons */}
+              <div className="flex items-center gap-2.5 flex-wrap pt-1">
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                  onClick={() => openCreateVisit(myActiveCase.appointment_id, myActiveCase.petId, myActiveCase.clientId)}
+                  className="flex items-center gap-2 gradient-cyan-blue text-primary-foreground px-4 py-2.5 rounded-xl text-sm font-bold glow-cyan">
+                  <Plus className="w-4 h-4" />{t("create_visit")}
                 </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                  onClick={() => openPressModal(myActiveCase.appointment_id)}
-                  className="flex items-center gap-2 gradient-emerald-cyan text-primary-foreground px-5 py-2.5 rounded-xl text-sm font-bold glow-emerald"
-                >
-                  <Pill className="w-4 h-4" /> {t("prescribe")}
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                  onClick={() => openCreatePrescription(myActiveCase.appointment_id)}
+                  className="flex items-center gap-2 gradient-emerald-cyan text-primary-foreground px-4 py-2.5 rounded-xl text-sm font-bold glow-emerald">
+                  <Plus className="w-4 h-4" />{t("prescribe")}
                 </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
                   onClick={() => handleComplete(myActiveCase.appointment_id)}
                   disabled={updateAppointment.isPending}
-                  className="flex items-center gap-2 bg-emerald/90 hover:bg-emerald text-primary-foreground px-5 py-2.5 rounded-xl text-sm font-bold disabled:opacity-50"
-                >
-                  <CheckCircle2 className="w-4 h-4" /> {t("complete")}
+                  className="flex items-center gap-2 bg-emerald/90 hover:bg-emerald text-primary-foreground px-4 py-2.5 rounded-xl text-sm font-bold disabled:opacity-50">
+                  <CheckCircle2 className="w-4 h-4" />{t("complete")}
                 </motion.button>
               </div>
             </motion.div>
           )}
 
-          {/* ── Pending requests (visible when doctor has no active case) ── */}
+          {/* ── Pending requests ── */}
           {!myActiveCase && (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Inbox className="w-4 h-4 text-orange" />
-                <span className="text-sm font-bold">
-                  Pending Case Requests
-                </span>
+                <span className="text-sm font-bold">Pending Case Requests</span>
                 {pendingRequests.length > 0 && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange/15 text-orange font-black">
-                    {pendingRequests.length}
-                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange/15 text-orange font-black">{pendingRequests.length}</span>
                 )}
               </div>
 
               {pendingRequests.length === 0 ? (
                 <div className="p-6 rounded-xl border border-border/30 bg-muted/5 text-center space-y-2">
                   <ClipboardList className="w-8 h-8 text-muted-foreground/30 mx-auto" />
-                  <p className="text-sm text-muted-foreground font-medium">
-                    {t("no_active_cases") || "No pending cases yet"}
-                  </p>
-                  <p className="text-xs text-muted-foreground/60">
-                    {t("waiting_for_confirmed_appointments") ||
-                      "Staff will dispatch cases here when they start them"}
-                  </p>
+                  <p className="text-sm text-muted-foreground font-medium">{t("no_active_cases") || "No pending cases yet"}</p>
+                  <p className="text-xs text-muted-foreground/60">{t("waiting_for_confirmed_appointments") || "Staff will dispatch cases here"}</p>
                 </div>
               ) : (
                 pendingRequests.map((a, i) => (
-                  <motion.div
-                    key={a.appointment_id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.06 }}
-                    className="p-4 rounded-xl border-2 border-orange/30 bg-orange/5 space-y-3"
-                  >
+                  <motion.div key={a.appointment_id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+                    className="p-4 rounded-xl border-2 border-orange/30 bg-orange/5 space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-muted/40 flex items-center justify-center shrink-0">
@@ -508,27 +572,21 @@ export default function SimulationMode({ role }: Props) {
                           <p className="text-xs text-foreground/70 mt-0.5">{a.complaint}</p>
                         </div>
                       </div>
-                      <span className="text-[10px] px-2.5 py-1 rounded-lg font-black bg-orange/15 text-orange whitespace-nowrap">
-                        Needs Doctor
-                      </span>
+                      <span className="text-[10px] px-2.5 py-1 rounded-lg font-black bg-orange/15 text-orange whitespace-nowrap">Needs Doctor</span>
                     </div>
 
                     {a.appointment_date && (
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Calendar className="w-3 h-3" />
-                        <span>{fmtDate(a.appointment_date)}</span>
+                        <Calendar className="w-3 h-3" /><span>{fmtDate(a.appointment_date)}</span>
                         <span className="font-mono opacity-60 ml-1">{a.caseNumber}</span>
                       </div>
                     )}
 
-                    <motion.button
-                      whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                    <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
                       onClick={() => handleAccept(a.appointment_id)}
                       disabled={updateAppointment.isPending}
-                      className="flex items-center justify-center gap-2 gradient-cyan-blue text-primary-foreground px-5 py-2.5 rounded-xl text-sm font-bold w-full disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <ShieldCheck className="w-4 h-4" />
-                      Accept This Case
+                      className="flex items-center justify-center gap-2 gradient-cyan-blue text-primary-foreground px-5 py-2.5 rounded-xl text-sm font-bold w-full disabled:opacity-50">
+                      <ShieldCheck className="w-4 h-4" /> Accept This Case
                     </motion.button>
                   </motion.div>
                 ))
@@ -536,10 +594,9 @@ export default function SimulationMode({ role }: Props) {
             </div>
           )}
 
-          {/* ── Next in queue preview (when doctor has active case) ── */}
           {myActiveCase && pendingRequests.length > 0 && (
             <div className="p-3 rounded-xl border border-border/30 bg-muted/5 border-dashed">
-              <div className="flex items-center gap-1.5 mb-2">
+              <div className="flex items-center gap-1.5 mb-1">
                 <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
                 <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                   {pendingRequests.length} more case{pendingRequests.length > 1 ? "s" : ""} waiting
@@ -551,281 +608,251 @@ export default function SimulationMode({ role }: Props) {
         </div>
       )}
 
-      {/* ════════════ VISIT MODAL ════════════════════════════════════════════ */}
-      <AnimatePresence>
-        {showVisitModal && visitAppt && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 16 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 16 }}
-              className="bg-card border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl gradient-cyan-blue flex items-center justify-center">
-                    <Stethoscope className="w-4 h-4 text-primary-foreground" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold">{t("create_visit")}</h3>
-                    <p className="text-[10px] text-muted-foreground">{t("log_clinical_encounter") || "Log clinical encounter"}</p>
-                  </div>
-                </div>
-                <button onClick={() => setShowVisitModal(false)} className="p-2 hover:bg-muted rounded-xl transition-colors">
-                  <X className="w-4 h-4" />
-                </button>
+      {/* ════════════════════ VISIT MODAL (portalled) ═══════════════════════ */}
+      <Modal open={showVisitModal}>
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0, y: 16 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.95, opacity: 0, y: 16 }}
+          className="bg-card border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl gradient-cyan-blue flex items-center justify-center">
+                <Stethoscope className="w-4 h-4 text-primary-foreground" />
               </div>
-
-              {/* Patient strip */}
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
-                <div className="w-9 h-9 rounded-lg bg-muted/40 flex items-center justify-center shrink-0">
-                  {visitAppt.species === "dog" ? <Dog className="w-5 h-5" /> : <Cat className="w-5 h-5" />}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-bold truncate">{visitAppt.petName}</p>
-                  <p className="text-xs text-muted-foreground truncate">{visitAppt.ownerName} · {visitAppt.complaint}</p>
-                </div>
-                <span className="text-[10px] font-mono text-muted-foreground shrink-0">{visitAppt.caseNumber}</span>
+              <div>
+                <h3 className="text-base font-bold">{visitMode === "edit" ? "Edit Visit" : t("create_visit")}</h3>
+                <p className="text-[10px] text-muted-foreground">{t("log_clinical_encounter") || "Log clinical encounter"}</p>
               </div>
+            </div>
+            <button onClick={() => setShowVisitModal(false)} className="p-2 hover:bg-muted rounded-xl transition-colors"><X className="w-4 h-4" /></button>
+          </div>
 
-              {/* Doctor + Date */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-cyan/5 border border-cyan/15 text-xs">
-                  <UserIcon className="w-3.5 h-3.5 text-cyan shrink-0" />
-                  <div>
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Doctor</p>
-                    <p className="font-bold text-cyan truncate">{user?.fullname || "—"}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white/5 border border-white/5 text-xs">
-                  <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                  <div>
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Date</p>
-                    <p className="font-bold">{fmtDate(new Date().toISOString())}</p>
-                  </div>
+          {/* Patient strip (create mode only) */}
+          {visitMode === "create" && visitAppt && (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
+              <div className="w-9 h-9 rounded-lg bg-muted/40 flex items-center justify-center shrink-0">
+                {visitAppt.species === "dog" ? <Dog className="w-5 h-5" /> : <Cat className="w-5 h-5" />}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold truncate">{visitAppt.petName}</p>
+                <p className="text-xs text-muted-foreground truncate">{visitAppt.ownerName} · {visitAppt.complaint}</p>
+              </div>
+              <span className="text-[10px] font-mono text-muted-foreground shrink-0">{visitAppt.caseNumber}</span>
+            </div>
+          )}
+
+          {/* Doctor + Date (create mode) */}
+          {visitMode === "create" && (
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-cyan/5 border border-cyan/15 text-xs">
+                <UserIcon className="w-3.5 h-3.5 text-cyan shrink-0" />
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-bold uppercase">Doctor</p>
+                  <p className="font-bold text-cyan truncate">{user?.fullname || "—"}</p>
                 </div>
               </div>
-
-              {/* ⚠️ No prescription warning */}
-              {getCasePrescriptions(visitAppt.petId, visitAppt.clientId).length === 0 && (
-                <div className="flex items-start gap-2.5 px-3 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400">
-                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span className="font-semibold">
-                    {t("no_prescription_for_visit_warning") ||
-                      "No prescription issued yet for this case. Consider prescribing first."}
-                  </span>
-                </div>
-              )}
-
-              {/* Linked prescription */}
-              {getCasePrescriptions(visitAppt.petId, visitAppt.clientId).length > 0 && (
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-emerald uppercase tracking-widest flex items-center gap-1.5">
-                    <Pill className="w-3.5 h-3.5" /> {t("link_prescription") || "Linked Prescription"}
-                  </label>
-                  <select
-                    value={visitPrescriptionId}
-                    onChange={(e) => setVisitPrescriptionId(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50 font-semibold"
-                  >
-                    <option value="">None</option>
-                    {getCasePrescriptions(visitAppt.petId, visitAppt.clientId).map((rx) => {
-                      const drug = getDrugForRx(rx.prescription_id);
-                      return (
-                        <option key={rx.prescription_id} value={rx.prescription_id}>
-                          {drug?.name || "Drug"} · RX-{rx.prescription_id.slice(0, 6)}
-                        </option>
-                      );
-                    })}
-                  </select>
-                  {visitPrescriptionId && (() => {
-                    const drug = getDrugForRx(visitPrescriptionId);
-                    if (!drug) return null;
-                    return (
-                      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald/5 border border-emerald/15 text-xs">
-                        <Pill className="w-3.5 h-3.5 text-emerald" />
-                        <span className="font-bold text-emerald">{drug.name}</span>
-                        <span className="text-muted-foreground">{drug.drugClass}</span>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-
-              {/* Notes */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5" /> {t("clinical_notes_report")}
-                </label>
-                <textarea
-                  value={visitNotes}
-                  onChange={(e) => setVisitNotes(e.target.value)}
-                  placeholder={t("clinical_notes_placeholder") || "Symptoms, diagnosis, treatment notes…"}
-                  className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan/50 resize-none"
-                  rows={4}
-                />
-              </div>
-
-              {/* Info */}
-              <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-cyan/5 border border-cyan/15 text-xs text-cyan/80">
-                <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                <span>{t("visit_created_by_indicator") || "Recorded under your account, linked to the current case."}</span>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-1">
-                <motion.button
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                  onClick={() => { setShowVisitModal(false); setVisitNotes(""); setVisitPrescriptionId(""); }}
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 text-sm font-bold transition-colors"
-                >
-                  {t("cancel")}
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                  onClick={handleCreateVisit}
-                  disabled={createVisit.isPending}
-                  className="flex-1 px-4 py-2.5 rounded-xl gradient-cyan-blue text-primary-foreground text-sm font-bold disabled:opacity-50"
-                >
-                  {createVisit.isPending ? t("creating") : t("create_visit")}
-                </motion.button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ════════════ PRESCRIPTION MODAL ════════════════════════════════════ */}
-      <AnimatePresence>
-        {showPressModal && pressAppt && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 16 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 16 }}
-              className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-5"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl gradient-emerald-cyan flex items-center justify-center">
-                    <Pill className="w-4 h-4 text-primary-foreground" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold">{t("prescribe_medication")}</h3>
-                    <p className="text-[10px] text-muted-foreground">{t("select_drug_auto_dose") || "Dosage auto-filled from formulary"}</p>
-                  </div>
-                </div>
-                <button onClick={() => { setShowPressModal(false); setSelectedDrugId(""); }} className="p-2 hover:bg-muted rounded-xl transition-colors">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Patient + Prescribing doctor */}
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
-                <div className="w-9 h-9 rounded-lg bg-muted/40 flex items-center justify-center shrink-0">
-                  {pressAppt.species === "dog" ? <Dog className="w-5 h-5" /> : <Cat className="w-5 h-5" />}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-bold truncate">{pressAppt.petName}</p>
-                  <p className="text-xs text-muted-foreground truncate">{pressAppt.ownerName}</p>
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white/5 border border-white/5 text-xs">
+                <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-bold uppercase">Date</p>
+                  <p className="font-bold">{fmtDate(new Date().toISOString())}</p>
                 </div>
               </div>
+            </div>
+          )}
 
-              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald/5 border border-emerald/15 text-xs">
-                <UserIcon className="w-3.5 h-3.5 text-emerald shrink-0" />
-                <span className="text-muted-foreground">{t("prescribing_doctor") || "Prescribing doctor"}:</span>
-                <span className="font-bold text-emerald">Dr. {user?.fullname || "—"}</span>
-              </div>
+          {/* ⚠️ No prescription warning */}
+          {visitMode === "create" && visitAppt &&
+            getUnlinkedCasePrescriptions(visitAppt.petId, visitAppt.clientId).length === 0 &&
+            getCasePrescriptions(visitAppt.petId, visitAppt.clientId).length === 0 && (
+            <div className="flex items-start gap-2.5 px-3 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span className="font-semibold">{t("no_prescription_for_visit_warning") || "No prescription issued yet. Consider prescribing first."}</span>
+            </div>
+          )}
 
-              {/* Drug selector */}
+          {/* Linked prescription — show only unlinked prescriptions for this case */}
+          {visitMode === "create" && visitAppt && (() => {
+            const unlinked = getUnlinkedCasePrescriptions(visitAppt.petId, visitAppt.clientId);
+            if (!unlinked.length) return null;
+            return (
               <div className="space-y-2">
                 <label className="text-xs font-bold text-emerald uppercase tracking-widest flex items-center gap-1.5">
-                  <Pill className="w-3.5 h-3.5" /> {t("select_drug") || "Select Drug"} *
+                  <Pill className="w-3.5 h-3.5" /> Link Prescription (this case)
                 </label>
                 <select
-                  value={selectedDrugId}
-                  onChange={(e) => setSelectedDrugId(e.target.value)}
+                  value={visitPrescriptionId}
+                  onChange={(e) => setVisitPrescriptionId(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50 font-semibold"
                 >
-                  <option value="">{t("select_a_drug")}</option>
-                  {allDrugs.map((drug) => (
-                    <option key={drug.drug_id} value={drug.drug_id}>
-                      {drug.name} · {drug.drugClass}
-                    </option>
-                  ))}
-                </select>
-                {selectedDrug && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                    className="p-3 rounded-xl bg-emerald/5 border border-emerald/15 space-y-2"
-                  >
-                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald">Drug Info · Auto-filled</p>
-                    {Object.entries(selectedDrug.dosage || {}).map(([k, v]) => (
-                      <div key={k} className="flex justify-between text-xs">
-                        <span className="text-muted-foreground capitalize">{k}</span>
-                        <span className="font-bold text-emerald">{formatDose(v)}</span>
-                      </div>
-                    ))}
-                    {selectedDrug.indications?.length > 0 && (
-                      <p className="text-xs text-muted-foreground pt-1 border-t border-white/5">
-                        <span className="font-bold">Indications: </span>
-                        {selectedDrug.indications.slice(0, 2).join(", ")}
-                        {selectedDrug.indications.length > 2 && "…"}
-                      </p>
-                    )}
-                  </motion.div>
-                )}
-              </div>
-
-              {/* Already prescribed */}
-              {getCasePrescriptions(pressAppt.petId, pressAppt.clientId).length > 0 && (
-                <div className="px-3 py-2.5 rounded-xl bg-white/5 border border-white/5 text-xs space-y-1">
-                  <p className="font-bold text-foreground/70 flex items-center gap-1">
-                    <Info className="w-3 h-3" /> {t("already_prescribed_on_case") || "Already prescribed:"}
-                  </p>
-                  {getCasePrescriptions(pressAppt.petId, pressAppt.clientId).map((rx) => {
+                  <option value="">None</option>
+                  {unlinked.map((rx) => {
                     const drug = getDrugForRx(rx.prescription_id);
                     return (
-                      <div key={rx.prescription_id} className="flex items-center gap-1.5">
-                        <Pill className="w-2.5 h-2.5 text-emerald" />
-                        <span className="text-emerald font-semibold">{drug?.name || "Drug"}</span>
-                        <span className="opacity-50">RX-{rx.prescription_id.slice(0, 6)}</span>
-                      </div>
+                      <option key={rx.prescription_id} value={rx.prescription_id}>
+                        {drug?.name || "Drug"} · RX-{rx.prescription_id.slice(0, 6)}
+                      </option>
                     );
                   })}
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-1">
-                <motion.button
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                  onClick={() => { setShowPressModal(false); setSelectedDrugId(""); }}
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 text-sm font-bold transition-colors"
-                >
-                  {t("cancel")}
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                  onClick={handleCreatePrescription}
-                  disabled={createPrescription.isPending || !selectedDrugId}
-                  className="flex-1 px-4 py-2.5 rounded-xl gradient-emerald-cyan text-primary-foreground text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {createPrescription.isPending ? t("prescribing") : t("prescribe")}
-                </motion.button>
+                </select>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+            );
+          })()}
+
+          {/* Notes */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5" /> {t("clinical_notes_report")}
+            </label>
+            <textarea
+              value={visitNotes}
+              onChange={(e) => setVisitNotes(e.target.value)}
+              placeholder={t("clinical_notes_placeholder") || "Symptoms, diagnosis, treatment notes…"}
+              className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan/50 resize-none"
+              rows={4}
+            />
+          </div>
+
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-cyan/5 border border-cyan/15 text-xs text-cyan/80">
+            <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            <span>{t("visit_created_by_indicator") || "Recorded under your account, linked to the current case."}</span>
+          </div>
+
+          <div className="flex gap-3 pt-1">
+            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+              onClick={() => setShowVisitModal(false)}
+              className="flex-1 px-4 py-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 text-sm font-bold transition-colors">
+              {t("cancel")}
+            </motion.button>
+            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+              onClick={handleSaveVisit}
+              disabled={createVisit.isPending || updateVisit.isPending}
+              className="flex-1 px-4 py-2.5 rounded-xl gradient-cyan-blue text-primary-foreground text-sm font-bold disabled:opacity-50">
+              {createVisit.isPending || updateVisit.isPending ? t("creating") : visitMode === "edit" ? "Save Changes" : t("create_visit")}
+            </motion.button>
+          </div>
+        </motion.div>
+      </Modal>
+
+      {/* ════════════════════ PRESCRIPTION MODAL (portalled) ════════════════ */}
+      <Modal open={showPressModal}>
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0, y: 16 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.95, opacity: 0, y: 16 }}
+          className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl gradient-emerald-cyan flex items-center justify-center">
+                <Pill className="w-4 h-4 text-primary-foreground" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold">{pressMode === "edit" ? "Edit Prescription" : t("prescribe_medication")}</h3>
+                <p className="text-[10px] text-muted-foreground">{t("select_drug_auto_dose") || "Dosage auto-filled from formulary"}</p>
+              </div>
+            </div>
+            <button onClick={() => setShowPressModal(false)} className="p-2 hover:bg-muted rounded-xl transition-colors"><X className="w-4 h-4" /></button>
+          </div>
+
+          {/* Patient strip */}
+          {pressAppt && (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
+              <div className="w-9 h-9 rounded-lg bg-muted/40 flex items-center justify-center shrink-0">
+                {pressAppt.species === "dog" ? <Dog className="w-5 h-5" /> : <Cat className="w-5 h-5" />}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold truncate">{pressAppt.petName}</p>
+                <p className="text-xs text-muted-foreground truncate">{pressAppt.ownerName}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Prescribing doctor */}
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald/5 border border-emerald/15 text-xs">
+            <UserIcon className="w-3.5 h-3.5 text-emerald shrink-0" />
+            <span className="text-muted-foreground">{t("prescribing_doctor") || "Prescribing doctor"}:</span>
+            <span className="font-bold text-emerald">Dr. {user?.fullname || "—"}</span>
+          </div>
+
+          {/* Drug selector */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-emerald uppercase tracking-widest flex items-center gap-1.5">
+              <Pill className="w-3.5 h-3.5" /> {pressMode === "edit" ? "Change Drug" : (t("select_drug") || "Select Drug")} *
+            </label>
+            <select
+              value={selectedDrugId}
+              onChange={(e) => setSelectedDrugId(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50 font-semibold"
+            >
+              <option value="">{t("select_a_drug")}</option>
+              {allDrugs.map((drug) => (
+                <option key={drug.drug_id} value={drug.drug_id}>{drug.name} · {drug.drugClass}</option>
+              ))}
+            </select>
+
+            {selectedDrug && (
+              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                className="p-3 rounded-xl bg-emerald/5 border border-emerald/15 space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-emerald">Drug Info · Auto-filled</p>
+                {Object.entries(selectedDrug.dosage || {}).map(([k, v]) => (
+                  <div key={k} className="flex justify-between text-xs">
+                    <span className="text-muted-foreground capitalize">{k}</span>
+                    <span className="font-bold text-emerald">{formatDose(v)}</span>
+                  </div>
+                ))}
+                {selectedDrug.indications?.length > 0 && (
+                  <p className="text-xs text-muted-foreground pt-1 border-t border-white/5">
+                    <span className="font-bold">Indications: </span>
+                    {selectedDrug.indications.slice(0, 2).join(", ")}{selectedDrug.indications.length > 2 && "…"}
+                  </p>
+                )}
+              </motion.div>
+            )}
+          </div>
+
+          {/* Prescriptions already issued for this case */}
+          {pressCasePrescriptions.length > 0 && (
+            <div className="px-3 py-2.5 rounded-xl bg-white/5 border border-white/5 text-xs space-y-1.5">
+              <p className="font-bold text-foreground/70 flex items-center gap-1">
+                <Info className="w-3 h-3" /> Prescriptions issued for this case:
+              </p>
+              {pressCasePrescriptions.map((rx) => {
+                const drug = getDrugForRx(rx.prescription_id);
+                return (
+                  <div key={rx.prescription_id} className="flex items-center gap-1.5">
+                    <Pill className="w-2.5 h-2.5 text-emerald" />
+                    <span className="text-emerald font-semibold">{drug?.name || "Drug"}</span>
+                    <span className="opacity-50">RX-{rx.prescription_id.slice(0, 6)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-1">
+            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+              onClick={() => setShowPressModal(false)}
+              className="flex-1 px-4 py-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 text-sm font-bold transition-colors">
+              {t("cancel")}
+            </motion.button>
+            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+              onClick={handleSavePrescription}
+              disabled={createPrescription.isPending || updatePrescription.isPending || !selectedDrugId}
+              className="flex-1 px-4 py-2.5 rounded-xl gradient-emerald-cyan text-primary-foreground text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed">
+              {createPrescription.isPending || updatePrescription.isPending
+                ? t("prescribing")
+                : pressMode === "edit" ? "Save Changes" : t("prescribe")}
+            </motion.button>
+          </div>
+        </motion.div>
+      </Modal>
+    </div>
   );
 }

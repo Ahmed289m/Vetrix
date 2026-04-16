@@ -559,33 +559,6 @@ export default function AppointmentsPage() {
             />
           </div>
 
-          {/* Doctor selector — only for staff/owner */}
-          {!isClient && doctorsList.length > 0 && (
-            <div className="space-y-2">
-              <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-                {t("assign_doctor")}
-              </Label>
-              <Select
-                value={formik.values.doctor_id}
-                onValueChange={(val) => formik.setFieldValue("doctor_id", val)}
-              >
-                <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold">
-                  <SelectValue placeholder={t("select_doctor_optional")} />
-                </SelectTrigger>
-                <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
-                  {doctorsList.map((doc) => (
-                    <SelectItem
-                      key={doc.user_id}
-                      value={doc.user_id}
-                      className="rounded-xl font-bold"
-                    >
-                      {doc.fullname}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </div>
       </DashboardForm>
     </div>
