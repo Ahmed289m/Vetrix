@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "@/app/_components/fast-motion";
 import {
   Play, CheckCircle2, Dog, Cat, Clock, Activity, ChevronRight,
   Stethoscope, Pill, X, AlertTriangle, Calendar, User as UserIcon,
@@ -115,15 +115,19 @@ export default function SimulationMode({ role }: Props) {
   const [activePressApptId, setActivePressApptId] = useState("");
   // Multi-drug: array of selected drug IDs
   const [selectedDrugIds, setSelectedDrugIds] = useState<string[]>([]);
+  // Drug search in prescription modal
+  const [drugSearch, setDrugSearch] = useState("");
 
   const { t }    = useLang();
   const { user } = useAuth();
-  useWebSocket(); // live sync via "appointments:updated" etc.
+  const isClientRole = user?.role === "client";
+  useWebSocket(); // live sync: invalidates React Query caches on backend broadcast
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const { data: apptData }      = useAppointments();
   const { data: petsData }      = usePets();
-  const { data: usersData }     = useUsers();
+  // Guard: clients cannot call /users (403) — skip for client role
+  const { data: usersData }     = useUsers({ enabled: !isClientRole });
   const { data: drugsData }     = useDrugs();
   const { data: presData }      = usePrescriptions();
   const { data: presItemsData } = usePrescriptionItems();
@@ -180,7 +184,7 @@ export default function SimulationMode({ role }: Props) {
   );
 
   const pendingRequests = useMemo(
-    () => simAppointments.filter((a) => a.simStatus === "pending-doctor" && !a.doctor_id),
+    () => simAppointments.filter((a) => a.simStatus === "pending-doctor"),
     [simAppointments],
   );
 
@@ -328,7 +332,8 @@ export default function SimulationMode({ role }: Props) {
   // ── Prescription modal ────────────────────────────────────────────────────
   const openCreatePrescription = (apptId: string) => {
     setActivePressApptId(apptId);
-    setSelectedDrugIds([]);
+    setSelectedDrugIds([]);  // clear previous selection
+    setDrugSearch("");        // clear search
     setShowPressModal(true);
   };
 
@@ -644,7 +649,7 @@ export default function SimulationMode({ role }: Props) {
           initial={{ scale: 0.95, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 16 }}
           className="bg-card border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e: React.MouseEvent) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -770,7 +775,7 @@ export default function SimulationMode({ role }: Props) {
               initial={{ scale: 0.95, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 16 }}
               className="bg-card border border-border rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
             >
               {/* Header */}
               <div className="flex items-center justify-between">
@@ -897,7 +902,7 @@ export default function SimulationMode({ role }: Props) {
           initial={{ scale: 0.95, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 16 }}
           className="bg-card border border-border rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e: React.MouseEvent) => e.stopPropagation()}
         >
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -947,49 +952,97 @@ export default function SimulationMode({ role }: Props) {
 
           {/* Drug selection list */}
           <div className="space-y-2">
-            <p className="text-xs font-bold text-emerald uppercase tracking-widest">
-              Select Drugs {selectedDrugIds.length > 0 && `(${selectedDrugIds.length} selected)`}
-            </p>
-            <div className="max-h-56 overflow-y-auto pr-1 space-y-1.5">
-              {allDrugs.map((drug) => {
-                const sKey      = pressPet ? speciesKey(pressPet.type) : null;
-                const dose      = sKey ? (drug.dosage as any)?.[sKey] : null;
-                const sev       = sKey ? (drug.toxicity as any)?.[`severity${sKey.charAt(0).toUpperCase() + sKey.slice(1)}`] : undefined;
-                const isSelected = selectedDrugIds.includes(drug.drug_id);
-                return (
-                  <button
-                    key={drug.drug_id}
-                    onClick={() => toggleDrug(drug.drug_id)}
-                    className={`w-full text-left flex items-start gap-3 p-3 rounded-xl border transition-all text-xs ${
-                      isSelected
-                        ? "bg-emerald/10 border-emerald/30 shadow-sm"
-                        : "bg-white/3 border-white/5 hover:bg-white/5 hover:border-white/10"
-                    }`}
-                  >
-                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
-                      isSelected ? "bg-emerald border-emerald" : "border-muted-foreground/30"
-                    }`}>
-                      {isSelected && <CheckCircle2 className="w-3 h-3 text-white" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`font-bold ${isSelected ? "text-emerald" : ""}`}>{drug.name}</span>
-                        <span className="text-muted-foreground opacity-60">{drug.drugClass}</span>
-                        {sev && <ToxicityBadge severity={sev} />}
-                      </div>
-                      {dose && (
-                        <p className="text-muted-foreground mt-0.5">
-                          <span className="text-cyan font-semibold capitalize">{pressPet?.type} dose:</span> {dose}
-                        </p>
-                      )}
-                      {drug.indications?.length > 0 && (
-                        <p className="text-muted-foreground/60 truncate mt-0.5">{drug.indications.slice(0, 2).join(", ")}</p>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold text-emerald uppercase tracking-widest">
+                Select Drugs {selectedDrugIds.length > 0 && `(${selectedDrugIds.length} selected)`}
+              </p>
+              {selectedDrugIds.length > 0 && (
+                <button
+                  onClick={() => setSelectedDrugIds([])}
+                  className="text-[10px] text-muted-foreground hover:text-red-400 font-bold uppercase tracking-widest transition-colors"
+                >
+                  Clear all
+                </button>
+              )}
             </div>
+
+            {/* Search box */}
+            <div className="relative">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+              <input
+                type="text"
+                value={drugSearch}
+                onChange={(e) => setDrugSearch(e.target.value)}
+                placeholder="Search drugs by name or class…"
+                className="w-full pl-9 pr-3 py-2 rounded-xl bg-muted/30 border border-border text-xs placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald/40"
+              />
+              {drugSearch && (
+                <button
+                  onClick={() => setDrugSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            {/* Filtered drug list */}
+            {(() => {
+              const filtered = drugSearch.trim()
+                ? allDrugs.filter((d) =>
+                    d.name.toLowerCase().includes(drugSearch.toLowerCase()) ||
+                    d.drugClass.toLowerCase().includes(drugSearch.toLowerCase()),
+                  )
+                : allDrugs;
+              return (
+                <div className="max-h-52 overflow-y-auto pr-1 space-y-1.5 custom-scrollbar">
+                  {filtered.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-muted-foreground">
+                      No drugs matching “{drugSearch}”
+                    </div>
+                  ) : (
+                    filtered.map((drug) => {
+                      const sKey      = pressPet ? speciesKey(pressPet.type) : null;
+                      const dose      = sKey ? (drug.dosage as any)?.[sKey] : null;
+                      const sev       = sKey ? (drug.toxicity as any)?.[`severity${sKey.charAt(0).toUpperCase() + sKey.slice(1)}`] : undefined;
+                      const isSelected = selectedDrugIds.includes(drug.drug_id);
+                      return (
+                        <button
+                          key={drug.drug_id}
+                          onClick={() => toggleDrug(drug.drug_id)}
+                          className={`w-full text-left flex items-start gap-3 p-3 rounded-xl border transition-all text-xs ${
+                            isSelected
+                              ? "bg-emerald/10 border-emerald/30 shadow-sm"
+                              : "bg-white/3 border-white/5 hover:bg-white/5 hover:border-white/10"
+                          }`}
+                        >
+                          <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
+                            isSelected ? "bg-emerald border-emerald" : "border-muted-foreground/30"
+                          }`}>
+                            {isSelected && <CheckCircle2 className="w-3 h-3 text-white" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`font-bold ${isSelected ? "text-emerald" : ""}`}>{drug.name}</span>
+                              <span className="text-muted-foreground opacity-60">{drug.drugClass}</span>
+                              {sev && <ToxicityBadge severity={sev} />}
+                            </div>
+                            {dose && (
+                              <p className="text-muted-foreground mt-0.5">
+                                <span className="text-cyan font-semibold capitalize">{pressPet?.type} dose:</span> {dose}
+                              </p>
+                            )}
+                            {drug.indications?.length > 0 && (
+                              <p className="text-muted-foreground/60 truncate mt-0.5">{drug.indications.slice(0, 2).join(", ")}</p>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Per-drug detail cards for all selected drugs */}
