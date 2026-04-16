@@ -9,6 +9,7 @@ import {
   Search,
   Calendar,
   CheckCircle2,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
@@ -40,8 +41,13 @@ import {
 import { useVisits } from "@/app/_hooks/queries/use-visits";
 import { usePets } from "@/app/_hooks/queries/use-pets";
 import { useUsers } from "@/app/_hooks/queries/use-users";
+import { usePrescriptions } from "@/app/_hooks/queries/use-prescriptions";
+import { usePrescriptionItems } from "@/app/_hooks/queries/use-prescription-items";
+import { useDrugs } from "@/app/_hooks/queries/use-drugs";
 import { useAuth } from "@/app/_hooks/useAuth";
 import { useLang } from "@/app/_hooks/useLanguage";
+import { VisitDetailModal } from "@/app/dashboard/_components/VisitDetailModal";
+import type { Visit, Drug, Pet } from "@/app/_lib/types/models";
 
 type CaseItem = {
   id: string;
@@ -51,11 +57,13 @@ type CaseItem = {
   reason: string;
   date: string;
   status: string;
+  originalVisit: Visit;
 };
 
 export default function CasesPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [selectedCase, setSelectedCase] = React.useState<CaseItem | null>(null);
+  const [selectedVisitDetails, setSelectedVisitDetails] = React.useState<Visit | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [doctorFilter, setDoctorFilter] = React.useState("all");
   const { user } = useAuth();
@@ -65,6 +73,9 @@ export default function CasesPage() {
   const { data: visitsData } = useVisits();
   const { data: petsData } = usePets();
   const { data: usersData } = useUsers();
+  const { data: prescriptionsData } = usePrescriptions();
+  const { data: presItemsData } = usePrescriptionItems();
+  const { data: drugsData } = useDrugs();
 
   // Convert visits to case items and sort by date
   const cases: CaseItem[] = React.useMemo(() => {
@@ -89,10 +100,34 @@ export default function CasesPage() {
           reason: visit.reason || "Clinical Visit",
           date: visit.date || new Date().toISOString(),
           status: "Completed",
+          originalVisit: visit,
         };
       })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [visitsData, petsData, usersData]);
+
+  const prescriptionsList = prescriptionsData?.data || [];
+  const presItemsList = presItemsData?.data || [];
+  const drugsList = drugsData?.data || [];
+  const petsList = petsData?.data || [];
+  const usersList = usersData?.data || [];
+
+  const getPet = (id: string) => petsList.find((p: any) => p.pet_id === id);
+  const getUser = (id: string) => usersList.find((u: any) => u.user_id === id);
+
+  const getDrugsForVisit = (visit: Visit): { drug: Drug; dose: string }[] => {
+    if (!visit.prescription_id) return [];
+    const rx = prescriptionsList.find((p: any) => p.prescription_id === visit.prescription_id);
+    if (!rx || !rx.prescriptionItem_id) return [];
+    
+    const itemIds = rx.prescriptionItem_id.split(',');
+    const items = presItemsList.filter((pi: any) => itemIds.includes(pi.prescriptionItem_id));
+    
+    return items.map((item: any) => {
+      const drug = drugsList.find((d: any) => d.drug_id === item.drug_id);
+      return drug ? { drug, dose: item.drugDose } : null;
+    }).filter(Boolean) as { drug: Drug; dose: string }[];
+  };
 
   const doctors = React.useMemo(() => {
     const users = usersData?.data || [];
@@ -128,8 +163,6 @@ export default function CasesPage() {
     const allUsers = usersData?.data || [];
     return allUsers.filter((u: any) => u.role === "client");
   }, [usersData]);
-
-  const petsList = petsData?.data || [];
 
 
   return (
@@ -276,6 +309,13 @@ export default function CasesPage() {
                             {t("case_operations")}
                           </DropdownMenuLabel>
                           <DropdownMenuItem
+                            onClick={() => setSelectedVisitDetails(caseItem.originalVisit)}
+                            className="rounded-xl py-3 focus:bg-cyan/10 focus:text-cyan-400 cursor-pointer font-bold flex items-center gap-2"
+                          >
+                            <Eye className="w-4 h-4" />
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
                             onClick={() => handleOpenForm(caseItem)}
                             className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2"
                           >
@@ -406,6 +446,15 @@ export default function CasesPage() {
           </div>
         </div>
       </DashboardForm>
+
+      <VisitDetailModal
+        visit={selectedVisitDetails}
+        onClose={() => setSelectedVisitDetails(null)}
+        getPet={getPet}
+        getUser={getUser}
+        getDrugsForVisit={getDrugsForVisit}
+        isClient={user?.role === "client"}
+      />
     </div>
   );
 }

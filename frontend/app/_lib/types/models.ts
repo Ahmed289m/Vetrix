@@ -212,6 +212,8 @@ export interface PrescriptionCreate {
   pet_id: string;
   /** Pass drug_id to auto-create the prescription item from the drug's dosage info */
   drug_id?: string;
+  /** Pass drug_ids to auto-create multiple items on a single prescription */
+  drug_ids?: string[];
   /** Or pass an existing prescriptionItem_id directly */
   prescriptionItem_id?: string;
 }

@@ -60,40 +60,46 @@ class PrescriptionService:
         # auto-create a PrescriptionItem so the doctor doesn't have to enter
         # duplicate dose information.
         drug_id = getattr(request, "drug_id", None)
+        drug_ids = getattr(request, "drug_ids", None)
         prescriptionItem_id = getattr(request, "prescriptionItem_id", None)
 
-        if drug_id and not prescriptionItem_id:
-            drug = await self.drug_repository.get_by_id(drug_id)
-            if not drug:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Drug not found",
+        all_drug_ids = drug_ids if drug_ids else ([drug_id] if drug_id else [])
+
+        if all_drug_ids and not prescriptionItem_id:
+            created_item_ids = []
+            for d_id in all_drug_ids:
+                drug = await self.drug_repository.get_by_id(d_id)
+                if not drug:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Drug not found: {d_id}",
+                    )
+
+                # Build a human-readable dose string from the drug's dosage dict.
+                dosage_dict = drug.get("dosage", {})
+                if isinstance(dosage_dict, dict):
+                    dose_str = " | ".join(f"{k}: {v}" for k, v in dosage_dict.items()) or "See drug info"
+                else:
+                    dose_str = str(dosage_dict) if dosage_dict else "See drug info"
+
+                # Create the prescription item
+                item_id = generate_prefixed_id("prescriptionItem")
+                item_model = PrescriptionItem(
+                    prescriptionItem_id=item_id,
+                    drug_id=d_id,
+                    drugDose=dose_str,
+                    clinic_id=clinic_id,
                 )
-
-            # Build a human-readable dose string from the drug's dosage dict.
-            # e.g. {"dogs": "5mg/kg", "cats": "2.5mg/kg"} → "dogs: 5mg/kg | cats: 2.5mg/kg"
-            dosage_dict = drug.get("dosage", {})
-            if isinstance(dosage_dict, dict):
-                dose_str = " | ".join(f"{k}: {v}" for k, v in dosage_dict.items()) or "See drug info"
-            else:
-                dose_str = str(dosage_dict) if dosage_dict else "See drug info"
-
-            # Create the prescription item
-            item_id = generate_prefixed_id("prescriptionItem")
-            item_model = PrescriptionItem(
-                prescriptionItem_id=item_id,
-                drug_id=drug_id,
-                drugDose=dose_str,
-                clinic_id=clinic_id,
-            )
-            item_payload = normalize_for_mongo(item_model.model_dump())
-            await self.prescription_item_repository.create(item_payload)
-            prescriptionItem_id = item_id
+                item_payload = normalize_for_mongo(item_model.model_dump())
+                await self.prescription_item_repository.create(item_payload)
+                created_item_ids.append(item_id)
+            
+            prescriptionItem_id = ",".join(created_item_ids)
 
         if not prescriptionItem_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Either drug_id or prescriptionItem_id is required",
+                detail="Either drug_id(s) or prescriptionItem_id is required",
             )
 
         payload = {

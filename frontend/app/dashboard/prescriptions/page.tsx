@@ -110,15 +110,14 @@ export default function PrescriptionsPage() {
   };
 
   /** Resolve drug info for a prescription via its prescription item */
-  const getDrugForRx = (rx: Prescription): Drug | undefined => {
-    const item = rxItems.find((i) => i.prescriptionItem_id === rx.prescriptionItem_id);
-    if (!item) return undefined;
-    return drugs.find((d) => d.drug_id === item.drug_id);
-  };
-
-  const getDrugDose = (rx: Prescription): string => {
-    const item = rxItems.find((i) => i.prescriptionItem_id === rx.prescriptionItem_id);
-    return item?.drugDose || "—";
+  const getDrugsForRx = (rx: Prescription): { drug: Drug; dose: string }[] => {
+    if (!rx.prescriptionItem_id) return [];
+    const itemIds = rx.prescriptionItem_id.split(',');
+    const items = rxItems.filter((i) => itemIds.includes(i.prescriptionItem_id));
+    return items.map((item) => {
+      const drug = drugs.find((d) => d.drug_id === item.drug_id);
+      return drug ? { drug, dose: item.drugDose } : null;
+    }).filter(Boolean) as { drug: Drug; dose: string }[];
   };
 
   // ── Filter / search ───────────────────────────────────────────────────────
@@ -127,13 +126,13 @@ export default function PrescriptionsPage() {
     return prescriptions.filter((rx) => {
       const effectiveStatus = (rx.status || "active").toLowerCase();
       const matchesStatus = statusFilter === "all" || effectiveStatus === statusFilter;
-      const drug = getDrugForRx(rx);
+      const pDrugs = getDrugsForRx(rx);
       const matchesSearch =
         q.length === 0 ||
         rx.prescription_id.toLowerCase().includes(q) ||
         getPetName(rx.pet_id).toLowerCase().includes(q) ||
         getClientName(rx.client_id).toLowerCase().includes(q) ||
-        (drug?.name || "").toLowerCase().includes(q);
+        pDrugs.some(({ drug }) => drug.name.toLowerCase().includes(q));
       return matchesStatus && matchesSearch;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -230,12 +229,11 @@ export default function PrescriptionsPage() {
           prescriptions={filteredPrescriptions}
           rxData={rxData}
           rxLoading={rxLoading}
-          getDrugForRx={getDrugForRx}
-          getDrugDose={getDrugDose}
+          getDrugsForRx={getDrugsForRx}
           getPetName={getPetName}
           onViewDetails={(rx) => {
             setSelectedRx(rx);
-            setSelectedDrug(getDrugForRx(rx) || null);
+            // Pass all drugs array? wait, selectedDrug was singular. We will ignore selectedDrug in client modal shortly.
           }}
           t={t}
         />
@@ -299,12 +297,12 @@ export default function PrescriptionsPage() {
                     </TableRow>
                   ) : (
                     filteredPrescriptions.map((rx) => {
-                      const drug = getDrugForRx(rx);
+                      const pDrugs = getDrugsForRx(rx);
                       return (
                         <TableRow
                           key={rx.prescription_id}
                           className="border-b border-white/5 hover:bg-white/5 transition-colors group/row cursor-pointer"
-                          onClick={() => { setSelectedRx(rx); setSelectedDrug(drug || null); }}
+                          onClick={() => { setSelectedRx(rx); }}
                         >
                           <TableCell className="py-6 px-8">
                             <div className="flex flex-col gap-1">
@@ -321,10 +319,10 @@ export default function PrescriptionsPage() {
                               <Pill className="w-4 h-4 text-emerald shrink-0" />
                               <div className="flex flex-col gap-0.5">
                                 <span className="text-sm font-black uppercase tracking-tight text-foreground/80">
-                                  {drug?.name || "Unknown Drug"}
+                                  {pDrugs.length > 0 ? (pDrugs.length === 1 ? pDrugs[0].drug.name : `${pDrugs[0].drug.name} + ${pDrugs.length - 1} more`) : "Unknown Drug"}
                                 </span>
                                 <span className="text-[10px] text-muted-foreground font-medium">
-                                  {drug?.drugClass || ""}
+                                  {pDrugs.length > 0 ? pDrugs[0].drug.drugClass : ""}
                                 </span>
                               </div>
                             </div>
@@ -365,7 +363,7 @@ export default function PrescriptionsPage() {
                                   {t("pharmacy_actions")}
                                 </DropdownMenuLabel>
                                 <DropdownMenuItem
-                                  onClick={() => { setSelectedRx(rx); setSelectedDrug(drug || null); }}
+                                  onClick={() => setSelectedRx(rx)}
                                   className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2"
                                 >
                                   <FileText className="w-4 h-4" /> {t("view_details") || "View Details"}
@@ -427,76 +425,90 @@ export default function PrescriptionsPage() {
                 </button>
               </div>
 
-              {/* Drug Info Card */}
-              {selectedDrug ? (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald/5 border border-emerald/10">
-                    <div className="w-10 h-10 rounded-xl bg-emerald/10 flex items-center justify-center shrink-0">
-                      <Pill className="w-5 h-5 text-emerald" />
+              {/* Drug Info Cards */}
+              {(() => {
+                const rxDrugs = getDrugsForRx(selectedRx);
+                if (rxDrugs.length === 0) {
+                  return (
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/5 text-sm text-muted-foreground">
+                      Drug details not found for this prescription.
                     </div>
-                    <div>
-                      <p className="font-black text-foreground">{selectedDrug.name}</p>
-                      <p className="text-xs text-muted-foreground">{selectedDrug.drugClass}</p>
-                    </div>
-                    <Badge className="ml-auto rounded-full px-3 py-1 text-[10px] font-black uppercase bg-emerald/10 text-emerald border-none">
-                      {selectedRx.status || "active"}
-                    </Badge>
-                  </div>
-
-                  {/* Dosage */}
-                  <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-2">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                      <Activity className="w-3.5 h-3.5" /> Dosage
+                  );
+                }
+                return (
+                  <div className="space-y-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald flex items-center gap-1.5">
+                      <Pill className="w-3.5 h-3.5" /> Prescribed Medications ({rxDrugs.length})
                     </p>
-                    <div className="space-y-1">
-                      {Object.entries(selectedDrug.dosage || {}).map(([k, v]) => (
-                        <div key={k} className="flex justify-between text-sm">
-                          <span className="text-muted-foreground capitalize">{k}</span>
-                          <span className="font-bold text-emerald">{formatDose(v)}</span>
+                    
+                    {rxDrugs.map(({ drug, dose }, idx) => (
+                      <div key={idx} className="space-y-4 border border-emerald/10 rounded-2xl p-4 bg-emerald/5">
+                        <div className="flex items-center gap-3 rounded-2xl">
+                          <div className="w-10 h-10 rounded-xl bg-emerald/10 flex items-center justify-center shrink-0">
+                            <Pill className="w-5 h-5 text-emerald" />
+                          </div>
+                          <div>
+                            <p className="font-black text-foreground">{drug.name}</p>
+                            <p className="text-xs text-muted-foreground">{drug.drugClass}</p>
+                          </div>
+                          <Badge className="ml-auto rounded-full px-3 py-1 text-[10px] font-black uppercase bg-emerald/10 text-emerald border-none">
+                            {selectedRx.status || "active"}
+                          </Badge>
                         </div>
-                      ))}
-                    </div>
+
+                        {/* Dosage */}
+                        <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-2">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                            <Activity className="w-3.5 h-3.5" /> General Dosage
+                          </p>
+                          <div className="space-y-1">
+                            {Object.entries(drug.dosage || {}).map(([k, v]) => (
+                              <div key={k} className="flex justify-between text-sm">
+                                <span className="text-muted-foreground capitalize">{k}</span>
+                                <span className="font-bold text-emerald">{formatDose(v)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Indications */}
+                        {drug.indications?.length > 0 && (
+                          <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-2">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                              <Info className="w-3.5 h-3.5" /> Indications
+                            </p>
+                            <ul className="space-y-1">
+                              {drug.indications.map((ind, i) => (
+                                <li key={i} className="text-sm text-foreground/80 flex items-start gap-2">
+                                  <ChevronRight className="w-3.5 h-3.5 text-emerald shrink-0 mt-0.5" />
+                                  {ind}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Side Effects */}
+                        {drug.sideEffects?.length > 0 && (
+                          <div className="p-4 rounded-2xl bg-orange-500/5 border border-orange-500/10 space-y-2">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-orange-400 flex items-center gap-1.5">
+                              <AlertCircle className="w-3.5 h-3.5" /> Side Effects
+                            </p>
+                            <ul className="space-y-1">
+                              {drug.sideEffects.map((se, i) => (
+                                <li key={i} className="text-sm text-foreground/80 flex items-start gap-2">
+                                  <ChevronRight className="w-3.5 h-3.5 text-orange-400 shrink-0 mt-0.5" />
+                                  {se}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-
-                  {/* Indications */}
-                  {selectedDrug.indications?.length > 0 && (
-                    <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-2">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                        <Info className="w-3.5 h-3.5" /> Indications
-                      </p>
-                      <ul className="space-y-1">
-                        {selectedDrug.indications.map((ind, i) => (
-                          <li key={i} className="text-sm text-foreground/80 flex items-start gap-2">
-                            <ChevronRight className="w-3.5 h-3.5 text-emerald shrink-0 mt-0.5" />
-                            {ind}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {/* Side Effects */}
-                  {selectedDrug.sideEffects?.length > 0 && (
-                    <div className="p-4 rounded-2xl bg-orange-500/5 border border-orange-500/10 space-y-2">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-orange-400 flex items-center gap-1.5">
-                        <AlertCircle className="w-3.5 h-3.5" /> Side Effects
-                      </p>
-                      <ul className="space-y-1">
-                        {selectedDrug.sideEffects.map((se, i) => (
-                          <li key={i} className="text-sm text-foreground/80 flex items-start gap-2">
-                            <ChevronRight className="w-3.5 h-3.5 text-orange-400 shrink-0 mt-0.5" />
-                            {se}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="p-4 rounded-2xl bg-white/5 border border-white/5 text-sm text-muted-foreground">
-                  Drug details not found for this prescription.
-                </div>
-              )}
+                );
+              })()}
             </motion.div>
           </motion.div>
         )}
@@ -623,14 +635,11 @@ export default function PrescriptionsPage() {
   );
 }
 
-// ── CLIENT card view component ─────────────────────────────────────────────
-
 function ClientPrescriptionView({
   prescriptions,
   rxData,
   rxLoading,
-  getDrugForRx,
-  getDrugDose,
+  getDrugsForRx,
   getPetName,
   onViewDetails,
   t,
@@ -638,8 +647,7 @@ function ClientPrescriptionView({
   prescriptions: Prescription[];
   rxData: unknown;
   rxLoading: boolean;
-  getDrugForRx: (rx: Prescription) => Drug | undefined;
-  getDrugDose: (rx: Prescription) => string;
+  getDrugsForRx: (rx: Prescription) => { drug: Drug; dose: string }[];
   getPetName: (id: string) => string;
   onViewDetails: (rx: Prescription) => void;
   t: (key: string) => string;
@@ -670,7 +678,7 @@ function ClientPrescriptionView({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {prescriptions.map((rx, i) => {
-        const drug = getDrugForRx(rx);
+        const pDrugs = getDrugsForRx(rx);
         return (
           <motion.div
             key={rx.prescription_id}
@@ -697,30 +705,20 @@ function ClientPrescriptionView({
               </Badge>
             </div>
 
-            {/* Drug name */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald/10 flex items-center justify-center shrink-0">
-                <Pill className="w-5 h-5 text-emerald" />
-              </div>
-              <div className="min-w-0">
-                <p className="font-black text-foreground truncate">{drug?.name || "Unknown Drug"}</p>
-                <p className="text-xs text-muted-foreground truncate">{drug?.drugClass || "—"}</p>
-              </div>
-            </div>
-
-            {/* Dosage snippet */}
-            {drug?.dosage && Object.keys(drug.dosage).length > 0 && (
-              <div className="p-3 rounded-xl bg-white/5 border border-white/5">
-                <p className="text-[10px] font-black uppercase text-muted-foreground/60 mb-1.5">Dosage</p>
-                <div className="space-y-0.5">
-                  {Object.entries(drug.dosage).slice(0, 2).map(([k, v]) => (
-                    <div key={k} className="flex justify-between text-xs">
-                      <span className="text-muted-foreground capitalize">{k}</span>
-                      <span className="font-bold text-emerald">{formatDose(v)}</span>
-                    </div>
-                  ))}
+            {/* Drugs snippet */}
+            {pDrugs.slice(0, 2).map(({ drug, dose }, idx) => (
+              <div key={idx} className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald/10 flex items-center justify-center shrink-0">
+                  <Pill className="w-5 h-5 text-emerald" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-black text-foreground truncate">{drug.name}</p>
+                  <p className="text-xs text-emerald truncate">Dose: {dose !== "See drug info" ? dose : "View details"}</p>
                 </div>
               </div>
+            ))}
+            {pDrugs.length > 2 && (
+              <p className="text-xs text-muted-foreground font-bold pl-2">+{pDrugs.length - 2} more medications</p>
             )}
 
             {/* Footer */}

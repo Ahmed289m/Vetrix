@@ -5,6 +5,7 @@ class PrescriptionCreate(BaseModel):
     client_id: str
     pet_id: str
     drug_id: str | None = None          # Auto-creates a PrescriptionItem from the drug's dosage
+    drug_ids: list[str] | None = None   # Auto-creates multiple PrescriptionItems
     prescriptionItem_id: str | None = None  # OR supply an existing item directly
     # clinic_id is set automatically from current_user
 

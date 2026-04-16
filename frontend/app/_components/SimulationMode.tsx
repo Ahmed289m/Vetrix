@@ -348,54 +348,39 @@ export default function SimulationMode({ role }: Props) {
     });
   };
 
-  const handleSavePrescriptions = async () => {
+  const handleSavePrescriptions = () => {
     const appt = simAppointments.find((a) => a.appointment_id === activePressApptId);
     if (!appt) return;
     if (selectedDrugIds.length === 0) { toast.warning("Select at least one drug"); return; }
 
-    // ── Create ALL prescriptions in PARALLEL ──
-    const results = await Promise.allSettled(
-      selectedDrugIds.map(
-        (drugId) =>
-          new Promise<string | null>((resolve) => {
-            createPrescription.mutate(
-              { client_id: appt.clientId, pet_id: appt.petId, drug_id: drugId } satisfies PrescriptionCreate,
-              {
-                onSuccess: (res: any) => resolve(res?.data?.prescription_id ?? null),
-                onError:   () => resolve(null),
-              },
-            );
-          }),
-      ),
-    );
-
-    const created = results
-      .filter((r): r is PromiseFulfilledResult<string> => r.status === "fulfilled" && !!r.value)
-      .map((r) => r.value);
-
-    if (created.length > 0) {
-      setSessionRxIds((prev) => new Set([...prev, ...created]));
-      const failed = selectedDrugIds.length - created.length;
-      if (failed === 0) {
-        toast.success(`${created.length} drug${created.length > 1 ? "s" : ""} prescribed.`);
-      } else {
-        toast.warning(`${created.length} prescribed, ${failed} failed.`);
+    // ── Create A SINGLE prescription with all selected drugs ──
+    createPrescription.mutate(
+      { client_id: appt.clientId, pet_id: appt.petId, drug_ids: selectedDrugIds } satisfies PrescriptionCreate,
+      {
+        onSuccess: (res: any) => {
+          const rxId = res?.data?.prescription_id;
+          if (rxId) {
+            setSessionRxIds((prev) => new Set([...prev, rxId]));
+            toast.success(`Prescription issued with ${selectedDrugIds.length} drug${selectedDrugIds.length > 1 ? "s" : ""}.`);
+            
+            // Auto-open visit creation modal pre-linked to the single prescription
+            setShowPressModal(false);
+            setSelectedDrugIds([]);
+            setDrugSearch("");
+            setVisitMode("create");
+            setActiveVisitApptId(activePressApptId);
+            setEditingVisitId("");
+            setVisitNotes("");
+            setVisitPrescriptionId(rxId);
+            setShowVisitModal(true);
+          }
+        },
+        onError: () => {
+          toast.error("Failed to create prescription.");
+          setShowPressModal(false);
+        },
       }
-      // Auto-open visit creation modal pre-linked to the first prescription
-      setShowPressModal(false);
-      setSelectedDrugIds([]);
-      setDrugSearch("");
-      // Pre-set prescription ID and open visit modal
-      setVisitMode("create");
-      setActiveVisitApptId(activePressApptId);
-      setEditingVisitId("");
-      setVisitNotes("");
-      setVisitPrescriptionId(created[0]); // link to first created prescription
-      setShowVisitModal(true);
-    } else {
-      toast.error("All prescriptions failed to save.");
-      setShowPressModal(false);
-    }
+    );
   };
 
   const toggleDrug = (drugId: string) => {
