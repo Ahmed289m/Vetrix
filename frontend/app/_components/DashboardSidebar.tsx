@@ -81,7 +81,7 @@ const navItems: NavItem[] = [
     href: "/dashboard/visits",
     labelKey: "visits",
     icon: Stethoscope,
-    roles: ["client"],
+    roles: ["doctor", "staff", "client"],
   },
   {
     href: "/dashboard/appointments",

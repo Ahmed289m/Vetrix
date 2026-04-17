@@ -28,6 +28,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/app/_components/ui/select";
+import { fmtDateTime } from "@/app/dashboard/_components/VisitDetailModal";
+import {
+  filterByDateRange,
+  type DateRangeFilter,
+} from "@/app/_lib/utils/date-filter";
 import { useVisits, useDeleteVisit } from "@/app/_hooks/queries/use-visits";
 import { usePets } from "@/app/_hooks/queries/use-pets";
 import { useUsers } from "@/app/_hooks/queries/use-users";
@@ -73,7 +78,7 @@ export default function CasesPage() {
   const [selectedVisitDetails, setSelectedVisitDetails] =
     React.useState<Visit | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [doctorFilter, setDoctorFilter] = React.useState("all");
+  const [dateFilter, setDateFilter] = React.useState<DateRangeFilter>("all");
   const { user } = useAuth();
   const { t } = useLang();
 
@@ -119,6 +124,7 @@ export default function CasesPage() {
   const drugsList: Drug[] = drugsData?.data ?? [];
   const petsList: Pet[] = petsData?.data ?? [];
   const usersList: UserModel[] = usersData?.data ?? [];
+  const doctors = usersList.filter((u) => u.role === "doctor");
 
   const getPet = (id: string) => petsList.find((p) => p.pet_id === id);
   const getUser = (id: string) => usersList.find((u) => u.user_id === id);
@@ -148,25 +154,19 @@ export default function CasesPage() {
     return result;
   };
 
-  const doctors = React.useMemo(() => {
-    const users: UserModel[] = usersData?.data ?? [];
-    return users.filter((u) => u.role === "doctor");
-  }, [usersData]);
-
   const filteredCases = React.useMemo(() => {
+    const byDate = filterByDateRange(cases, "date", dateFilter);
     const q = searchQuery.trim().toLowerCase();
-    return cases.filter((caseItem) => {
-      const matchesDoctor =
-        doctorFilter === "all" || caseItem.doctorName === doctorFilter;
+    return byDate.filter((caseItem) => {
       const matchesSearch =
         q.length === 0 ||
         caseItem.id.toLowerCase().includes(q) ||
         caseItem.patientName.toLowerCase().includes(q) ||
         caseItem.ownerName.toLowerCase().includes(q) ||
         caseItem.reason.toLowerCase().includes(q);
-      return matchesDoctor && matchesSearch;
+      return matchesSearch;
     });
-  }, [cases, searchQuery, doctorFilter]);
+  }, [cases, dateFilter, searchQuery]);
 
   const handleOpenForm = (caseItem: CaseItem | null = null) => {
     setSelectedCase(caseItem);
@@ -242,17 +242,18 @@ export default function CasesPage() {
             className="pl-12 h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
           />
         </div>
-        <Select value={doctorFilter} onValueChange={setDoctorFilter}>
+        <Select
+          value={dateFilter}
+          onValueChange={(value) => setDateFilter(value as DateRangeFilter)}
+        >
           <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
-            <SelectValue placeholder="Doctor" />
+            <SelectValue placeholder={t("visit_date")} />
           </SelectTrigger>
           <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5">
-            <SelectItem value="all">{t("all_doctors")}</SelectItem>
-            {doctors.map((doc) => (
-              <SelectItem key={doc.user_id} value={doc.fullname}>
-                {doc.fullname}
-              </SelectItem>
-            ))}
+            <SelectItem value="today">{t("today_filter")}</SelectItem>
+            <SelectItem value="month">{t("this_month")}</SelectItem>
+            <SelectItem value="year">{t("this_year")}</SelectItem>
+            <SelectItem value="all">{t("all_time")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -326,11 +327,7 @@ export default function CasesPage() {
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-muted-foreground/60" />
                         <span className="text-sm font-bold text-muted-foreground/80">
-                          {new Date(caseItem.date).toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          })}
+                          {fmtDateTime(caseItem.date)}
                         </span>
                       </div>
                     </TableCell>
