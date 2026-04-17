@@ -47,7 +47,7 @@ export function getDateRange(filter: DateRangeFilter): {
 /**
  * Filter items by date field
  */
-export function filterByDateRange<T extends Record<string, unknown>>(
+export function filterByDateRange<T extends object>(
   items: T[],
   dateField: keyof T,
   filter: DateRangeFilter,
@@ -63,7 +63,7 @@ export function filterByDateRange<T extends Record<string, unknown>>(
 /**
  * Sort items by date field
  */
-export function sortByDate<T extends Record<string, unknown>>(
+export function sortByDate<T extends object>(
   items: T[],
   dateField: keyof T,
   order: "asc" | "desc" = "desc",
