@@ -18,7 +18,6 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard,
-  Hash,
   Calculator,
   UserPlus,
   Store,
@@ -71,12 +70,6 @@ const navItems: NavItem[] = [
     labelKey: "patients",
     icon: Heart,
     roles: ["staff", "owner", "client"],
-  },
-  {
-    href: "/dashboard/cases",
-    labelKey: "cases",
-    icon: Hash,
-    roles: ["doctor", "staff", "owner"],
   },
   {
     href: "/dashboard/visits",
