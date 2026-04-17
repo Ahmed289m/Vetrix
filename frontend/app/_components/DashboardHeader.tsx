@@ -10,22 +10,15 @@ import {
   TooltipTrigger,
 } from "@/app/_components/ui/tooltip";
 import { useTheme } from "@/app/_hooks/useTheme";
-import { AgencyModeToggle, UiMode } from "@/app/_components/AgencyModeToggle";
 import { useAuth } from "@/app/_hooks/useAuth";
 
 type Role = "doctor" | "staff" | "admin" | "owner" | "client";
 
 interface DashboardHeaderProps {
   role: Role;
-  uiMode: UiMode;
-  onUiModeChange: (mode: UiMode) => void;
 }
 
-export function DashboardHeader({
-  role,
-  uiMode,
-  onUiModeChange,
-}: DashboardHeaderProps) {
+export function DashboardHeader({ role }: DashboardHeaderProps) {
   const { isDark, toggle } = useTheme();
   const { t, lang, setLang } = useLang();
   const { user } = useAuth();
@@ -51,71 +44,70 @@ export function DashboardHeader({
   };
 
   return (
-    <header className="sticky top-0 z-20 px-3 sm:px-6 py-3 flex items-center gap-2 sm:gap-3 bg-background/40 backdrop-blur-md border-b border-border/10">
-      {/* Mobile menu toggle */}
-      <div className="flex items-center gap-2 lg:hidden shrink-0">
-        <SidebarTrigger className="w-10 h-10 rounded-xl bg-muted/20 border border-border/20 flex items-center justify-center text-foreground hover:bg-muted/30 transition-colors" />
-      </div>
+    <header className="sticky top-0 z-20 border-b border-border/20 bg-background/65 backdrop-blur-xl">
+      <div className="px-3 sm:px-5 lg:px-7 py-3 sm:py-4">
+        <div className="rounded-2xl border border-border/25 bg-linear-to-r from-white/[0.035] via-white/2 to-transparent shadow-[0_8px_24px_-20px_rgba(16,185,129,0.45)] px-3 sm:px-4 py-2.5 sm:py-3">
+          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 lg:hidden shrink-0">
+              <SidebarTrigger className="w-10 h-10 rounded-xl bg-muted/30 border border-border/30 flex items-center justify-center text-foreground hover:bg-muted/40 transition-colors" />
+            </div>
 
-      <div className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:gap-3 ml-auto">
-        <TooltipProvider>
-          {/* Theme toggle */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={toggleTheme}
-                className="w-10 h-10 rounded-xl bg-muted/20 border border-border/10 flex items-center justify-center text-muted-foreground hover:text-emerald hover:bg-emerald/5 hover:border-emerald/20 transition-colors duration-200 shadow-sm
-                transform hover:scale-[1.05] active:scale-[0.95]"
-              >
-                {isDark ? (
-                  <Sun className="w-4.5 h-4.5" />
-                ) : (
-                  <Moon className="w-4.5 h-4.5" />
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent className="bg-popover border-border/10 text-xs font-bold px-3 py-1.5 rounded-lg shadow-xl">
-              {t("toggle_theme")}
-            </TooltipContent>
-          </Tooltip>
+            <div className="min-w-0">
+              <p className="truncate text-sm sm:text-base font-black tracking-tight text-foreground">
+                {displayName}
+              </p>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] sm:text-xs text-muted-foreground">
+                <span className="font-bold uppercase tracking-wider">
+                  {displayRole}
+                </span>
+                <span className="opacity-40">•</span>
+                <span className="truncate max-w-[40vw] sm:max-w-[24rem]">
+                  {displayClinic}
+                </span>
+              </div>
+            </div>
 
-          <AgencyModeToggle mode={uiMode} onChange={onUiModeChange} compact />
+            <div className="flex items-center gap-2 sm:gap-2.5 justify-self-end">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={toggleTheme}
+                      className="w-10 h-10 rounded-xl bg-muted/30 border border-border/25 flex items-center justify-center text-muted-foreground hover:text-emerald hover:bg-emerald/5 hover:border-emerald/25 transition-colors duration-200"
+                    >
+                      {isDark ? (
+                        <Sun className="w-4.5 h-4.5" />
+                      ) : (
+                        <Moon className="w-4.5 h-4.5" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-popover border-border/10 text-xs font-bold px-3 py-1.5 rounded-lg shadow-xl">
+                    {t("toggle_theme")}
+                  </TooltipContent>
+                </Tooltip>
 
-          {/* Settings */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                className="w-10 h-10 rounded-xl bg-muted/20 border border-border/10 flex items-center justify-center text-muted-foreground hover:text-emerald hover:bg-emerald/5 hover:border-emerald/20 transition-colors duration-300 shadow-sm"
-                onClick={toggleLang}
-              >
-                <Languages className="w-4.5 h-4.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent className="bg-popover border-border/10 text-xs font-bold px-3 py-1.5 rounded-lg shadow-xl">
-              {lang === "ar" ? t("switch_to_en") : t("switch_to_ar")}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      className="w-10 h-10 rounded-xl bg-muted/30 border border-border/25 flex items-center justify-center text-muted-foreground hover:text-emerald hover:bg-emerald/5 hover:border-emerald/25 transition-colors duration-200"
+                      onClick={toggleLang}
+                    >
+                      <Languages className="w-4.5 h-4.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-popover border-border/10 text-xs font-bold px-3 py-1.5 rounded-lg shadow-xl">
+                    {lang === "ar" ? t("switch_to_en") : t("switch_to_ar")}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
-        <div className="w-px h-6 bg-border/20 mx-0.5 hidden md:block" />
-
-        {/* User profile summary */}
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3 pl-0 sm:pl-1 cursor-pointer group transition-transform duration-200 hover:translate-x-0.5">
-          <div className="min-w-0 text-right">
-            <p className="truncate text-xs font-black capitalize leading-none group-hover:text-emerald transition-colors max-w-[34vw] sm:max-w-55">
-              {displayName}
-            </p>
-            <p className="text-[10px] text-muted-foreground/60 mt-1 font-bold uppercase tracking-wider truncate max-w-[34vw] sm:max-w-55">
-              {displayRole}
-            </p>
-            <p className="hidden sm:block text-[10px] text-muted-foreground/60 mt-1 font-medium tracking-wide truncate max-w-55">
-              {displayClinic}
-            </p>
-          </div>
-          <div className="relative shrink-0">
-            <div className="absolute -inset-0.5 bg-linear-to-tr from-emerald to-cyan rounded-xl blur opacity-0 group-hover:opacity-40 transition duration-300" />
-            <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl gradient-emerald-cyan flex items-center justify-center text-[11px] font-black text-white uppercase shadow-md leading-none transform group-hover:scale-105 transition-transform">
-              {(displayName[0] || "U").toUpperCase()}
+              <div className="relative shrink-0">
+                <div className="absolute -inset-0.5 bg-linear-to-tr from-emerald to-cyan rounded-xl blur opacity-30" />
+                <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl gradient-emerald-cyan flex items-center justify-center text-[11px] sm:text-xs font-black text-white uppercase shadow-md leading-none">
+                  {(displayName[0] || "U").toUpperCase()}
+                </div>
+              </div>
             </div>
           </div>
         </div>

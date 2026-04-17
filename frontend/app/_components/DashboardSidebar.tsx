@@ -20,7 +20,6 @@ import {
   LayoutDashboard,
   Hash,
   Calculator,
-  FileText,
   UserPlus,
   Store,
   Heart,
@@ -89,12 +88,6 @@ const navItems: NavItem[] = [
     labelKey: "appointments",
     icon: Calendar,
     roles: ["staff", "client"],
-  },
-  {
-    href: "/dashboard/prescriptions",
-    labelKey: "prescriptions",
-    icon: FileText,
-    roles: ["doctor", "staff"],
   },
   {
     href: "/dashboard/calculators",

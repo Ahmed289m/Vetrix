@@ -308,8 +308,8 @@ export default function VisitsPage() {
           </SelectTrigger>
           <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5">
             <SelectItem value="today">{t("today_filter")}</SelectItem>
-            <SelectItem value="week">{t("this_week")}</SelectItem>
             <SelectItem value="month">{t("this_month")}</SelectItem>
+            <SelectItem value="year">{t("this_year")}</SelectItem>
             <SelectItem value="all">{t("all_time")}</SelectItem>
           </SelectContent>
         </Select>

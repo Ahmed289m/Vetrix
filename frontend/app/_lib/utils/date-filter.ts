@@ -2,7 +2,15 @@
  * Date filtering utilities for sorting and filtering data by date ranges
  */
 
-export type DateRangeFilter = "today" | "week" | "month" | "all";
+export type DateRangeFilter = "today" | "week" | "month" | "year" | "all";
+
+function toDate(value: unknown): Date {
+  if (value instanceof Date) return value;
+  if (typeof value === "string" || typeof value === "number") {
+    return new Date(value);
+  }
+  return new Date(NaN);
+}
 
 /**
  * Get date range for filtering
@@ -25,6 +33,9 @@ export function getDateRange(filter: DateRangeFilter): {
     case "month":
       start.setMonth(end.getMonth() - 1);
       break;
+    case "year":
+      start.setFullYear(end.getFullYear() - 1);
+      break;
     case "all":
       start.setFullYear(start.getFullYear() - 10);
       break;
@@ -36,7 +47,7 @@ export function getDateRange(filter: DateRangeFilter): {
 /**
  * Filter items by date field
  */
-export function filterByDateRange<T extends Record<string, any>>(
+export function filterByDateRange<T extends Record<string, unknown>>(
   items: T[],
   dateField: keyof T,
   filter: DateRangeFilter,
@@ -44,7 +55,7 @@ export function filterByDateRange<T extends Record<string, any>>(
   const { start, end } = getDateRange(filter);
 
   return items.filter((item) => {
-    const date = new Date(item[dateField]);
+    const date = toDate(item[dateField]);
     return date >= start && date <= end;
   });
 }
@@ -52,14 +63,14 @@ export function filterByDateRange<T extends Record<string, any>>(
 /**
  * Sort items by date field
  */
-export function sortByDate<T extends Record<string, any>>(
+export function sortByDate<T extends Record<string, unknown>>(
   items: T[],
   dateField: keyof T,
   order: "asc" | "desc" = "desc",
 ): T[] {
   return [...items].sort((a, b) => {
-    const dateA = new Date(a[dateField]).getTime();
-    const dateB = new Date(b[dateField]).getTime();
+    const dateA = toDate(a[dateField]).getTime();
+    const dateB = toDate(b[dateField]).getTime();
 
     return order === "asc" ? dateA - dateB : dateB - dateA;
   });
