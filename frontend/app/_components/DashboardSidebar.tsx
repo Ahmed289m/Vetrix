@@ -30,6 +30,7 @@ import {
   Stethoscope,
 } from "lucide-react";
 import { useAuth } from "@/app/_hooks/useAuth";
+import { motion, AnimatePresence } from "framer-motion";
 
 type Role = "doctor" | "staff" | "admin" | "owner" | "client";
 
@@ -121,107 +122,160 @@ export function DashboardSidebar({ role }: { role: Role }) {
     <Sidebar
       variant="sidebar"
       collapsible="icon"
-      className="border-r border-border/10 bg-sidebar/60 backdrop-blur-xl"
+      className="border-r border-border/5 bg-sidebar/80 backdrop-blur-3xl shadow-[4px_0_24px_-12px_rgba(0,0,0,0.5)]"
     >
-      {" "}
-      <SidebarHeader className="pt-8 pb-2 border-b border-border/10">
+      <SidebarHeader className="relative pt-8 pb-4 z-10 border-b border-white/[0.04] bg-gradient-to-b from-emerald/5 to-transparent">
+        {/* Subtle top decoration */}
+        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-emerald/30 to-transparent" />
+        
         <div className="flex flex-col items-center text-center">
-          <div className="relative group/sidebar-logo">
-            <div className="absolute -inset-1 from-emerald to-cyan rounded-xl blur opacity-25 group-hover/sidebar-logo:opacity-50 transition duration-500" />
-            <Image
-              src="/logo.svg"
-              alt="Vetrix logo"
-              width={110}
-              height={110}
-              className="relative w-27.5 h-27.5 object-contain transform group-hover/sidebar-logo:scale-105 transition-transform duration-300"
-            />
-          </div>
-          <div className="flex items-center gap-1.5 mt-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald animate-pulse" />
-            <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-[0.18em] leading-none">
-              {role === "doctor" ? t("medical_portal") : t("management_portal")}
-            </p>
-          </div>
+          <motion.div 
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="relative group/sidebar-logo"
+          >
+            {/* Animated slow pulse ring */}
+            <div className="absolute -inset-2 rounded-full bg-emerald/5 animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite]" />
+            <div className="absolute -inset-1 from-emerald to-cyan rounded-2xl blur-lg opacity-20 group-hover/sidebar-logo:opacity-50 transition duration-500" />
+            <div className="relative p-2 rounded-2xl bg-white/[0.02] border border-white/[0.05] shadow-inner backdrop-blur-md">
+              <Image
+                src="/logo.svg"
+                alt="Vetrix logo"
+                width={80}
+                height={80}
+                className="w-20 h-20 sm:w-24 sm:h-24 object-contain transform group-hover/sidebar-logo:scale-105 transition-transform duration-500"
+              />
+            </div>
+          </motion.div>
+          <motion.div 
+            initial={{ y: 5, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.1, duration: 0.3 }}
+            className="flex flex-col items-center gap-1 mt-4"
+          >
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald/[0.08] border border-emerald/10">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald"></span>
+              </span>
+              <p className="text-[10px] font-black text-emerald uppercase tracking-[0.2em] leading-none">
+                {role === "doctor" ? t("medical_portal") : t("management_portal")}
+              </p>
+            </div>
+          </motion.div>
         </div>
       </SidebarHeader>
-      <SidebarContent className="custom-scrollbar px-2 py-2">
+
+      <SidebarContent className="custom-scrollbar px-3 py-4 relative z-0">
+        {/* Subtle background glow behind nav items */}
+        <div className="absolute top-1/4 -left-1/4 w-full h-1/2 bg-emerald/5 rounded-full blur-[80px] pointer-events-none" />
+
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 px-4 mb-3">
+          <SidebarGroupLabel className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40 px-3 mb-4">
             {t("navigation")}
           </SidebarGroupLabel>
-          <SidebarMenu className="gap-2.5">
-            {filtered.map((item) => {
-              const isActive =
-                pathname === item.href ||
-                (item.href !== "/dashboard" && pathname.startsWith(item.href));
+          <SidebarMenu className="gap-1.5">
+            <AnimatePresence>
+              {filtered.map((item, index) => {
+                const isActive =
+                  pathname === item.href ||
+                  (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
-              return (
-                <SidebarMenuItem key={item.href}>
-                  <div>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                      className={`relative flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-colors duration-200 group/nav-item overflow-hidden ${
-                        isActive
-                          ? "bg-emerald/10 text-emerald"
-                          : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-                      }`}
-                    >
-                      <Link
-                        href={item.href}
-                        prefetch={true}
-                        onClick={handleNavClick}
+                return (
+                  <motion.div
+                    key={item.href}
+                    initial={{ x: -10, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: index * 0.03, type: "spring", stiffness: 300, damping: 25 }}
+                  >
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
+                        className={`relative flex items-center gap-3.5 px-4 py-3 rounded-2xl text-[13px] font-semibold transition-all duration-300 group/nav-item overflow-hidden ${
+                          isActive
+                            ? "bg-gradient-to-r from-emerald/10 to-transparent text-emerald border-l-[3px] border-emerald shadow-[inset_1px_0_0_rgba(16,185,129,0.2)]"
+                            : "text-muted-foreground/70 hover:bg-white/[0.04] hover:text-foreground border-l-[3px] border-transparent"
+                        }`}
                       >
-                        {isActive && (
-                          <div className="absolute left-0 top-1/4 bottom-1/4 w-1 gradient-emerald-cyan rounded-r-full shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
-                        )}
-                        <div
-                          className={`transition-transform duration-300 group-hover/nav-item:scale-110 ${isActive ? "text-emerald" : "group-hover/nav-item:text-emerald"}`}
+                        <Link
+                          href={item.href}
+                          prefetch={true}
+                          onClick={handleNavClick}
                         >
-                          <item.icon className="w-5 h-5 shrink-0" />
-                        </div>
-                        <span className="flex-1">{t(item.labelKey)}</span>
-                        {isActive && (
-                          <ChevronRight className="w-4 h-4 text-emerald/50 transition-transform duration-200 group-hover/nav-item:translate-x-0" />
-                        )}
-                      </Link>
-                    </SidebarMenuButton>
-                  </div>
-                </SidebarMenuItem>
-              );
-            })}
+                          {isActive && (
+                            <motion.div
+                              layoutId="activeNavBackground"
+                              className="absolute inset-0 bg-gradient-to-r from-emerald/10 to-cyan/5 -z-10"
+                              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                            />
+                          )}
+                          <div
+                            className={`relative flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-300 ${
+                              isActive 
+                                ? "bg-emerald/[0.15] text-emerald shadow-[0_0_15px_rgba(16,185,129,0.2)]" 
+                                : "bg-white/[0.03] group-hover/nav-item:bg-white/[0.08] group-hover/nav-item:text-foreground group-hover/nav-item:scale-110"
+                            }`}
+                          >
+                            <item.icon className="w-[18px] h-[18px] shrink-0" />
+                          </div>
+                          
+                          <span className="flex-1 tracking-wide">{t(item.labelKey)}</span>
+                          
+                          {isActive && (
+                            <motion.div
+                              initial={{ opacity: 0, x: -5 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald/20 text-emerald"
+                            >
+                              <ChevronRight className="w-3 h-3" />
+                            </motion.div>
+                          )}
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4 border-t border-border/10">
-        <div className="group/sidebar-user flex items-center gap-3 px-3 py-3 rounded-2xl bg-muted/20 border border-border/10 hover:border-emerald/20 transition-all duration-300 transform group-hover/sidebar-user:scale-[1.02]">
-          <div className="relative">
-            <div className="absolute -inset-0.5 bg-linear-to-br from-emerald to-cyan rounded-lg blur-[2px] opacity-0 group-hover/sidebar-user:opacity-40 transition duration-300" />
-            <div className="relative w-9 h-9 rounded-lg gradient-emerald-cyan flex items-center justify-center text-xs font-black text-white uppercase shadow-md leading-none group-hover/sidebar-user:scale-105 transition-transform">
+
+      <SidebarFooter className="p-3 border-t border-white/[0.04] bg-background/20 backdrop-blur-xl relative z-10">
+        <div className="group/sidebar-user relative flex items-center gap-3 px-3 py-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] hover:border-emerald/30 transition-all duration-500 overflow-hidden">
+          {/* Subtle animated border gradient on hover */}
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald/0 via-emerald/10 to-cyan/0 translate-x-[-100%] group-hover/sidebar-user:translate-x-[100%] transition-transform duration-1000 ease-in-out" />
+          
+          <div className="relative shrink-0">
+            <div className="absolute -inset-1 bg-gradient-to-br from-emerald to-cyan rounded-xl blur-[4px] opacity-0 group-hover/sidebar-user:opacity-60 transition duration-500" />
+            <div className="relative w-10 h-10 rounded-xl gradient-emerald-cyan flex items-center justify-center text-sm font-black text-white uppercase shadow-lg shadow-emerald/20 ring-2 ring-white/[0.05] group-hover/sidebar-user:ring-emerald/40 transition-all duration-300">
               {role[0]}
             </div>
+            {/* Connection dot */}
+            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald border-2 border-background shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-black capitalize tracking-tight truncate group-hover/sidebar-user:text-emerald transition-colors">
+          
+          <div className="flex-1 min-w-0 z-10">
+            <p className="text-[13px] font-bold capitalize tracking-tight text-foreground truncate group-hover/sidebar-user:text-emerald transition-colors duration-300">
               {role === "doctor" ? "Dr. " : ""}
               {role}
             </p>
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald shadow-[0_0_5px_rgba(16,185,129,0.5)]" />
-              <p className="text-[10px] text-muted-foreground/70 font-bold uppercase tracking-wider">
-                {t("online")}
-              </p>
-            </div>
+            <p className="text-[10px] text-muted-foreground/70 font-medium uppercase tracking-[0.1em] truncate">
+              {role === "doctor" ? "Veterinarian" : "System Access"}
+            </p>
           </div>
+          
           <button
             type="button"
             onClick={logout}
             disabled={isLoggingOut}
-            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-red-500 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            className="relative z-10 shrink-0 flex items-center justify-center w-8 h-8 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 hover:scale-105 active:scale-95 disabled:opacity-50 transition-all duration-300"
             aria-label="Sign out"
+            title={t("sign_out")}
           >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>{isLoggingOut ? t("signing_out") : t("sign_out")}</span>
+            <LogOut className={`w-4 h-4 ${isLoggingOut ? "animate-pulse" : ""}`} />
           </button>
         </div>
       </SidebarFooter>

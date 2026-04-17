@@ -5,11 +5,12 @@ import {
   Sun,
   Moon,
   Languages,
-  Search,
   Bell,
   Sparkles,
   Clock,
-  ChevronDown,
+  Activity,
+  Zap,
+  TrendingUp,
 } from "lucide-react";
 import { SidebarTrigger } from "@/app/_components/ui/sidebar";
 import { useLang } from "@/app/_hooks/useLanguage";
@@ -46,6 +47,15 @@ function getGreeting(lang: "en" | "ar"): string {
   return "Good evening";
 }
 
+function getGreetingIcon(): "morning" | "afternoon" | "evening" | "night" {
+  const h = new Date().getHours();
+  if (h < 6) return "night";
+  if (h < 12) return "morning";
+  if (h < 17) return "afternoon";
+  if (h < 20) return "evening";
+  return "night";
+}
+
 function getGreetingEmoji(): string {
   const h = new Date().getHours();
   if (h < 6) return "🌙";
@@ -55,6 +65,27 @@ function getGreetingEmoji(): string {
   return "🌙";
 }
 
+const motivationalQuotes = {
+  en: [
+    "Every patient matters. You're making a difference today.",
+    "Great care starts with great dedication.",
+    "Healing paws, one visit at a time.",
+    "Your expertise saves lives every day.",
+    "Compassion in action — that's what you do.",
+    "Another day, another chance to heal.",
+    "Small acts of care create ripples of health.",
+  ],
+  ar: [
+    "كل مريض يهم. أنت تصنع فرقاً اليوم.",
+    "الرعاية العظيمة تبدأ بالتفاني العظيم.",
+    "شفاء الأرواح، زيارة بزيارة.",
+    "خبرتك تنقذ حياة كل يوم.",
+    "الحنان في العمل — هذا ما تفعله.",
+    "يوم جديد، فرصة جديدة للشفاء.",
+    "أفعال الرعاية الصغيرة تخلق موجات من الصحة.",
+  ],
+};
+
 function useLiveClock() {
   const [now, setNow] = useState(new Date());
   useEffect(() => {
@@ -62,6 +93,28 @@ function useLiveClock() {
     return () => clearInterval(id);
   }, []);
   return now;
+}
+
+function useTypewriter(text: string, speed = 40) {
+  const [displayed, setDisplayed] = useState("");
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    setDisplayed("");
+    setDone(false);
+    let i = 0;
+    const id = setInterval(() => {
+      i++;
+      setDisplayed(text.slice(0, i));
+      if (i >= text.length) {
+        clearInterval(id);
+        setDone(true);
+      }
+    }, speed);
+    return () => clearInterval(id);
+  }, [text, speed]);
+
+  return { displayed, done };
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -81,6 +134,15 @@ export function DashboardHeader({ role }: DashboardHeaderProps) {
   const displayClinic = user?.clinicName || t("vet_clinic") || t("clinic");
   const greeting = useMemo(() => getGreeting(lang), [lang, now]);
   const emoji = useMemo(() => getGreetingEmoji(), [now]);
+  const timeOfDay = useMemo(() => getGreetingIcon(), [now]);
+
+  // Pick a daily motivational quote (changes once per day)
+  const dailyQuote = useMemo(() => {
+    const dayIndex = now.getDate() % motivationalQuotes[lang].length;
+    return motivationalQuotes[lang][dayIndex];
+  }, [lang, now]);
+
+  const { displayed: typedQuote, done: quoteDone } = useTypewriter(dailyQuote, 35);
 
   const displayRole =
     role === "doctor"
@@ -117,19 +179,47 @@ export function DashboardHeader({ role }: DashboardHeaderProps) {
     day: "numeric",
   });
 
+  // Time-of-day accent colors
+  const accentGradient =
+    timeOfDay === "morning"
+      ? "from-amber-400/60 via-orange-300/40 to-yellow-200/30"
+      : timeOfDay === "afternoon"
+        ? "from-emerald/60 via-teal-400/40 to-cyan/30"
+        : timeOfDay === "evening"
+          ? "from-orange-500/50 via-rose-400/30 to-purple-400/20"
+          : "from-indigo-500/50 via-blue-400/30 to-purple-500/20";
+
+  const accentOrb1 =
+    timeOfDay === "morning"
+      ? "bg-amber-400/[0.12]"
+      : timeOfDay === "afternoon"
+        ? "bg-emerald/[0.08]"
+        : timeOfDay === "evening"
+          ? "bg-orange-400/[0.10]"
+          : "bg-indigo-400/[0.08]";
+
+  const accentOrb2 =
+    timeOfDay === "morning"
+      ? "bg-yellow-300/[0.08]"
+      : timeOfDay === "afternoon"
+        ? "bg-cyan/[0.06]"
+        : timeOfDay === "evening"
+          ? "bg-rose-400/[0.07]"
+          : "bg-purple-400/[0.06]";
+
   /* ── Render ──────────────────────────────────────────────────────── */
 
   return (
     <header className="sticky top-0 z-20 border-b border-border/15 bg-background/60 backdrop-blur-2xl">
-      {/* Decorative top accent line */}
-      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-emerald/50 to-transparent" />
+      {/* Decorative top accent line — dynamic based on time of day */}
+      <div className={`absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r ${accentGradient}`} />
 
       <div className="px-3 sm:px-5 lg:px-7 py-2.5 sm:py-3">
         <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-br from-emerald/[0.05] via-background/80 to-cyan/[0.04] shadow-[0_8px_32px_-12px_rgba(16,185,129,0.25),inset_0_1px_0_rgba(255,255,255,0.05)]">
-          {/* Animated background orbs */}
+          {/* Animated background orbs — colors shift with time of day */}
           <div className="pointer-events-none absolute inset-0">
-            <div className="absolute -top-8 -left-8 w-32 h-32 bg-emerald/[0.08] rounded-full blur-3xl animate-pulse" />
-            <div className="absolute -bottom-8 -right-8 w-24 h-24 bg-cyan/[0.06] rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1.5s" }} />
+            <div className={`absolute -top-8 -left-8 w-32 h-32 ${accentOrb1} rounded-full blur-3xl animate-pulse`} />
+            <div className={`absolute -bottom-8 -right-8 w-24 h-24 ${accentOrb2} rounded-full blur-3xl animate-pulse`} style={{ animationDelay: "1.5s" }} />
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-16 bg-emerald/[0.03] rounded-full blur-3xl" />
           </div>
 
@@ -192,47 +282,48 @@ export function DashboardHeader({ role }: DashboardHeaderProps) {
                 </div>
               </div>
 
-              {/* ── Center: Search bar (desktop only) ── */}
+              {/* ── Center: Motivational status strip (desktop only) ── */}
               {!isTablet && (
-                <motion.button
-                  initial={{ opacity: 0, y: -4 }}
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15, duration: 0.25 }}
-                  className="hidden lg:flex items-center gap-2.5 min-w-[220px] xl:min-w-[280px] rounded-xl border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.07] hover:border-emerald/20 px-3.5 py-2 text-sm text-muted-foreground/50 transition-all duration-300 group cursor-pointer"
-                  onClick={() => {
-                    /* Can hook up to a command palette / search modal */
-                  }}
+                  transition={{ delay: 0.2, duration: 0.4 }}
+                  className="hidden lg:flex items-center gap-3 min-w-[220px] xl:min-w-[300px] max-w-md rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2.5"
                 >
-                  <Search className="w-4 h-4 shrink-0 group-hover:text-emerald transition-colors duration-200" />
-                  <span className="truncate">{t("search_anything")}</span>
-                  <kbd className="ml-auto flex items-center gap-0.5 rounded-md border border-white/[0.08] bg-white/[0.05] px-1.5 py-0.5 text-[10px] font-mono font-medium text-muted-foreground/40">
-                    ⌘K
-                  </kbd>
-                </motion.button>
+                  {/* Animated pulse dot */}
+                  <div className="relative shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald/20 to-cyan/10 flex items-center justify-center">
+                      <Activity className="w-4 h-4 text-emerald" />
+                    </div>
+                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <Zap className="w-3 h-3 text-amber-400" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                        {lang === "ar" ? "إلهام اليوم" : "Daily Inspiration"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground/70 font-medium truncate leading-relaxed">
+                      {typedQuote}
+                      {!quoteDone && (
+                        <motion.span
+                          animate={{ opacity: [1, 0] }}
+                          transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
+                          className="inline-block w-[2px] h-3 bg-emerald ml-0.5 align-middle"
+                        />
+                      )}
+                    </p>
+                  </div>
+
+                  <TrendingUp className="w-4 h-4 text-emerald/40 shrink-0" />
+                </motion.div>
               )}
 
               {/* ── Right: Action buttons ── */}
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <TooltipProvider delayDuration={300}>
-                  {/* Search (mobile/tablet) */}
-                  {isTablet && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-muted-foreground/60 hover:text-emerald hover:bg-emerald/[0.06] hover:border-emerald/20 transition-all duration-300 active:scale-95"
-                          onClick={() => {
-                            /* hook up search */
-                          }}
-                        >
-                          <Search className="w-4 h-4" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent className="bg-popover border-border/10 text-xs font-bold px-3 py-1.5 rounded-lg shadow-xl">
-                        {t("search")}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-
                   {/* Notifications */}
                   <Tooltip>
                     <TooltipTrigger asChild>
