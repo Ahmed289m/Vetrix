@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "@/app/_components/fast-motion";
 import {
   Dog,
@@ -21,7 +21,9 @@ import { useLang } from "@/app/_hooks/useLanguage";
 import { useAuth } from "@/app/_hooks/useAuth";
 import {
   sortByDate,
+  filterByDateParts,
   filterByDateRange,
+  type DatePartsFilter,
   type DateRangeFilter,
 } from "@/app/_lib/utils/date-filter";
 import { Button } from "@/app/_components/ui/button";
@@ -68,8 +70,27 @@ const fadeUp = {
   },
 };
 
+const parseDatePart = (
+  value: string,
+  min: number,
+  max: number,
+): number | undefined => {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+
+  const parsed = Number.parseInt(trimmed, 10);
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+    return undefined;
+  }
+
+  return parsed;
+};
+
 export default function VisitsPage() {
   const [dateFilter, setDateFilter] = useState<DateRangeFilter>("all");
+  const [dayFilter, setDayFilter] = useState("");
+  const [monthFilter, setMonthFilter] = useState("");
+  const [yearFilter, setYearFilter] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const { t } = useLang();
@@ -80,7 +101,7 @@ export default function VisitsPage() {
   const isDoctor = user?.role === "doctor";
   const isOwner = user?.role === "owner";
   const canCreate = isOwner;
-  const canOpenDetails = user?.role === "admin";
+  const canOpenDetails = Boolean(user?.role);
 
   const { data: visitsData, isLoading: visitsLoading } = useVisits();
   const { data: petsData } = usePets();
@@ -171,8 +192,22 @@ export default function VisitsPage() {
   };
 
   // ── Filtering ──────────────────────────────────────────────────────────────
-  const sortedVisits = sortByDate(scopedVisits, "date", "desc");
-  const visibleVisits = filterByDateRange(sortedVisits, "date", dateFilter);
+  const sortedVisits = useMemo(
+    () => sortByDate(scopedVisits, "date", "desc"),
+    [scopedVisits],
+  );
+  const dateParts = useMemo<DatePartsFilter>(
+    () => ({
+      day: parseDatePart(dayFilter, 1, 31),
+      month: parseDatePart(monthFilter, 1, 12),
+      year: parseDatePart(yearFilter, 1900, 9999),
+    }),
+    [dayFilter, monthFilter, yearFilter],
+  );
+  const visibleVisits = useMemo(() => {
+    const ranged = filterByDateRange(sortedVisits, "date", dateFilter);
+    return filterByDateParts(ranged, "date", dateParts);
+  }, [sortedVisits, dateFilter, dateParts]);
 
   // ── Form ───────────────────────────────────────────────────────────────────
   const clients = isClient ? [] : usersList.filter((u) => u.role === "client");
@@ -298,7 +333,10 @@ export default function VisitsPage() {
       </motion.div>
 
       {/* Date filter */}
-      <motion.div variants={fadeUp} className="flex max-w-56">
+      <motion.div
+        variants={fadeUp}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+      >
         <Select
           value={dateFilter}
           onValueChange={(v) => setDateFilter(v as DateRangeFilter)}
@@ -313,6 +351,39 @@ export default function VisitsPage() {
             <SelectItem value="all">{t("all_time")}</SelectItem>
           </SelectContent>
         </Select>
+
+        <Input
+          type="number"
+          min={1}
+          max={31}
+          inputMode="numeric"
+          placeholder={t("day_number") || "Day"}
+          value={dayFilter}
+          onChange={(e) => setDayFilter(e.target.value)}
+          className="h-11 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-semibold"
+        />
+
+        <Input
+          type="number"
+          min={1}
+          max={12}
+          inputMode="numeric"
+          placeholder={t("month_number") || "Month"}
+          value={monthFilter}
+          onChange={(e) => setMonthFilter(e.target.value)}
+          className="h-11 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-semibold"
+        />
+
+        <Input
+          type="number"
+          min={1900}
+          max={9999}
+          inputMode="numeric"
+          placeholder={t("year_number") || "Year"}
+          value={yearFilter}
+          onChange={(e) => setYearFilter(e.target.value)}
+          className="h-11 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-semibold"
+        />
       </motion.div>
 
       {/* ── CLIENT VIEW — premium cards ── */}
@@ -361,6 +432,14 @@ export default function VisitsPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
                     onClick={() => setSelectedVisit(visit)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setSelectedVisit(visit);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
                     className="glass-card p-5 space-y-4 cursor-pointer hover:border-emerald/30 hover:shadow-[0_0_30px_-10px_rgba(16,185,129,0.15)] transition-all group"
                   >
                     {/* Card header */}
@@ -485,6 +564,15 @@ export default function VisitsPage() {
                   onClick={() => {
                     if (canOpenDetails) setSelectedVisit(visit);
                   }}
+                  onKeyDown={(event) => {
+                    if (!canOpenDetails) return;
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setSelectedVisit(visit);
+                    }
+                  }}
+                  role={canOpenDetails ? "button" : undefined}
+                  tabIndex={canOpenDetails ? 0 : -1}
                   className={cn(
                     "glass-card p-4 sm:p-5 border border-border/30 hover:border-emerald/20 hover:shadow-[0_0_24px_-8px_rgba(16,185,129,0.12)] transition-all group",
                     canOpenDetails ? "cursor-pointer" : "cursor-default",

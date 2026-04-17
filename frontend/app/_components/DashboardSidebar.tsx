@@ -74,7 +74,7 @@ const navItems: NavItem[] = [
   },
   {
     href: "/dashboard/cases",
-    labelKey: "visits_cases",
+    labelKey: "cases",
     icon: Hash,
     roles: ["doctor", "staff", "owner"],
   },
@@ -82,7 +82,7 @@ const navItems: NavItem[] = [
     href: "/dashboard/visits",
     labelKey: "visits",
     icon: Stethoscope,
-    roles: ["doctor", "staff", "client"],
+    roles: ["doctor", "staff", "owner", "client", "admin"],
   },
   {
     href: "/dashboard/appointments",
@@ -127,9 +127,9 @@ export function DashboardSidebar({ role }: { role: Role }) {
       <SidebarHeader className="relative pt-8 pb-4 z-10 border-b border-white/[0.04] bg-gradient-to-b from-emerald/5 to-transparent">
         {/* Subtle top decoration */}
         <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-emerald/30 to-transparent" />
-        
+
         <div className="flex flex-col items-center text-center">
-          <motion.div 
+          <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
@@ -148,7 +148,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
               />
             </div>
           </motion.div>
-          <motion.div 
+          <motion.div
             initial={{ y: 5, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.1, duration: 0.3 }}
@@ -160,7 +160,9 @@ export function DashboardSidebar({ role }: { role: Role }) {
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald"></span>
               </span>
               <p className="text-[10px] font-black text-emerald uppercase tracking-[0.2em] leading-none">
-                {role === "doctor" ? t("medical_portal") : t("management_portal")}
+                {role === "doctor"
+                  ? t("medical_portal")
+                  : t("management_portal")}
               </p>
             </div>
           </motion.div>
@@ -180,14 +182,24 @@ export function DashboardSidebar({ role }: { role: Role }) {
               {filtered.map((item, index) => {
                 const isActive =
                   pathname === item.href ||
-                  (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                  (item.href !== "/dashboard" &&
+                    pathname.startsWith(item.href));
 
                 return (
                   <motion.div
                     key={item.href}
                     initial={{ x: -10, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: index * 0.03, type: "spring", stiffness: 300, damping: 25 }}
+                    transition={
+                      isMobile
+                        ? { duration: 0.16, ease: "easeOut" }
+                        : {
+                            delay: index * 0.03,
+                            type: "spring",
+                            stiffness: 300,
+                            damping: 25,
+                          }
+                    }
                   >
                     <SidebarMenuItem>
                       <SidebarMenuButton
@@ -208,21 +220,27 @@ export function DashboardSidebar({ role }: { role: Role }) {
                             <motion.div
                               layoutId="activeNavBackground"
                               className="absolute inset-0 bg-gradient-to-r from-emerald/10 to-cyan/5 -z-10"
-                              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                              transition={{
+                                type: "spring",
+                                stiffness: 300,
+                                damping: 30,
+                              }}
                             />
                           )}
                           <div
                             className={`relative flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-300 ${
-                              isActive 
-                                ? "bg-emerald/[0.15] text-emerald shadow-[0_0_15px_rgba(16,185,129,0.2)]" 
+                              isActive
+                                ? "bg-emerald/[0.15] text-emerald shadow-[0_0_15px_rgba(16,185,129,0.2)]"
                                 : "bg-white/[0.03] group-hover/nav-item:bg-white/[0.08] group-hover/nav-item:text-foreground group-hover/nav-item:scale-110"
                             }`}
                           >
                             <item.icon className="w-[18px] h-[18px] shrink-0" />
                           </div>
-                          
-                          <span className="flex-1 tracking-wide">{t(item.labelKey)}</span>
-                          
+
+                          <span className="flex-1 tracking-wide">
+                            {t(item.labelKey)}
+                          </span>
+
                           {isActive && (
                             <motion.div
                               initial={{ opacity: 0, x: -5 }}
@@ -247,7 +265,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
         <div className="group/sidebar-user relative flex items-center gap-3 px-3 py-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] hover:border-emerald/30 transition-all duration-500 overflow-hidden">
           {/* Subtle animated border gradient on hover */}
           <div className="absolute inset-0 bg-gradient-to-r from-emerald/0 via-emerald/10 to-cyan/0 translate-x-[-100%] group-hover/sidebar-user:translate-x-[100%] transition-transform duration-1000 ease-in-out" />
-          
+
           <div className="relative shrink-0">
             <div className="absolute -inset-1 bg-gradient-to-br from-emerald to-cyan rounded-xl blur-[4px] opacity-0 group-hover/sidebar-user:opacity-60 transition duration-500" />
             <div className="relative w-10 h-10 rounded-xl gradient-emerald-cyan flex items-center justify-center text-sm font-black text-white uppercase shadow-lg shadow-emerald/20 ring-2 ring-white/[0.05] group-hover/sidebar-user:ring-emerald/40 transition-all duration-300">
@@ -256,7 +274,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
             {/* Connection dot */}
             <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald border-2 border-background shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
           </div>
-          
+
           <div className="flex-1 min-w-0 z-10">
             <p className="text-[13px] font-bold capitalize tracking-tight text-foreground truncate group-hover/sidebar-user:text-emerald transition-colors duration-300">
               {role === "doctor" ? "Dr. " : ""}
@@ -266,7 +284,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
               {role === "doctor" ? "Veterinarian" : "System Access"}
             </p>
           </div>
-          
+
           <button
             type="button"
             onClick={logout}
@@ -275,7 +293,9 @@ export function DashboardSidebar({ role }: { role: Role }) {
             aria-label="Sign out"
             title={t("sign_out")}
           >
-            <LogOut className={`w-4 h-4 ${isLoggingOut ? "animate-pulse" : ""}`} />
+            <LogOut
+              className={`w-4 h-4 ${isLoggingOut ? "animate-pulse" : ""}`}
+            />
           </button>
         </div>
       </SidebarFooter>

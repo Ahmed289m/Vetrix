@@ -889,6 +889,9 @@ const translations: Translations = {
   this_month: { en: "This Month", ar: "هذا الشهر" },
   this_year: { en: "This Year", ar: "هذه السنة" },
   all_time: { en: "All Time", ar: "كل الأوقات" },
+  day_number: { en: "Day", ar: "اليوم" },
+  month_number: { en: "Month", ar: "الشهر" },
+  year_number: { en: "Year", ar: "السنة" },
   delete_record_btn: { en: "Delete Record", ar: "حذف السجل" },
 
   // ─── Drugs Page — extended ─────────────────────────────────────────

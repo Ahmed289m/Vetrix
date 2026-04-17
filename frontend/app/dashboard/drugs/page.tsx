@@ -104,6 +104,45 @@ const asStringArray = (value: unknown): string[] => {
 const asObject = (value: unknown): UnknownRecord =>
   isRecord(value) ? value : {};
 
+const toDisplayText = (value: unknown): string => {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return "";
+};
+
+const extractToxicityDescription = (value: unknown): string => {
+  if (isRecord(value)) {
+    const description = toDisplayText(value.description);
+    if (description) return description;
+    const fallbackValue = toDisplayText(value.value);
+    if (fallbackValue) return fallbackValue;
+  }
+  return toDisplayText(value);
+};
+
+const extractToxicitySeverity = (value: unknown): string => {
+  if (isRecord(value)) {
+    return toDisplayText(value.status);
+  }
+  return toDisplayText(value);
+};
+
+const getSeverityBadgeTone = (severity: string): string => {
+  const normalized = severity.toLowerCase();
+  if (normalized === "high") {
+    return "bg-red-500/15 border-red-500/25 text-red-300";
+  }
+  if (normalized === "medium") {
+    return "bg-amber-500/15 border-amber-500/25 text-amber-300";
+  }
+  if (normalized === "low") {
+    return "bg-yellow-500/15 border-yellow-500/25 text-yellow-300";
+  }
+  return "bg-emerald/15 border-emerald/25 text-emerald";
+};
+
 type ClinicOption = { clinic_id: string; clinicName: string };
 const EMPTY_DRUGS: Drug[] = [];
 const EMPTY_CLINICS: ClinicOption[] = [];
@@ -251,6 +290,26 @@ function DrugDetailPanel({
   onDelete: () => void;
 }) {
   const { t } = useLang();
+  const toxicityData = asObject(drug.toxicity);
+  const dogToxicity = extractToxicityDescription(toxicityData.dog);
+  const catToxicity = extractToxicityDescription(toxicityData.cat);
+  const dogSeverity =
+    extractToxicitySeverity(toxicityData.severityDog) ||
+    extractToxicitySeverity(toxicityData.dog);
+  const catSeverity =
+    extractToxicitySeverity(toxicityData.severityCat) ||
+    extractToxicitySeverity(toxicityData.cat);
+  const genericToxicityEntries = Object.entries(toxicityData).filter(
+    ([key]) =>
+      key !== "dog" &&
+      key !== "cat" &&
+      key !== "severityDog" &&
+      key !== "severityCat",
+  );
+
+  const hasToxicityDetails =
+    !!dogToxicity || !!catToxicity || genericToxicityEntries.length > 0;
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -348,7 +407,7 @@ function DrugDetailPanel({
               </div>
             </div>
           )}
-          {drug.toxicity && Object.keys(drug.toxicity).length > 0 && (
+          {hasToxicityDetails && (
             <div className="p-4 rounded-2xl bg-red-500/5 border border-red-500/10 space-y-3">
               <div className="flex items-center gap-2 mb-1">
                 <AlertTriangle className="w-4 h-4 text-red-400" />
@@ -357,8 +416,50 @@ function DrugDetailPanel({
                 </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {Object.entries(drug.toxicity as Record<string, string>).map(
-                  ([k, v]) => (
+                {dogToxicity && (
+                  <div className="p-3 rounded-xl bg-red-500/5 border border-red-500/10">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-red-400">
+                        Dog
+                      </p>
+                      {dogSeverity && (
+                        <span
+                          className={`text-[10px] px-2 py-0.5 rounded-md border font-bold ${getSeverityBadgeTone(dogSeverity)}`}
+                        >
+                          {dogSeverity}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm font-semibold text-foreground">
+                      {dogToxicity}
+                    </p>
+                  </div>
+                )}
+
+                {catToxicity && (
+                  <div className="p-3 rounded-xl bg-red-500/5 border border-red-500/10">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-red-400">
+                        Cat
+                      </p>
+                      {catSeverity && (
+                        <span
+                          className={`text-[10px] px-2 py-0.5 rounded-md border font-bold ${getSeverityBadgeTone(catSeverity)}`}
+                        >
+                          {catSeverity}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm font-semibold text-foreground">
+                      {catToxicity}
+                    </p>
+                  </div>
+                )}
+
+                {genericToxicityEntries.map(([k, v]) => {
+                  const value = extractToxicityDescription(v);
+                  if (!value) return null;
+                  return (
                     <div
                       key={k}
                       className="p-3 rounded-xl bg-red-500/5 border border-red-500/10"
@@ -367,11 +468,11 @@ function DrugDetailPanel({
                         {k}
                       </p>
                       <p className="text-sm font-semibold text-foreground">
-                        {String(v)}
+                        {value}
                       </p>
                     </div>
-                  ),
-                )}
+                  );
+                })}
               </div>
             </div>
           )}

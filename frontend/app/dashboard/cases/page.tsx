@@ -30,7 +30,9 @@ import {
 } from "@/app/_components/ui/select";
 import { fmtDateTime } from "@/app/dashboard/_components/VisitDetailModal";
 import {
+  filterByDateParts,
   filterByDateRange,
+  type DatePartsFilter,
   type DateRangeFilter,
 } from "@/app/_lib/utils/date-filter";
 import { useVisits, useDeleteVisit } from "@/app/_hooks/queries/use-visits";
@@ -72,6 +74,22 @@ const getErrorDetail = (error: unknown, fallback: string): string => {
   return maybeErr.response?.data?.detail || fallback;
 };
 
+const parseDatePart = (
+  value: string,
+  min: number,
+  max: number,
+): number | undefined => {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+
+  const parsed = Number.parseInt(trimmed, 10);
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+    return undefined;
+  }
+
+  return parsed;
+};
+
 export default function CasesPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [selectedCase, setSelectedCase] = React.useState<CaseItem | null>(null);
@@ -79,6 +97,9 @@ export default function CasesPage() {
     React.useState<Visit | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [dateFilter, setDateFilter] = React.useState<DateRangeFilter>("all");
+  const [dayFilter, setDayFilter] = React.useState("");
+  const [monthFilter, setMonthFilter] = React.useState("");
+  const [yearFilter, setYearFilter] = React.useState("");
   const { user } = useAuth();
   const { t } = useLang();
 
@@ -154,8 +175,18 @@ export default function CasesPage() {
     return result;
   };
 
+  const dateParts = React.useMemo<DatePartsFilter>(
+    () => ({
+      day: parseDatePart(dayFilter, 1, 31),
+      month: parseDatePart(monthFilter, 1, 12),
+      year: parseDatePart(yearFilter, 1900, 9999),
+    }),
+    [dayFilter, monthFilter, yearFilter],
+  );
+
   const filteredCases = React.useMemo(() => {
-    const byDate = filterByDateRange(cases, "date", dateFilter);
+    const byRange = filterByDateRange(cases, "date", dateFilter);
+    const byDate = filterByDateParts(byRange, "date", dateParts);
     const q = searchQuery.trim().toLowerCase();
     return byDate.filter((caseItem) => {
       const matchesSearch =
@@ -166,7 +197,7 @@ export default function CasesPage() {
         caseItem.reason.toLowerCase().includes(q);
       return matchesSearch;
     });
-  }, [cases, dateFilter, searchQuery]);
+  }, [cases, dateFilter, dateParts, searchQuery]);
 
   const handleOpenForm = (caseItem: CaseItem | null = null) => {
     setSelectedCase(caseItem);
@@ -184,7 +215,7 @@ export default function CasesPage() {
   }, [usersData]);
 
   const canDeleteCaseVisit = user?.role === "doctor" || user?.role === "owner";
-  const canOpenVisitDetails = user?.role === "admin";
+  const canOpenVisitDetails = Boolean(user?.role);
 
   const handleDeleteCaseVisit = async (visit: Visit) => {
     if (!confirm(t("confirm_delete_patient"))) return;
@@ -232,8 +263,8 @@ export default function CasesPage() {
       </div>
 
       {/* Filters & Search */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="relative group md:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-6 gap-4">
+        <div className="relative group lg:col-span-3">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-emerald transition-colors" />
           <Input
             placeholder={t("search_cases_page")}
@@ -256,6 +287,36 @@ export default function CasesPage() {
             <SelectItem value="all">{t("all_time")}</SelectItem>
           </SelectContent>
         </Select>
+        <Input
+          type="number"
+          min={1}
+          max={31}
+          inputMode="numeric"
+          placeholder={t("day_number") || "Day"}
+          value={dayFilter}
+          onChange={(e) => setDayFilter(e.target.value)}
+          className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-semibold"
+        />
+        <Input
+          type="number"
+          min={1}
+          max={12}
+          inputMode="numeric"
+          placeholder={t("month_number") || "Month"}
+          value={monthFilter}
+          onChange={(e) => setMonthFilter(e.target.value)}
+          className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-semibold"
+        />
+        <Input
+          type="number"
+          min={1900}
+          max={9999}
+          inputMode="numeric"
+          placeholder={t("year_number") || "Year"}
+          value={yearFilter}
+          onChange={(e) => setYearFilter(e.target.value)}
+          className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-semibold"
+        />
       </div>
 
       {/* Table Container */}
@@ -299,6 +360,14 @@ export default function CasesPage() {
                         setSelectedVisitDetails(caseItem.originalVisit);
                       }
                     }}
+                    onKeyDown={(event) => {
+                      if (!canOpenVisitDetails) return;
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setSelectedVisitDetails(caseItem.originalVisit);
+                      }
+                    }}
+                    tabIndex={canOpenVisitDetails ? 0 : -1}
                   >
                     <TableCell className="py-6 px-8">
                       <div className="flex flex-col gap-1">
@@ -338,6 +407,7 @@ export default function CasesPage() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              onClick={(event) => event.stopPropagation()}
                               className="group-hover/row:bg-white/10 rounded-xl h-10 w-10"
                             >
                               <MoreHorizontal className="w-5 h-5 text-muted-foreground" />

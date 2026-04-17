@@ -4,6 +4,12 @@
 
 export type DateRangeFilter = "today" | "week" | "month" | "year" | "all";
 
+export type DatePartsFilter = {
+  day?: number;
+  month?: number;
+  year?: number;
+};
+
 function toDate(value: unknown): Date {
   if (value instanceof Date) return value;
   if (typeof value === "string" || typeof value === "number") {
@@ -57,6 +63,36 @@ export function filterByDateRange<T extends object>(
   return items.filter((item) => {
     const date = toDate(item[dateField]);
     return date >= start && date <= end;
+  });
+}
+
+/**
+ * Filter items by exact day/month/year parts.
+ * Undefined parts are ignored.
+ */
+export function filterByDateParts<T extends object>(
+  items: T[],
+  dateField: keyof T,
+  parts: DatePartsFilter,
+): T[] {
+  const { day, month, year } = parts;
+  const hasParts =
+    typeof day === "number" ||
+    typeof month === "number" ||
+    typeof year === "number";
+
+  if (!hasParts) return items;
+
+  return items.filter((item) => {
+    const date = toDate(item[dateField]);
+    if (Number.isNaN(date.getTime())) return false;
+
+    if (typeof day === "number" && date.getDate() !== day) return false;
+    if (typeof month === "number" && date.getMonth() + 1 !== month)
+      return false;
+    if (typeof year === "number" && date.getFullYear() !== year) return false;
+
+    return true;
   });
 }
 
