@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "@/app/_components/fast-motion";
 import { Users, Heart, CalendarCheck, FileText, Activity } from "lucide-react";
 import { useUsers } from "@/app/_hooks/queries/use-users";
@@ -8,7 +8,15 @@ import { usePets } from "@/app/_hooks/queries/use-pets";
 import { useAppointments } from "@/app/_hooks/queries/use-appointments";
 import { usePrescriptions } from "@/app/_hooks/queries/use-prescriptions";
 import { useVisits } from "@/app/_hooks/queries/use-visits";
+import { useClinics } from "@/app/_hooks/queries/use-clinics";
 import { useLang } from "@/app/_hooks/useLanguage";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/_components/ui/select";
 import type {
   Appointment,
   Pet,
@@ -35,30 +43,69 @@ const fadeUp = {
 
 export function OwnerDashboard() {
   const { t } = useLang();
+  const [selectedClinicId, setSelectedClinicId] = useState<string>("all");
   const { data: usersData } = useUsers();
   const { data: petsData } = usePets();
   const { data: appointmentsData } = useAppointments();
   const { data: prescriptionsData } = usePrescriptions();
   const { data: visitsData } = useVisits();
+  const { data: clinicsData } = useClinics();
 
   const users = usersData?.data ?? EMPTY_USERS;
   const pets = petsData?.data ?? EMPTY_PETS;
   const appointments = appointmentsData?.data ?? EMPTY_APPOINTMENTS;
   const prescriptions = prescriptionsData?.data ?? EMPTY_PRESCRIPTIONS;
   const visits = visitsData?.data ?? EMPTY_VISITS;
+  const clinics = clinicsData?.data ?? [];
+
+  const scopedUsers = useMemo(
+    () =>
+      selectedClinicId === "all"
+        ? users
+        : users.filter((u) => u.clinic_id === selectedClinicId),
+    [users, selectedClinicId],
+  );
+  const scopedPets = useMemo(
+    () =>
+      selectedClinicId === "all"
+        ? pets
+        : pets.filter((p) => p.clinic_id === selectedClinicId),
+    [pets, selectedClinicId],
+  );
+  const scopedAppointments = useMemo(
+    () =>
+      selectedClinicId === "all"
+        ? appointments
+        : appointments.filter((a) => a.clinic_id === selectedClinicId),
+    [appointments, selectedClinicId],
+  );
+  const scopedPrescriptions = useMemo(
+    () =>
+      selectedClinicId === "all"
+        ? prescriptions
+        : prescriptions.filter((p) => p.clinic_id === selectedClinicId),
+    [prescriptions, selectedClinicId],
+  );
+  const scopedVisits = useMemo(
+    () =>
+      selectedClinicId === "all"
+        ? visits
+        : visits.filter((v) => v.clinic_id === selectedClinicId),
+    [visits, selectedClinicId],
+  );
 
   const clinicStats = useMemo(() => {
-    const activeClients = users.filter(
+    const activeClients = scopedUsers.filter(
       (user) => user.role === "client" && user.is_active,
     ).length;
-    const doctorsOnTeam = users.filter(
+    const doctorsOnTeam = scopedUsers.filter(
       (user) => user.role === "doctor" && user.is_active,
     ).length;
-    const staffOnTeam = users.filter(
+    const staffOnTeam = scopedUsers.filter(
       (user) => user.role === "staff" && user.is_active,
     ).length;
 
-    const completedAppointments = appointments.filter((appointment) => {
+    const completedAppointments = scopedAppointments.filter((appointment) => {
       const normalized = appointment.status?.toLowerCase() ?? "";
       return (
         normalized === "completed" ||
@@ -68,12 +115,12 @@ export function OwnerDashboard() {
     }).length;
 
     const completionRate =
-      appointments.length > 0
-        ? Math.round((completedAppointments / appointments.length) * 100)
+      scopedAppointments.length > 0
+        ? Math.round((completedAppointments / scopedAppointments.length) * 100)
         : 0;
 
     const now = new Date();
-    const monthlyVisits = visits.filter((visit) => {
+    const monthlyVisits = scopedVisits.filter((visit) => {
       const visitDate = new Date(visit.date);
       return (
         !Number.isNaN(visitDate.getTime()) &&
@@ -89,7 +136,7 @@ export function OwnerDashboard() {
       completionRate,
       monthlyVisits,
     };
-  }, [users, appointments, visits]);
+  }, [scopedUsers, scopedAppointments, scopedVisits]);
 
   const statCards = [
     {
@@ -102,7 +149,7 @@ export function OwnerDashboard() {
     },
     {
       label: t("registered_pets"),
-      value: pets.length,
+      value: scopedPets.length,
       icon: Heart,
       color: "text-cyan",
       bg: "bg-cyan/10",
@@ -110,7 +157,7 @@ export function OwnerDashboard() {
     },
     {
       label: t("appointments"),
-      value: appointments.length,
+      value: scopedAppointments.length,
       icon: CalendarCheck,
       color: "text-orange",
       bg: "bg-orange/10",
@@ -118,7 +165,7 @@ export function OwnerDashboard() {
     },
     {
       label: t("prescriptions"),
-      value: prescriptions.length,
+      value: scopedPrescriptions.length,
       icon: FileText,
       color: "text-coral",
       bg: "bg-coral/10",
@@ -148,6 +195,25 @@ export function OwnerDashboard() {
             {t("track_revenue_appointments_and_overall_clinic_health")}
           </p>
         </div>
+        {clinics.length > 1 && (
+          <Select value={selectedClinicId} onValueChange={setSelectedClinicId}>
+            <SelectTrigger className="h-11 w-full sm:w-64 bg-white/5 border-white/10 rounded-xl font-bold">
+              <SelectValue placeholder={t("clinic")} />
+            </SelectTrigger>
+            <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
+              <SelectItem value="all">All Clinics</SelectItem>
+              {clinics.map((clinic) => (
+                <SelectItem
+                  key={clinic.clinic_id}
+                  value={clinic.clinic_id}
+                  className="rounded-xl font-bold"
+                >
+                  {clinic.clinicName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </motion.div>
 
       <motion.div variants={fadeUp}>

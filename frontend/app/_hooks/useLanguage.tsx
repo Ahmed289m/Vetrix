@@ -37,6 +37,7 @@ const translations: Translations = {
   analytics_reports: { en: "Analytics & Reports", ar: "التحليلات والتقارير" },
   financial_overview: { en: "Financial Overview", ar: "نظرة عامة مالية" },
   clients: { en: "Clients", ar: "العملاء" },
+  client: { en: "Client", ar: "عميل" },
   switch_to_staff: { en: "Switch to Staff", ar: "التبديل للموظف" },
   switch_to_doctor: { en: "Switch to Doctor", ar: "التبديل للطبيب" },
   sign_out: { en: "Sign Out", ar: "تسجيل الخروج" },
@@ -538,14 +539,26 @@ const translations: Translations = {
   clinical_network: { en: "Clinical Network", ar: "الشبكة السريرية" },
   client_management: { en: "Client Management", ar: "إدارة العملاء" },
   registered_owners: { en: "registered owners", ar: "ملاك مسجلون" },
+  registered_clients: { en: "registered clients", ar: "عملاء مسجلون" },
   new_owner: { en: "New Owner", ar: "مالك جديد" },
+  new_client: { en: "New Client", ar: "عميل جديد" },
   search_owners: { en: "Search owners...", ar: "ابحث عن الملاك..." },
+  search_clients: { en: "Search clients...", ar: "ابحث عن العملاء..." },
   create_owner_profile: { en: "Create Owner Profile", ar: "إنشاء ملف مالك" },
+  create_client_profile: {
+    en: "Create Client Profile",
+    ar: "إنشاء ملف عميل",
+  },
   register_clinical_owner: {
     en: "Register a new clinical owner to the system.",
     ar: "تسجيل مالك سريري جديد في النظام.",
   },
+  register_clinical_client: {
+    en: "Register a new client to the system.",
+    ar: "تسجيل عميل جديد في النظام.",
+  },
   create_owner: { en: "Create Owner", ar: "إنشاء مالك" },
+  create_client: { en: "Create Client", ar: "إنشاء عميل" },
   full_name_required: { en: "Full Name *", ar: "الاسم الكامل *" },
   add_new_pet: { en: "Add New Pet", ar: "إضافة حيوان جديد" },
   registering: { en: "Registering...", ar: "جاري التسجيل..." },
@@ -564,6 +577,11 @@ const translations: Translations = {
   add_pet: { en: "Add Pet", ar: "إضافة حيوان" },
   no_pets_registered: { en: "No pets registered", ar: "لا توجد حيوانات مسجلة" },
   remove_owner: { en: "Remove Owner", ar: "إزالة المالك" },
+  remove_client: { en: "Remove Client", ar: "إزالة العميل" },
+  cannot_deactivate_self: {
+    en: "You cannot deactivate your own account.",
+    ar: "لا يمكنك تعطيل حسابك الخاص.",
+  },
   client_created_title: {
     en: "Client Created Successfully!",
     ar: "تم إنشاء العميل بنجاح!",
@@ -677,7 +695,10 @@ const translations: Translations = {
     en: "Provide initial diagnosis and assignment for the clinical visit.",
     ar: "تقديم التشخيص الأولي والتعيين للزيارة السريرية.",
   },
-  updating_records: { en: "Updating records for case", ar: "تحديث سجلات الحالة" },
+  updating_records: {
+    en: "Updating records for case",
+    ar: "تحديث سجلات الحالة",
+  },
   save_case_profile: { en: "Save Case Profile", ar: "حفظ ملف الحالة" },
   open_case: { en: "Open Case", ar: "فتح حالة" },
   pet_id_label: { en: "Pet ID", ar: "معرف الحيوان" },
@@ -797,7 +818,10 @@ const translations: Translations = {
   save_changes: { en: "Save Changes", ar: "حفظ التغييرات" },
   add_drug: { en: "Add Drug", ar: "إضافة دواء" },
   saving_ellipsis: { en: "Saving…", ar: "جاري الحفظ…" },
-  no_indications: { en: "No indications listed", ar: "لا توجد استطبابات مدرجة" },
+  no_indications: {
+    en: "No indications listed",
+    ar: "لا توجد استطبابات مدرجة",
+  },
   manageable_label: { en: "manageable", ar: "قابل للإدارة" },
   read_only_other_clinic: {
     en: "This drug belongs to another clinic — read only.",
@@ -842,7 +866,10 @@ const translations: Translations = {
 
   // ─── Client Dashboard ─────────────────────────────────────────────
   case_tracker: { en: "Case Tracker", ar: "متتبع الحالات" },
-  your_queue_position: { en: "Your Queue Position", ar: "موقعك في قائمة الانتظار" },
+  your_queue_position: {
+    en: "Your Queue Position",
+    ar: "موقعك في قائمة الانتظار",
+  },
   current_case_order: { en: "Current Case Order", ar: "ترتيب الحالة الحالية" },
   no_active_appointments: {
     en: "No active appointments",

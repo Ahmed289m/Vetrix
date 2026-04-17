@@ -12,7 +12,6 @@ import {
   Calendar,
   User,
   ChevronRight,
-  FlaskConical,
   ClipboardList,
   Clock,
 } from "lucide-react";
@@ -20,7 +19,11 @@ import { toast } from "sonner";
 import { useFormik } from "formik";
 import { useLang } from "@/app/_hooks/useLanguage";
 import { useAuth } from "@/app/_hooks/useAuth";
-import { sortByDate } from "@/app/_lib/utils/date-filter";
+import {
+  sortByDate,
+  filterByDateRange,
+  type DateRangeFilter,
+} from "@/app/_lib/utils/date-filter";
 import { Button } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
 import { Label } from "@/app/_components/ui/label";
@@ -39,12 +42,13 @@ import {
   useCreateVisit,
   useDeleteVisit,
 } from "@/app/_hooks/queries/use-visits";
+import { useDeletePrescription } from "@/app/_hooks/queries/use-prescriptions";
 import { usePets } from "@/app/_hooks/queries/use-pets";
 import { useUsers } from "@/app/_hooks/queries/use-users";
 import { usePrescriptions } from "@/app/_hooks/queries/use-prescriptions";
 import { usePrescriptionItems } from "@/app/_hooks/queries/use-prescription-items";
 import { useDrugs } from "@/app/_hooks/queries/use-drugs";
-import type { Visit, Drug, Pet } from "@/app/_lib/types/models";
+import type { Visit, Drug } from "@/app/_lib/types/models";
 
 import {
   VisitDetailModal,
@@ -64,18 +68,19 @@ const fadeUp = {
   },
 };
 
-type StatusFilter = "all" | "completed";
-
 export default function VisitsPage() {
-  const [filter, setFilter] = useState<StatusFilter>("all");
+  const [dateFilter, setDateFilter] = useState<DateRangeFilter>("all");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const { t } = useLang();
   const { user } = useAuth();
 
   const isClient = user?.role === "client";
-  const canCreate =
-    user?.role === "doctor" || user?.role === "staff" || user?.role === "owner";
+  const isStaff = user?.role === "staff";
+  const isDoctor = user?.role === "doctor";
+  const isOwner = user?.role === "owner";
+  const canCreate = isOwner;
+  const canOpenDetails = user?.role === "admin";
 
   const { data: visitsData, isLoading: visitsLoading } = useVisits();
   const { data: petsData } = usePets();
@@ -86,8 +91,8 @@ export default function VisitsPage() {
 
   const createVisit = useCreateVisit();
   const deleteVisit = useDeleteVisit();
-  const canDelete =
-    user?.role === "doctor" || user?.role === "staff" || user?.role === "admin";
+  const deletePrescription = useDeletePrescription();
+  const canDelete = isDoctor || isOwner || user?.role === "admin";
 
   const visits = visitsData?.data || [];
   const scopedVisits = isClient
@@ -167,6 +172,7 @@ export default function VisitsPage() {
 
   // ── Filtering ──────────────────────────────────────────────────────────────
   const sortedVisits = sortByDate(scopedVisits, "date", "desc");
+  const visibleVisits = filterByDateRange(sortedVisits, "date", dateFilter);
 
   // ── Form ───────────────────────────────────────────────────────────────────
   const clients = isClient ? [] : usersList.filter((u) => u.role === "client");
@@ -231,17 +237,20 @@ export default function VisitsPage() {
     (rx) => rx.client_id === formik.values.client_id,
   );
 
-  const handleDeleteVisit = (visitId: string) => {
+  const handleDeleteVisit = async (visit: Visit) => {
     if (!confirm("Delete this visit?")) return;
-    deleteVisit.mutate(visitId, {
-      onSuccess: () => toast.success("Visit deleted."),
-      onError: (err: unknown) => {
-        const msg =
-          (err as { response?: { data?: { detail?: string } } })?.response?.data
-            ?.detail || "Failed to delete visit.";
-        toast.error(msg);
-      },
-    });
+    try {
+      if (visit.prescription_id) {
+        await deletePrescription.mutateAsync(visit.prescription_id);
+      }
+      await deleteVisit.mutateAsync(visit.visit_id);
+      toast.success("Visit deleted.");
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail || "Failed to delete visit.";
+      toast.error(msg);
+    }
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -270,7 +279,8 @@ export default function VisitsPage() {
               : t("visits_history") || "Clinical Visits"}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            {sortedVisits.length} {t("total_recorded_visits") || "total visits"}
+            {visibleVisits.length}{" "}
+            {t("total_recorded_visits") || "total visits"}
           </p>
         </div>
         {canCreate && (
@@ -287,22 +297,22 @@ export default function VisitsPage() {
         )}
       </motion.div>
 
-      {/* Filter tabs */}
-      <motion.div variants={fadeUp} className="flex gap-2">
-        {(["all", "completed"] as StatusFilter[]).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={cn(
-              "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all",
-              filter === f
-                ? "gradient-emerald-cyan text-primary-foreground glow-emerald"
-                : "bg-muted/30 border border-border/50 text-muted-foreground hover:border-emerald/30",
-            )}
-          >
-            {f === "completed" ? t("completed_status") : "All Visits"}
-          </button>
-        ))}
+      {/* Date filter */}
+      <motion.div variants={fadeUp} className="flex max-w-56">
+        <Select
+          value={dateFilter}
+          onValueChange={(v) => setDateFilter(v as DateRangeFilter)}
+        >
+          <SelectTrigger className="h-11 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
+            <SelectValue placeholder="Date" />
+          </SelectTrigger>
+          <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5">
+            <SelectItem value="today">{t("today_filter")}</SelectItem>
+            <SelectItem value="week">{t("this_week")}</SelectItem>
+            <SelectItem value="month">{t("this_month")}</SelectItem>
+            <SelectItem value="all">{t("all_time")}</SelectItem>
+          </SelectContent>
+        </Select>
       </motion.div>
 
       {/* ── CLIENT VIEW — premium cards ── */}
@@ -317,7 +327,7 @@ export default function VisitsPage() {
                 />
               ))}
             </div>
-          ) : sortedVisits.length === 0 ? (
+          ) : visibleVisits.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 space-y-4">
               <div className="w-20 h-20 rounded-3xl bg-linear-to-br from-emerald/15 to-cyan/10 border border-emerald/20 flex items-center justify-center">
                 <ClipboardList className="w-10 h-10 text-emerald/40" />
@@ -332,12 +342,17 @@ export default function VisitsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {sortedVisits.map((visit, i) => {
+              {visibleVisits.map((visit, i) => {
                 const pet = getPet(visit.pet_id);
                 const pDrugs = getDrugsForVisit(visit);
                 const doctor = getUser(visit.doctor_id);
                 const doctorName =
                   visit.doctor_name || doctor?.fullname || "Assigned";
+                const visitReason =
+                  (visit as { reason?: string }).reason?.trim() ||
+                  visit.notes?.trim() ||
+                  t("clinical_visit") ||
+                  "Clinical Visit";
                 const PetIcon = pet?.type === "cat" ? Cat : Dog;
                 return (
                   <motion.div
@@ -390,20 +405,22 @@ export default function VisitsPage() {
                     </div>
 
                     {/* Notes snippet */}
-                    {visit.notes && (
+                    {visitReason && (
                       <p className="text-xs text-muted-foreground line-clamp-2 italic bg-white/5 px-3 py-2 rounded-xl border border-white/5">
-                        "{visit.notes}"
+                        {visitReason}
                       </p>
                     )}
 
                     {/* Drug badges */}
                     {pDrugs.map(({ drug }, idx: number) => {
                       const sK = speciesKey(pet?.type);
-                      const tObj = sK ? (drug.toxicity as any)?.[sK] : null;
-                      const s =
-                        typeof tObj === "object" && tObj !== null
-                          ? tObj.status
-                          : null;
+                      const toxicityBySpecies = drug.toxicity as Record<
+                        string,
+                        { status?: string }
+                      >;
+                      const s = sK
+                        ? toxicityBySpecies?.[sK]?.status || null
+                        : null;
                       return (
                         <div
                           key={idx}
@@ -439,19 +456,25 @@ export default function VisitsPage() {
                 />
               ))}
             </div>
-          ) : sortedVisits.length === 0 ? (
+          ) : visibleVisits.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               {t("no_visits_found") || "No visits found"}
             </div>
           ) : (
-            sortedVisits.map((visit, i) => {
+            visibleVisits.map((visit, i) => {
               const pet = getPet(visit.pet_id);
               const owner = getUser(visit.client_id);
               const doctor = getUser(visit.doctor_id);
               const doctorName =
                 visit.doctor_name || doctor?.fullname || "Assigned";
+              const visitReason =
+                (visit as { reason?: string }).reason?.trim() ||
+                visit.notes?.trim() ||
+                t("clinical_visit") ||
+                "Clinical Visit";
               const pDrugs = getDrugsForVisit(visit);
               const PetIcon = pet?.type === "cat" ? Cat : Dog;
+              const hasRowActions = canDelete || canOpenDetails;
 
               return (
                 <motion.div
@@ -459,8 +482,13 @@ export default function VisitsPage() {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.04 }}
-                  onClick={() => setSelectedVisit(visit)}
-                  className="glass-card p-4 sm:p-5 border border-border/30 hover:border-emerald/20 hover:shadow-[0_0_24px_-8px_rgba(16,185,129,0.12)] cursor-pointer transition-all group"
+                  onClick={() => {
+                    if (canOpenDetails) setSelectedVisit(visit);
+                  }}
+                  className={cn(
+                    "glass-card p-4 sm:p-5 border border-border/30 hover:border-emerald/20 hover:shadow-[0_0_24px_-8px_rgba(16,185,129,0.12)] transition-all group",
+                    canOpenDetails ? "cursor-pointer" : "cursor-default",
+                  )}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                     <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -495,31 +523,38 @@ export default function VisitsPage() {
                         <p className="text-xs text-muted-foreground">
                           {owner?.fullname || "Unknown"} · Dr. {doctorName}
                         </p>
+                        <p className="text-xs text-foreground/75 mt-1 line-clamp-1">
+                          {visitReason}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <span className="text-xs text-muted-foreground bg-white/5 py-1 px-3 rounded-full flex items-center gap-1.5">
                         <Clock className="w-3 h-3" /> {fmtDateTime(visit.date)}
                       </span>
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-muted/30 border border-border/50 group-hover:border-emerald/30 group-hover:text-emerald transition-all">
-                          <Eye className="w-3.5 h-3.5" />{" "}
-                          {t("details_btn") || "Details"}
-                          <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                      {hasRowActions && (
+                        <div className="flex items-center gap-2">
+                          {canOpenDetails && (
+                            <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-muted/30 border border-border/50 group-hover:border-emerald/30 group-hover:text-emerald transition-all">
+                              <Eye className="w-3.5 h-3.5" />{" "}
+                              {t("details_btn") || "Details"}
+                              <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                            </div>
+                          )}
+                          {canDelete && !isStaff && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handleDeleteVisit(visit);
+                              }}
+                              className="px-3 py-2 rounded-xl text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
-                        {canDelete && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteVisit(visit.visit_id);
-                            }}
-                            className="px-3 py-2 rounded-xl text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
-                          >
-                            Delete
-                          </button>
-                        )}
-                      </div>
+                      )}
                     </div>
                   </div>
                 </motion.div>

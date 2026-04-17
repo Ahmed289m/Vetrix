@@ -48,7 +48,10 @@ import {
 import { useUsers } from "@/app/_hooks/queries/use-users";
 import { useAuth } from "@/app/_hooks/useAuth";
 import { useLang } from "@/app/_hooks/useLanguage";
-import type { Pet, PetType } from "@/app/_lib/types/models";
+import type { Pet, PetType, User as UserModel } from "@/app/_lib/types/models";
+
+const EMPTY_PETS: Pet[] = [];
+const EMPTY_USERS: UserModel[] = [];
 
 export default function PetsPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -69,12 +72,13 @@ export default function PetsPage() {
   const updatePet = useUpdatePet();
   const deletePet = useDeletePet();
 
-  const pets = petsData?.data || [];
+  const pets = petsData?.data ?? EMPTY_PETS;
+  const allUsers = usersData?.data ?? EMPTY_USERS;
   const clients = isClient
-    ? []
+    ? EMPTY_USERS
     : canLoadClients
-      ? (usersData?.data || []).filter((u) => u.role === "client")
-      : [];
+      ? allUsers.filter((u) => u.role === "client")
+      : EMPTY_USERS;
 
   const filteredPets = React.useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -333,11 +337,6 @@ export default function PetsPage() {
                             >
                               {t("edit_profile")}
                             </DropdownMenuItem>
-                            {!isClient && (
-                              <DropdownMenuItem className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold">
-                                {t("create_visit")}
-                              </DropdownMenuItem>
-                            )}
                             <DropdownMenuSeparator className="bg-white/5 mx-2" />
                             {user?.role !== "doctor" && (
                               <DropdownMenuItem

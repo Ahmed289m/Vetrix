@@ -6,6 +6,7 @@ import {
   MoreHorizontal,
   FileText,
   Pill,
+  Calendar,
   Search,
   Trash2,
   ChevronRight,
@@ -46,6 +47,10 @@ import {
   SelectValue,
 } from "@/app/_components/ui/select";
 import { cn } from "@/app/_lib/utils";
+import {
+  getDateRange,
+  type DateRangeFilter,
+} from "@/app/_lib/utils/date-filter";
 
 import {
   usePrescriptions,
@@ -62,7 +67,7 @@ import type { Drug, Prescription } from "@/app/_lib/types/models";
 
 type MouseEvent = React.MouseEvent<HTMLDivElement>;
 
-const formatDose = (val: any): string => {
+const formatDose = (val: unknown): string => {
   if (!val) return "—";
   if (typeof val === "object") {
     try {
@@ -77,15 +82,13 @@ const formatDose = (val: any): string => {
 export default function PrescriptionsPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState("all");
+  const [dateFilter, setDateFilter] = React.useState<DateRangeFilter>("all");
   const [selectedRx, setSelectedRx] = React.useState<Prescription | null>(null);
-  const [selectedDrug, setSelectedDrug] = React.useState<Drug | null>(null);
   const { user } = useAuth();
   const { t } = useLang();
 
   const isClient = user?.role === "client";
-  const canCreate =
-    user?.role === "doctor" || user?.role === "owner" || user?.role === "admin";
+  const canCreate = false;
 
   const { data: rxData, isLoading: rxLoading } = usePrescriptions();
   const { data: rxItemsData } = usePrescriptionItems();
@@ -131,24 +134,80 @@ export default function PrescriptionsPage() {
     return result;
   };
 
+  const getPrescriptionDateValue = (rx: Prescription): string | null => {
+    const candidate =
+      (rx as { created_at?: string }).created_at ||
+      (rx as { createdAt?: string }).createdAt ||
+      (rx as { date?: string }).date;
+    return candidate || null;
+  };
+
+  const getPrescriptionDateLabel = (rx: Prescription): string => {
+    const raw = getPrescriptionDateValue(rx);
+    if (!raw) return "—";
+    const dt = new Date(raw);
+    if (Number.isNaN(dt.getTime())) return "—";
+    return dt.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
+  const getStatusLabel = (rx: Prescription): string => {
+    const normalized = (rx.status || "").toLowerCase();
+    return normalized === "active" ? "issued" : rx.status || "issued";
+  };
+
+  const getDoseForCase = (
+    drug: Drug,
+    petId: string,
+    fallbackDose?: string,
+  ): string => {
+    const petType = getPet(petId)?.type;
+    if (petType && drug.dosage && typeof drug.dosage === "object") {
+      const caseDose = (drug.dosage as Record<string, unknown>)[petType];
+      if (caseDose) return formatDose(caseDose);
+    }
+
+    if (fallbackDose && fallbackDose !== "See drug info") return fallbackDose;
+    return formatDose(drug.dosage);
+  };
+
   // ── Filter / search ───────────────────────────────────────────────────────
   const filteredPrescriptions = React.useMemo(() => {
+    const { start, end } = getDateRange(dateFilter);
     const q = searchQuery.trim().toLowerCase();
-    return prescriptions.filter((rx) => {
-      const effectiveStatus = (rx.status || "active").toLowerCase();
-      const matchesStatus =
-        statusFilter === "all" || effectiveStatus === statusFilter;
-      const pDrugs = getDrugsForRx(rx);
-      const matchesSearch =
-        q.length === 0 ||
-        rx.prescription_id.toLowerCase().includes(q) ||
-        getPetName(rx.pet_id).toLowerCase().includes(q) ||
-        getClientName(rx.client_id).toLowerCase().includes(q) ||
-        pDrugs.some(({ drug }) => drug.name.toLowerCase().includes(q));
-      return matchesStatus && matchesSearch;
-    });
+
+    return [...prescriptions]
+      .filter((rx) => {
+        const rawDate = getPrescriptionDateValue(rx);
+        if (dateFilter !== "all") {
+          if (!rawDate) return false;
+          const d = new Date(rawDate);
+          if (Number.isNaN(d.getTime()) || d < start || d > end) return false;
+        }
+
+        const pDrugs = getDrugsForRx(rx);
+        const matchesSearch =
+          q.length === 0 ||
+          rx.prescription_id.toLowerCase().includes(q) ||
+          getPetName(rx.pet_id).toLowerCase().includes(q) ||
+          getClientName(rx.client_id).toLowerCase().includes(q) ||
+          pDrugs.some(({ drug }) => drug.name.toLowerCase().includes(q));
+        return matchesSearch;
+      })
+      .sort((a, b) => {
+        const da = getPrescriptionDateValue(a)
+          ? new Date(getPrescriptionDateValue(a) as string).getTime()
+          : 0;
+        const db = getPrescriptionDateValue(b)
+          ? new Date(getPrescriptionDateValue(b) as string).getTime()
+          : 0;
+        return db - da;
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prescriptions, searchQuery, statusFilter, pets, clients, rxItems, drugs]);
+  }, [prescriptions, searchQuery, dateFilter, pets, clients, rxItems, drugs]);
 
   // ── Form ─────────────────────────────────────────────────────────────────
   const formik = useFormik({
@@ -261,9 +320,11 @@ export default function PrescriptionsPage() {
           rxLoading={rxLoading}
           getDrugsForRx={getDrugsForRx}
           getPetName={getPetName}
+          getDoseForCase={getDoseForCase}
+          getStatusLabel={getStatusLabel}
+          getPrescriptionDateLabel={getPrescriptionDateLabel}
           onViewDetails={(rx) => {
             setSelectedRx(rx);
-            // Pass all drugs array? wait, selectedDrug was singular. We will ignore selectedDrug in client modal shortly.
           }}
           t={t}
         />
@@ -280,13 +341,18 @@ export default function PrescriptionsPage() {
                 className="pl-12 h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select
+              value={dateFilter}
+              onValueChange={(v) => setDateFilter(v as DateRangeFilter)}
+            >
               <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder="Date" />
               </SelectTrigger>
               <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5">
-                <SelectItem value="all">{t("all_prescriptions")}</SelectItem>
-                <SelectItem value="active">{t("active")}</SelectItem>
+                <SelectItem value="today">{t("today_filter")}</SelectItem>
+                <SelectItem value="week">{t("this_week")}</SelectItem>
+                <SelectItem value="month">{t("this_month")}</SelectItem>
+                <SelectItem value="all">{t("all_time")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -307,6 +373,9 @@ export default function PrescriptionsPage() {
                       Owner
                     </TableHead>
                     <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
+                      {t("date_label") || "Date"}
+                    </TableHead>
+                    <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
                       Status
                     </TableHead>
                     <TableHead className="py-6 px-8 text-right" />
@@ -316,7 +385,7 @@ export default function PrescriptionsPage() {
                   {rxLoading ? (
                     <TableRow>
                       <TableCell
-                        colSpan={5}
+                        colSpan={6}
                         className="text-center py-8 text-muted-foreground"
                       >
                         {t("loading_prescriptions_text")}
@@ -325,7 +394,7 @@ export default function PrescriptionsPage() {
                   ) : filteredPrescriptions.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={5}
+                        colSpan={6}
                         className="text-center py-8 text-muted-foreground"
                       >
                         {t("no_prescriptions_found")}
@@ -377,15 +446,21 @@ export default function PrescriptionsPage() {
                             </span>
                           </TableCell>
                           <TableCell className="py-6 px-8">
+                            <span className="text-sm font-semibold text-muted-foreground/80 flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5" />
+                              {getPrescriptionDateLabel(rx)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="py-6 px-8">
                             <Badge
                               className={cn(
                                 "rounded-full px-4 py-1 text-[10px] font-black uppercase tracking-widest border-none",
-                                (rx.status || "active") === "active"
+                                getStatusLabel(rx).toLowerCase() === "issued"
                                   ? "bg-emerald/10 text-emerald"
                                   : "bg-orange-500/10 text-orange-400",
                               )}
                             >
-                              {rx.status || "active"}
+                              {getStatusLabel(rx)}
                             </Badge>
                           </TableCell>
                           <TableCell
@@ -416,15 +491,20 @@ export default function PrescriptionsPage() {
                                   <FileText className="w-4 h-4" />{" "}
                                   {t("view_details") || "View Details"}
                                 </DropdownMenuItem>
-                                <DropdownMenuSeparator className="bg-white/5 mx-2" />
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handleDelete(rx.prescription_id)
-                                  }
-                                  className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold flex items-center gap-2"
-                                >
-                                  <Trash2 className="w-4 h-4" /> {t("revoke")}
-                                </DropdownMenuItem>
+                                {user?.role !== "staff" && (
+                                  <>
+                                    <DropdownMenuSeparator className="bg-white/5 mx-2" />
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleDelete(rx.prescription_id)
+                                      }
+                                      className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold flex items-center gap-2"
+                                    >
+                                      <Trash2 className="w-4 h-4" />{" "}
+                                      {t("revoke")}
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
@@ -449,7 +529,6 @@ export default function PrescriptionsPage() {
             className="fixed inset-0 bg-background/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
             onClick={() => {
               setSelectedRx(null);
-              setSelectedDrug(null);
             }}
           >
             <motion.div
@@ -476,7 +555,6 @@ export default function PrescriptionsPage() {
                 <button
                   onClick={() => {
                     setSelectedRx(null);
-                    setSelectedDrug(null);
                   }}
                   className="p-2 rounded-full hover:bg-white/10 transition-colors"
                 >
@@ -519,30 +597,19 @@ export default function PrescriptionsPage() {
                             </p>
                           </div>
                           <Badge className="ml-auto rounded-full px-3 py-1 text-[10px] font-black uppercase bg-emerald/10 text-emerald border-none">
-                            {selectedRx.status || "active"}
+                            {getStatusLabel(selectedRx)}
                           </Badge>
                         </div>
 
                         {/* Dosage */}
                         <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-2">
                           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                            <Activity className="w-3.5 h-3.5" /> General Dosage
+                            <Activity className="w-3.5 h-3.5" /> Dosage for{" "}
+                            {getPet(selectedRx.pet_id)?.type || "case"}
                           </p>
-                          <div className="space-y-1">
-                            {Object.entries(drug.dosage || {}).map(([k, v]) => (
-                              <div
-                                key={k}
-                                className="flex justify-between text-sm"
-                              >
-                                <span className="text-muted-foreground capitalize">
-                                  {k}
-                                </span>
-                                <span className="font-bold text-emerald">
-                                  {formatDose(v)}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
+                          <p className="text-sm font-bold text-emerald">
+                            {getDoseForCase(drug, selectedRx.pet_id, dose)}
+                          </p>
                         </div>
 
                         {/* Indications */}
@@ -772,6 +839,9 @@ function ClientPrescriptionView({
   rxLoading,
   getDrugsForRx,
   getPetName,
+  getDoseForCase,
+  getStatusLabel,
+  getPrescriptionDateLabel,
   onViewDetails,
   t,
 }: {
@@ -780,6 +850,9 @@ function ClientPrescriptionView({
   rxLoading: boolean;
   getDrugsForRx: (rx: Prescription) => { drug: Drug; dose: string }[];
   getPetName: (id: string) => string;
+  getDoseForCase: (drug: Drug, petId: string, fallbackDose?: string) => string;
+  getStatusLabel: (rx: Prescription) => string;
+  getPrescriptionDateLabel: (rx: Prescription) => string;
   onViewDetails: (rx: Prescription) => void;
   t: (key: string) => string;
 }) {
@@ -830,12 +903,12 @@ function ClientPrescriptionView({
               <Badge
                 className={cn(
                   "rounded-full px-3 text-[10px] font-black uppercase border-none",
-                  (rx.status || "active") === "active"
+                  getStatusLabel(rx).toLowerCase() === "issued"
                     ? "bg-emerald/10 text-emerald"
                     : "bg-orange-500/10 text-orange-400",
                 )}
               >
-                {rx.status || "active"}
+                {getStatusLabel(rx)}
               </Badge>
             </div>
 
@@ -850,7 +923,7 @@ function ClientPrescriptionView({
                     {drug.name}
                   </p>
                   <p className="text-xs text-emerald truncate">
-                    Dose: {dose !== "See drug info" ? dose : "View details"}
+                    Dose: {getDoseForCase(drug, rx.pet_id, dose)}
                   </p>
                 </div>
               </div>
@@ -865,6 +938,9 @@ function ClientPrescriptionView({
             <div className="flex items-center justify-between pt-1">
               <span className="text-xs text-muted-foreground">
                 🐾 {getPetName(rx.pet_id)}
+              </span>
+              <span className="text-xs text-muted-foreground font-semibold">
+                {getPrescriptionDateLabel(rx)}
               </span>
               <button className="flex items-center gap-1 text-xs font-bold text-emerald hover:underline">
                 Details <ChevronRight className="w-3 h-3" />

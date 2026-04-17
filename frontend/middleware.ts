@@ -6,6 +6,20 @@ const ACCESS_TOKEN_KEY = "vetrix_access_token";
 const PUBLIC_PATHS = ["/login", "/"];
 
 /**
+ * Dashboard pages blocked per role.
+ * This enforces removal at route level (not only sidebar visibility).
+ */
+const BLOCKED_DASHBOARD_PATHS_BY_ROLE: Record<string, string[]> = {
+  owner: [
+    "/dashboard/appointments",
+    "/dashboard/prescriptions",
+    "/dashboard/reports",
+    "/dashboard/finances",
+  ],
+  doctor: ["/dashboard/pets"],
+};
+
+/**
  * Decode a JWT payload without verification (server-side, we only need
  * the claims for routing decisions — actual verification happens on the
  * backend when the API is called).
@@ -56,8 +70,18 @@ export function middleware(request: NextRequest) {
   }
 
   // ── Attach role header so server components can read it ───────────
+  const role = String(payload.role ?? "").toLowerCase();
+  const blockedPaths = BLOCKED_DASHBOARD_PATHS_BY_ROLE[role] ?? [];
+  const isBlocked = blockedPaths.some((blockedPath) => {
+    return pathname === blockedPath || pathname.startsWith(`${blockedPath}/`);
+  });
+
+  if (isBlocked) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
   const response = NextResponse.next();
-  response.headers.set("x-user-role", String(payload.role ?? ""));
+  response.headers.set("x-user-role", role);
   response.headers.set("x-user-email", String(payload.email ?? ""));
   response.headers.set("x-user-clinic", String(payload.clinic_id ?? ""));
 

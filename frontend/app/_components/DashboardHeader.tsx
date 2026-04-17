@@ -31,6 +31,16 @@ export function DashboardHeader({
   const { user } = useAuth();
   const displayName = user?.fullname || user?.email?.split("@")[0] || t("user");
   const displayClinic = user?.clinicName || t("vet_clinic") || t("clinic");
+  const displayRole =
+    role === "doctor"
+      ? t("doctor")
+      : role === "staff"
+        ? t("staff")
+        : role === "owner"
+          ? t("owner")
+          : role === "client"
+            ? t("client")
+            : "Admin";
 
   const toggleTheme = () => {
     toggle();
@@ -95,7 +105,10 @@ export function DashboardHeader({
             <p className="truncate text-xs font-black capitalize leading-none group-hover:text-emerald transition-colors max-w-[34vw] sm:max-w-55">
               {displayName}
             </p>
-            <p className="hidden sm:block text-[10px] text-muted-foreground/60 mt-1 font-bold uppercase tracking-wider truncate max-w-55">
+            <p className="text-[10px] text-muted-foreground/60 mt-1 font-bold uppercase tracking-wider truncate max-w-[34vw] sm:max-w-55">
+              {displayRole}
+            </p>
+            <p className="hidden sm:block text-[10px] text-muted-foreground/60 mt-1 font-medium tracking-wide truncate max-w-55">
               {displayClinic}
             </p>
           </div>

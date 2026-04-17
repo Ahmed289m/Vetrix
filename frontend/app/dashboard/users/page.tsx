@@ -56,7 +56,10 @@ import {
   useResetPassword,
 } from "@/app/_hooks/queries/use-users";
 import { useClinics } from "@/app/_hooks/queries/use-clinics";
+import { useAuth } from "@/app/_hooks/useAuth";
 import type { User, UserRole, UserCreated } from "@/app/_lib/types/models";
+
+const EMPTY_CLINICS: Array<{ clinic_id: string; clinicName: string }> = [];
 
 export default function UsersPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -72,6 +75,7 @@ export default function UsersPage() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
   const { t } = useLang();
+  const { user: authUser } = useAuth();
 
   const { data: usersData, isLoading: usersLoading } = useUsers();
   const { data: clinicsData } = useClinics();
@@ -82,15 +86,19 @@ export default function UsersPage() {
   const resetPassword = useResetPassword();
 
   const users = (usersData?.data || []).filter((u) => u.role !== "client");
-  const clinics = clinicsData?.data || [];
+  const clinics = clinicsData?.data ?? EMPTY_CLINICS;
+  const isOwnerManager = authUser?.role === "owner";
 
-  const getClinicName = (clinicId: string | null) => {
-    if (!clinicId) return t("global");
-    return (
-      clinics.find((c) => c.clinic_id === clinicId)?.clinicName ||
-      t("unknown_clinic")
-    );
-  };
+  const getClinicName = React.useCallback(
+    (clinicId: string | null) => {
+      if (!clinicId) return t("global");
+      return (
+        clinics.find((c) => c.clinic_id === clinicId)?.clinicName ||
+        t("unknown_clinic")
+      );
+    },
+    [clinics, t],
+  );
 
   const filteredUsers = React.useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -104,7 +112,7 @@ export default function UsersPage() {
         clinicName.includes(q);
       return matchesRole && matchesSearch;
     });
-  }, [users, searchQuery, roleFilter, clinics]);
+  }, [users, searchQuery, roleFilter, getClinicName]);
 
   const formik = useFormik({
     initialValues: {
@@ -114,7 +122,14 @@ export default function UsersPage() {
       clinic_id: "",
     },
     onSubmit: (values, { setSubmitting }) => {
-      const payload = { ...values };
+      const normalizedClinicId =
+        values.clinic_id === "none" || values.clinic_id === ""
+          ? null
+          : values.clinic_id;
+      const payload = {
+        ...values,
+        clinic_id: normalizedClinicId ?? undefined,
+      };
 
       if (selectedUser) {
         updateUser.mutate(
@@ -176,6 +191,11 @@ export default function UsersPage() {
   };
 
   const handleDelete = (id: string) => {
+    if (id === authUser?.userId) {
+      toast.error(t("cannot_deactivate_self"));
+      return;
+    }
+
     if (confirm(t("confirm_delete_user"))) {
       deleteUser.mutate(id, {
         onSuccess: () => toast.success(t("user_deactivated_success")),
@@ -368,14 +388,16 @@ export default function UsersPage() {
                             {t("show_password")}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="bg-white/5 mx-2" />
-                          <DropdownMenuItem
-                            onClick={() => handleDelete(user.user_id)}
-                            className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
-                          >
-                            {user.is_active
-                              ? t("deactivate")
-                              : t("delete_user")}
-                          </DropdownMenuItem>
+                          {user.user_id !== authUser?.userId && (
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(user.user_id)}
+                              className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
+                            >
+                              {user.is_active
+                                ? t("deactivate")
+                                : t("delete_user")}
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -453,12 +475,16 @@ export default function UsersPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
-                  <SelectItem value="admin" className="rounded-xl font-bold">
-                    Admin
-                  </SelectItem>
-                  <SelectItem value="owner" className="rounded-xl font-bold">
-                    Owner
-                  </SelectItem>
+                  {(!isOwnerManager || formik.values.role === "admin") && (
+                    <SelectItem value="admin" className="rounded-xl font-bold">
+                      Admin
+                    </SelectItem>
+                  )}
+                  {(!isOwnerManager || formik.values.role === "owner") && (
+                    <SelectItem value="owner" className="rounded-xl font-bold">
+                      Owner
+                    </SelectItem>
+                  )}
                   <SelectItem value="doctor" className="rounded-xl font-bold">
                     Doctor
                   </SelectItem>

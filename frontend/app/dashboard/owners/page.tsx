@@ -60,7 +60,9 @@ export default function OwnersPage() {
   const [showAddPet, setShowAddPet] = useState<string | null>(null);
   const [expandedOwner, setExpandedOwner] = useState<string | null>(null);
   const [createdUser, setCreatedUser] = useState<UserCreated | null>(null);
-  const [resettedClient, setResettedClient] = useState<UserCreated | null>(null);
+  const [resettedClient, setResettedClient] = useState<UserCreated | null>(
+    null,
+  );
   const [showPassword, setShowPassword] = useState(false);
   const [showResettedPassword, setShowResettedPassword] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -161,6 +163,11 @@ export default function OwnersPage() {
       return;
     }
 
+    if (ownerId === user?.userId) {
+      toast.error(t("cannot_deactivate_self"));
+      return;
+    }
+
     if (confirm(t("confirm_delete_client"))) {
       deleteUser.mutate(ownerId, {
         onSuccess: () => toast.success(t("client_deactivated_success")),
@@ -207,7 +214,7 @@ export default function OwnersPage() {
             {t("client_management")}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            {clients.length} {t("registered_owners")}
+            {clients.length} {t("registered_clients")}
           </p>
         </div>
         {!isAdminReadOnly && (
@@ -217,7 +224,7 @@ export default function OwnersPage() {
             onClick={() => setShowCreateOwner(true)}
             className="flex items-center gap-2 gradient-emerald-cyan text-primary-foreground px-5 py-3 rounded-xl text-sm font-bold glow-emerald ripple"
           >
-            <UserPlus className="w-4 h-4" /> {t("new_owner")}
+            <UserPlus className="w-4 h-4" /> {t("new_client")}
           </motion.button>
         )}
       </motion.div>
@@ -228,7 +235,7 @@ export default function OwnersPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("search_owners")}
+            placeholder={t("search_clients")}
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
           />
         </div>
@@ -236,15 +243,15 @@ export default function OwnersPage() {
 
       {/* Create Owner Modal */}
       <DashboardForm
-        title={t("create_owner_profile")}
-        description={t("register_clinical_owner")}
+        title={t("create_client_profile")}
+        description={t("register_clinical_client")}
         isOpen={showCreateOwner}
         onOpenChange={setShowCreateOwner}
         onSubmit={(e) =>
           formikOwner.handleSubmit(e as React.FormEvent<HTMLFormElement>)
         }
         submitLabel={
-          formikOwner.isSubmitting ? t("creating") : t("create_owner")
+          formikOwner.isSubmitting ? t("creating") : t("create_client")
         }
       >
         <div className="space-y-6">
@@ -468,7 +475,9 @@ export default function OwnersPage() {
                         </div>
                         <div className="flex items-center gap-2 pt-2 flex-wrap">
                           <button
-                            onClick={() => handleShowClientPassword(owner.user_id)}
+                            onClick={() =>
+                              handleShowClientPassword(owner.user_id)
+                            }
                             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 transition-colors"
                           >
                             <KeyRound className="w-3.5 h-3.5" />{" "}
@@ -480,7 +489,7 @@ export default function OwnersPage() {
                               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-coral/10 border border-coral/20 text-coral hover:bg-coral/20 transition-colors"
                             >
                               <Trash2 className="w-3.5 h-3.5" />{" "}
-                              {t("remove_owner")}
+                              {t("remove_client")}
                             </button>
                           )}
                         </div>
@@ -629,7 +638,9 @@ export default function OwnersPage() {
               </Label>
               <div className="flex items-center gap-2 bg-white/5 border border-white/5 rounded-xl px-4 py-3">
                 <span className="flex-1 text-sm font-mono font-bold text-blue-400 break-all">
-                  {showResettedPassword ? resettedClient.password : "••••••••••••••••"}
+                  {showResettedPassword
+                    ? resettedClient.password
+                    : "••••••••••••••••"}
                 </span>
                 <button
                   type="button"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "@/app/_components/fast-motion";
 import {
@@ -18,7 +18,6 @@ import {
   Calendar,
   User as UserIcon,
   FileText,
-  Info,
   UserCheck,
   Inbox,
   ShieldCheck,
@@ -58,7 +57,9 @@ import type {
   Appointment,
   Drug,
   Pet,
+  Prescription,
   PrescriptionCreate,
+  PrescriptionItem,
   User as UserModel,
   VisitCreate,
   Visit,
@@ -86,7 +87,7 @@ const fmtDateTime = (d?: string | null) =>
       })
     : "—";
 
-const formatDose = (val: any): string => {
+const formatDose = (val: unknown): string => {
   if (!val) return "—";
   if (typeof val === "object") {
     try {
@@ -106,6 +107,41 @@ const formatDose = (val: any): string => {
  *  We match pet.type: "dog" | "cat" | "other" */
 const speciesKey = (petType: string) =>
   petType === "dog" ? "dog" : petType === "cat" ? "cat" : null;
+
+const getErrorDetail = (error: unknown, fallback: string): string => {
+  if (typeof error !== "object" || error === null) return fallback;
+  const maybeErr = error as { response?: { data?: { detail?: string } } };
+  return maybeErr.response?.data?.detail || fallback;
+};
+
+const getDrugDosageForSpecies = (
+  drug: Drug | undefined,
+  key: string | null,
+): unknown => {
+  if (!drug || !key) return null;
+  const dosage = drug.dosage as Record<string, unknown>;
+  return dosage[key] ?? null;
+};
+
+const getDrugToxicityForSpecies = (
+  drug: Drug | undefined,
+  key: string | null,
+): unknown => {
+  if (!drug || !key) return null;
+  const toxicity = drug.toxicity as Record<string, unknown>;
+  return toxicity[key] ?? null;
+};
+
+const getDrugSeverityForSpecies = (
+  drug: Drug | undefined,
+  key: string | null,
+): string | undefined => {
+  if (!drug || !key) return undefined;
+  const severityKey = `severity${key.charAt(0).toUpperCase() + key.slice(1)}`;
+  const toxicity = drug.toxicity as Record<string, unknown>;
+  const raw = toxicity[severityKey];
+  return typeof raw === "string" ? raw : undefined;
+};
 
 /** Map severity string to Tailwind color tokens */
 const severityColor = (
@@ -146,6 +182,14 @@ interface Props {
   role: "staff" | "doctor";
 }
 
+const EMPTY_APPOINTMENTS: Appointment[] = [];
+const EMPTY_PETS: Pet[] = [];
+const EMPTY_USERS: UserModel[] = [];
+const EMPTY_DRUGS: Drug[] = [];
+const EMPTY_PRESCRIPTIONS: Prescription[] = [];
+const EMPTY_PRESCRIPTION_ITEMS: PrescriptionItem[] = [];
+const EMPTY_VISITS: Visit[] = [];
+
 // ── Portal Modal — renders at document.body to escape overflow clipping ────────
 function Modal({
   children,
@@ -156,11 +200,7 @@ function Modal({
   open: boolean;
   onBgClick?: () => void;
 }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-  if (!mounted || !open) return null;
+  if (!open || typeof document === "undefined") return null;
   return createPortal(
     <AnimatePresence>
       {open && (
@@ -210,6 +250,7 @@ export default function SimulationMode({ role }: Props) {
   // ── Visit detail modal ───────────────────────────────────────────────────
   const [showVisitDetail, setShowVisitDetail] = useState(false);
   const [detailVisit, setDetailVisit] = useState<Visit | null>(null);
+  const [showPreviousVisits, setShowPreviousVisits] = useState(false);
 
   // ── Prescription modal ───────────────────────────────────────────────────
   const [showPressModal, setShowPressModal] = useState(false);
@@ -241,13 +282,15 @@ export default function SimulationMode({ role }: Props) {
   const createPrescription = useCreatePrescription();
   const deletePrescription = useDeletePrescription();
 
-  const allAppointments: Appointment[] = apptData?.data || [];
-  const allPets: Pet[] = petsData?.data || [];
-  const allUsers: UserModel[] = usersData?.data || [];
-  const allDrugs: Drug[] = drugsData?.data || [];
-  const allPrescriptions = presData?.data || [];
-  const allPresItems = presItemsData?.data || [];
-  const allVisits: Visit[] = visitsData?.data || [];
+  const allAppointments: Appointment[] = apptData?.data ?? EMPTY_APPOINTMENTS;
+  const allPets: Pet[] = petsData?.data ?? EMPTY_PETS;
+  const allUsers: UserModel[] = usersData?.data ?? EMPTY_USERS;
+  const allDrugs: Drug[] = drugsData?.data ?? EMPTY_DRUGS;
+  const allPrescriptions: Prescription[] =
+    presData?.data ?? EMPTY_PRESCRIPTIONS;
+  const allPresItems: PrescriptionItem[] =
+    presItemsData?.data ?? EMPTY_PRESCRIPTION_ITEMS;
+  const allVisits: Visit[] = visitsData?.data ?? EMPTY_VISITS;
 
   // ── Enriched appointments ────────────────────────────────────────────────
   const simAppointments = useMemo(() => {
@@ -302,6 +345,17 @@ export default function SimulationMode({ role }: Props) {
     () => simAppointments.filter((a) => a.simStatus === "pending-doctor"),
     [simAppointments],
   );
+
+  const previousCaseVisits = useMemo(() => {
+    if (!myActiveCase) return [];
+    return allVisits
+      .filter(
+        (v) =>
+          v.pet_id === myActiveCase.petId &&
+          v.client_id === myActiveCase.clientId,
+      )
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [allVisits, myActiveCase]);
 
   // ── Drug helpers ─────────────────────────────────────────────────────────
   const getDrugForRx = (rxId: string): Drug | undefined => {
@@ -445,8 +499,8 @@ export default function SimulationMode({ role }: Props) {
         toast.success("Visit deleted.");
         setShowVisitDetail(false);
       },
-      onError: (err: any) =>
-        toast.error(err?.response?.data?.detail || "Failed to delete visit."),
+      onError: (err: unknown) =>
+        toast.error(getErrorDetail(err, "Failed to delete visit.")),
     });
   };
 
@@ -474,10 +528,8 @@ export default function SimulationMode({ role }: Props) {
             toast.success("Visit updated.");
             setShowVisitModal(false);
           },
-          onError: (err: any) =>
-            toast.error(
-              err?.response?.data?.detail || "Failed to update visit.",
-            ),
+          onError: (err: unknown) =>
+            toast.error(getErrorDetail(err, "Failed to update visit.")),
         },
       );
     } else {
@@ -498,8 +550,8 @@ export default function SimulationMode({ role }: Props) {
           toast.success("Visit recorded.");
           setShowVisitModal(false);
         },
-        onError: (err: any) =>
-          toast.error(err?.response?.data?.detail || "Failed to record visit."),
+        onError: (err: unknown) =>
+          toast.error(getErrorDetail(err, "Failed to record visit.")),
       });
     }
   };
@@ -545,8 +597,9 @@ export default function SimulationMode({ role }: Props) {
         item_drug_ids: [selectedDrugIds],
       } satisfies PrescriptionCreate,
       {
-        onSuccess: (res: any) => {
-          const rxId = res?.data?.prescription_id;
+        onSuccess: (res: unknown) => {
+          const maybeResponse = res as { data?: { prescription_id?: string } };
+          const rxId = maybeResponse?.data?.prescription_id;
           if (rxId) {
             setSessionRxIds((prev) => new Set([...prev, rxId]));
             toast.success(
@@ -779,16 +832,12 @@ export default function SimulationMode({ role }: Props) {
                 return (
                   <div className="space-y-2">
                     <p className="text-[10px] font-black uppercase tracking-widest text-emerald flex items-center gap-1">
-                      <Pill className="w-3 h-3" /> This session's prescriptions
+                      <Pill className="w-3 h-3" /> Session prescriptions
                     </p>
                     {rxs.map((rx) => {
                       const drug = getDrugForRx(rx.prescription_id);
                       const sKey = speciesKey(myActiveCase.petType);
-                      const sev = sKey
-                        ? (drug?.toxicity as any)?.[
-                            `severity${sKey.charAt(0).toUpperCase() + sKey.slice(1)}`
-                          ]
-                        : undefined;
+                      const sev = getDrugSeverityForSpecies(drug, sKey);
                       return (
                         <div
                           key={rx.prescription_id}
@@ -848,6 +897,16 @@ export default function SimulationMode({ role }: Props) {
                 >
                   <Plus className="w-4 h-4" />
                   {t("prescribe")}
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setShowPreviousVisits(true)}
+                  disabled={previousCaseVisits.length === 0}
+                  className="flex items-center gap-2 bg-white/10 hover:bg-white/15 text-foreground px-4 py-2.5 rounded-xl text-sm font-bold border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  Previous Visits ({previousCaseVisits.length})
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
@@ -1125,6 +1184,81 @@ export default function SimulationMode({ role }: Props) {
         </motion.div>
       </Modal>
 
+      {/* ═══════════════ PREVIOUS VISITS FOR ACTIVE CASE ═══════════════ */}
+      <Modal
+        open={showPreviousVisits}
+        onBgClick={() => setShowPreviousVisits(false)}
+      >
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0, y: 16 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.95, opacity: 0, y: 16 }}
+          className="bg-card border border-border rounded-2xl p-6 max-w-xl w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
+          onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold">Previous Visits</h3>
+              <p className="text-xs text-muted-foreground">
+                Ordered from newest to oldest
+              </p>
+            </div>
+            <button
+              onClick={() => setShowPreviousVisits(false)}
+              className="p-2 hover:bg-muted rounded-xl transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {previousCaseVisits.length === 0 ? (
+            <div className="p-5 rounded-xl bg-muted/20 border border-border/40 text-sm text-muted-foreground text-center">
+              No previous visits found for this case.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {previousCaseVisits.map((visit) => {
+                const doctor = allUsers.find(
+                  (u) => u.user_id === visit.doctor_id,
+                );
+                const doctorName =
+                  visit.doctor_name || doctor?.fullname || "Unknown";
+                return (
+                  <button
+                    key={visit.visit_id}
+                    onClick={() => {
+                      setShowPreviousVisits(false);
+                      setDetailVisit(visit);
+                      setShowVisitDetail(true);
+                    }}
+                    className="w-full text-left p-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-cyan/25 transition-colors"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold">
+                          {fmtDateTime(visit.date)}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Dr. {doctorName}
+                        </p>
+                      </div>
+                      <span className="text-[10px] font-mono text-muted-foreground">
+                        {visit.visit_id.slice(0, 8)}…
+                      </span>
+                    </div>
+                    {visit.notes && (
+                      <p className="text-xs text-foreground/80 mt-2 line-clamp-2">
+                        {visit.notes}
+                      </p>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </motion.div>
+      </Modal>
+
       {/* ═══════════════════ VISIT DETAIL MODAL ═════════════════════════════ */}
       <Modal open={showVisitDetail} onBgClick={() => setShowVisitDetail(false)}>
         {detailVisit &&
@@ -1142,17 +1276,12 @@ export default function SimulationMode({ role }: Props) {
             const sKey = pet ? speciesKey(pet.type) : null;
             const dosage =
               sKey && drug
-                ? (drug.dosage as any)?.[sKey]
+                ? getDrugDosageForSpecies(drug, sKey)
                 : drug
                   ? formatDose(drug.dosage)
                   : null;
-            const tox = sKey && drug ? (drug.toxicity as any)?.[sKey] : null;
-            const sev =
-              sKey && drug
-                ? (drug.toxicity as any)?.[
-                    `severity${sKey.charAt(0).toUpperCase() + sKey.slice(1)}`
-                  ]
-                : undefined;
+            const tox = getDrugToxicityForSpecies(drug, sKey);
+            const sev = getDrugSeverityForSpecies(drug, sKey);
             return (
               <motion.div
                 initial={{ scale: 0.95, opacity: 0, y: 16 }}
@@ -1474,12 +1603,8 @@ export default function SimulationMode({ role }: Props) {
                   ) : (
                     filtered.map((drug) => {
                       const sKey = pressPet ? speciesKey(pressPet.type) : null;
-                      const dose = sKey ? (drug.dosage as any)?.[sKey] : null;
-                      const sev = sKey
-                        ? (drug.toxicity as any)?.[
-                            `severity${sKey.charAt(0).toUpperCase() + sKey.slice(1)}`
-                          ]
-                        : undefined;
+                      const dose = getDrugDosageForSpecies(drug, sKey);
+                      const sev = getDrugSeverityForSpecies(drug, sKey);
                       const isSelected = selectedDrugIds.includes(drug.drug_id);
                       return (
                         <button
@@ -1548,13 +1673,9 @@ export default function SimulationMode({ role }: Props) {
               </p>
               {selectedDrugs.map((drug) => {
                 const sKey = pressPet ? speciesKey(pressPet.type) : null;
-                const dose = sKey ? (drug.dosage as any)?.[sKey] : null;
-                const tox = sKey ? (drug.toxicity as any)?.[sKey] : null;
-                const sev = sKey
-                  ? (drug.toxicity as any)?.[
-                      `severity${sKey.charAt(0).toUpperCase() + sKey.slice(1)}`
-                    ]
-                  : undefined;
+                const dose = getDrugDosageForSpecies(drug, sKey);
+                const tox = getDrugToxicityForSpecies(drug, sKey);
+                const sev = getDrugSeverityForSpecies(drug, sKey);
                 const cl = severityColor(sev);
                 return (
                   <div

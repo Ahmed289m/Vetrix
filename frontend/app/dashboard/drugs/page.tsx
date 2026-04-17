@@ -86,13 +86,27 @@ const parseTagArray = (raw: string): string[] =>
 
 const tagArrayToString = (arr: string[]): string => arr.join(", ");
 
-const parseJsonSafe = (raw: string): Record<string, unknown> => {
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return { raw };
-  }
+type UnknownRecord = Record<string, unknown>;
+
+const isRecord = (value: unknown): value is UnknownRecord =>
+  typeof value === "object" && value !== null;
+
+const asText = (value: unknown): string =>
+  value === null || value === undefined ? "" : String(value);
+
+const asStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter(Boolean);
 };
+
+const asObject = (value: unknown): UnknownRecord =>
+  isRecord(value) ? value : {};
+
+type ClinicOption = { clinic_id: string; clinicName: string };
+const EMPTY_DRUGS: Drug[] = [];
+const EMPTY_CLINICS: ClinicOption[] = [];
 
 /* ── Skeleton ─────────────────────────────────────────────────────────── */
 function DrugSkeleton() {
@@ -150,11 +164,11 @@ function DrugRow({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.035, duration: 0.32, ease: "easeOut" }}
       onClick={onSelect}
-      className="group relative bg-white/5 backdrop-blur-md border border-white/5 hover:border-emerald/20 rounded-2xl px-5 py-4 cursor-pointer transition-all duration-300 hover:bg-white/[0.08] hover:shadow-[0_0_28px_-8px_rgba(16,185,129,0.12)]"
+      className="group relative bg-white/5 backdrop-blur-md border border-white/5 hover:border-emerald/20 rounded-2xl px-5 py-4 cursor-pointer transition-all duration-300 hover:bg-white/8 hover:shadow-[0_0_28px_-8px_rgba(16,185,129,0.12)]"
     >
       <div className="flex items-center gap-4">
         {/* Icon */}
-        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald/20 to-cyan-500/10 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300">
+        <div className="w-11 h-11 rounded-xl bg-linear-to-br from-emerald/20 to-cyan-500/10 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300">
           <Pill className="w-5 h-5 text-emerald" />
         </div>
 
@@ -256,7 +270,7 @@ function DrugDetailPanel({
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald/25 to-cyan-500/15 flex items-center justify-center shadow-inner">
+            <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-emerald/25 to-cyan-500/15 flex items-center justify-center shadow-inner">
               <Pill className="w-7 h-7 text-emerald" />
             </div>
             <div>
@@ -316,12 +330,21 @@ function DrugDetailPanel({
                 </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {Object.entries(drug.dosage as Record<string, string>).map(([k, v]) => (
-                  <div key={k} className="p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/10">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-1">{k}</p>
-                    <p className="text-sm font-semibold text-foreground">{String(v)}</p>
-                  </div>
-                ))}
+                {Object.entries(drug.dosage as Record<string, string>).map(
+                  ([k, v]) => (
+                    <div
+                      key={k}
+                      className="p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/10"
+                    >
+                      <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-1">
+                        {k}
+                      </p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {String(v)}
+                      </p>
+                    </div>
+                  ),
+                )}
               </div>
             </div>
           )}
@@ -334,12 +357,21 @@ function DrugDetailPanel({
                 </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {Object.entries(drug.toxicity as Record<string, string>).map(([k, v]) => (
-                  <div key={k} className="p-3 rounded-xl bg-red-500/5 border border-red-500/10">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-red-400 mb-1">{k}</p>
-                    <p className="text-sm font-semibold text-foreground">{String(v)}</p>
-                  </div>
-                ))}
+                {Object.entries(drug.toxicity as Record<string, string>).map(
+                  ([k, v]) => (
+                    <div
+                      key={k}
+                      className="p-3 rounded-xl bg-red-500/5 border border-red-500/10"
+                    >
+                      <p className="text-[10px] font-black uppercase tracking-widest text-red-400 mb-1">
+                        {k}
+                      </p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {String(v)}
+                      </p>
+                    </div>
+                  ),
+                )}
               </div>
             </div>
           )}
@@ -432,6 +464,9 @@ function DrugCrudForm({
   clinicId,
   userClinicName,
   clinics,
+  ownerClinicOptions,
+  enableClinicSelectionForOwner,
+  defaultClinicIdForCreate,
   onSuccess,
 }: {
   isOpen: boolean;
@@ -441,6 +476,9 @@ function DrugCrudForm({
   clinicId: string | null;
   userClinicName: string | null;
   clinics: Array<{ clinic_id: string; clinicName: string }>;
+  ownerClinicOptions: Array<{ clinic_id: string; clinicName: string }>;
+  enableClinicSelectionForOwner: boolean;
+  defaultClinicIdForCreate: string | null;
   onSuccess: () => void;
 }) {
   const createDrug = useCreateDrug();
@@ -465,8 +503,8 @@ function DrugCrudForm({
       clinic_id: "",
     },
     onSubmit: (values, { setSubmitting, resetForm }) => {
-      // Build payload — clinic_id is admin-only in the frontend payload.
-      // For staff/owner the backend service auto-assigns it and ignores the field.
+      const selectedClinicId = values.clinic_id || null;
+
       const payload: DrugCreate = {
         name: values.name.trim(),
         drugClass: values.drugClass.trim(),
@@ -488,8 +526,10 @@ function DrugCrudForm({
             ? { severityCat: values.toxicitySeverityCat }
             : {}),
         },
-        // Only send clinic_id from the form if admin (let backend auto-assign for others)
-        ...(isAdmin && { clinic_id: values.clinic_id || null }),
+        ...(isAdmin && { clinic_id: selectedClinicId }),
+        ...(!isAdmin &&
+          enableClinicSelectionForOwner &&
+          selectedClinicId && { clinic_id: selectedClinicId }),
       };
 
       if (selectedDrug) {
@@ -521,6 +561,8 @@ function DrugCrudForm({
   React.useEffect(() => {
     if (isOpen) {
       if (selectedDrug) {
+        const dosage = asObject(selectedDrug.dosage);
+        const toxicity = asObject(selectedDrug.toxicity);
         formik.setValues({
           name: selectedDrug.name,
           drugClass: selectedDrug.drugClass,
@@ -532,18 +574,20 @@ function DrugCrudForm({
           drugInteractions: tagArrayToString(
             selectedDrug.drugInteractions ?? [],
           ),
-          dosageDog: (selectedDrug.dosage as any)?.dog ?? "",
-          dosageCat: (selectedDrug.dosage as any)?.cat ?? "",
-          toxicityDog: (selectedDrug.toxicity as any)?.dog ?? "",
-          toxicityCat: (selectedDrug.toxicity as any)?.cat ?? "",
-          toxicitySeverityDog: (selectedDrug.toxicity as any)?.severityDog ?? "",
-          toxicitySeverityCat: (selectedDrug.toxicity as any)?.severityCat ?? "",
+          dosageDog: asText(dosage.dog),
+          dosageCat: asText(dosage.cat),
+          toxicityDog: asText(toxicity.dog),
+          toxicityCat: asText(toxicity.cat),
+          toxicitySeverityDog: asText(toxicity.severityDog),
+          toxicitySeverityCat: asText(toxicity.severityCat),
           clinic_id: selectedDrug.clinic_id ?? "",
         });
       } else {
         formik.resetForm();
         // Admin starts with no clinic, staff/owner hint — doesn't matter, backend assigns
-        if (!isAdmin && clinicId) {
+        if (!isAdmin && defaultClinicIdForCreate) {
+          formik.setFieldValue("clinic_id", defaultClinicIdForCreate);
+        } else if (!isAdmin && clinicId) {
           formik.setFieldValue("clinic_id", clinicId);
         }
       }
@@ -552,10 +596,15 @@ function DrugCrudForm({
   }, [isOpen, selectedDrug]);
 
   // Clinic hint for non-admin
+  const clinicHintId =
+    !isAdmin && enableClinicSelectionForOwner
+      ? formik.values.clinic_id || defaultClinicIdForCreate
+      : clinicId;
+
   const clinicHint = !isAdmin
     ? (userClinicName ??
-      clinics.find((c) => c.clinic_id === clinicId)?.clinicName ??
-      clinicId)
+      clinics.find((c) => c.clinic_id === clinicHintId)?.clinicName ??
+      clinicHintId)
     : null;
 
   return (
@@ -654,10 +703,45 @@ function DrugCrudForm({
           </div>
         )}
 
+        {/* Owner (multi-clinic): choose target clinic */}
+        {!isAdmin &&
+          enableClinicSelectionForOwner &&
+          ownerClinicOptions.length > 1 && (
+            <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 space-y-3">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-blue-400" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">
+                  {t("clinic_assignment")}
+                </p>
+              </div>
+              <Select
+                value={formik.values.clinic_id}
+                onValueChange={(val) => formik.setFieldValue("clinic_id", val)}
+              >
+                <SelectTrigger className="h-12 bg-white/5 border-white/5 focus:border-blue-400/30 rounded-xl font-semibold">
+                  <SelectValue placeholder={t("clinic")} />
+                </SelectTrigger>
+                <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2">
+                  {ownerClinicOptions.map((c) => (
+                    <SelectItem
+                      key={c.clinic_id}
+                      value={c.clinic_id}
+                      className="rounded-xl font-bold py-3 cursor-pointer focus:bg-emerald/10 focus:text-emerald"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4" /> {c.clinicName}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
         {/* Non-admin clinic hint */}
         {!isAdmin && clinicHint && (
-          <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-emerald/10 to-emerald/5 border border-emerald/20 p-4 relative">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald/10 blur-[40px] rounded-full pointer-events-none" />
+          <div className="overflow-hidden rounded-2xl bg-linear-to-br from-emerald/10 to-emerald/5 border border-emerald/20 p-4 relative">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald/10 blur-2xl rounded-full pointer-events-none" />
             <div className="flex items-start gap-4 mx-auto">
               <div className="w-12 h-12 rounded-2xl bg-emerald/10 flex items-center justify-center shrink-0 border border-emerald/20">
                 <Building2 className="w-6 h-6 text-emerald" />
@@ -776,10 +860,30 @@ function DrugCrudForm({
                 <SelectValue placeholder={t("select_severity")} />
               </SelectTrigger>
               <SelectContent className="bg-background/95 dark:bg-sidebar/95 backdrop-blur-xl border-border dark:border-white/5 rounded-2xl p-2">
-                <SelectItem value="High" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-red-500/20 focus:text-red-400">{t("high")}</SelectItem>
-                <SelectItem value="Medium" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-amber-500/20 focus:text-amber-400">{t("medium")}</SelectItem>
-                <SelectItem value="Low" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-yellow-500/20 focus:text-yellow-400">{t("low")}</SelectItem>
-                <SelectItem value="No" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-emerald-500/20 focus:text-emerald-400">{t("no_risk")}</SelectItem>
+                <SelectItem
+                  value="High"
+                  className="rounded-xl font-bold py-3 cursor-pointer focus:bg-red-500/20 focus:text-red-400"
+                >
+                  {t("high")}
+                </SelectItem>
+                <SelectItem
+                  value="Medium"
+                  className="rounded-xl font-bold py-3 cursor-pointer focus:bg-amber-500/20 focus:text-amber-400"
+                >
+                  {t("medium")}
+                </SelectItem>
+                <SelectItem
+                  value="Low"
+                  className="rounded-xl font-bold py-3 cursor-pointer focus:bg-yellow-500/20 focus:text-yellow-400"
+                >
+                  {t("low")}
+                </SelectItem>
+                <SelectItem
+                  value="No"
+                  className="rounded-xl font-bold py-3 cursor-pointer focus:bg-emerald-500/20 focus:text-emerald-400"
+                >
+                  {t("no_risk")}
+                </SelectItem>
               </SelectContent>
             </Select>
           </Field>
@@ -794,10 +898,30 @@ function DrugCrudForm({
                 <SelectValue placeholder={t("select_severity")} />
               </SelectTrigger>
               <SelectContent className="bg-background/95 dark:bg-sidebar/95 backdrop-blur-xl border-border dark:border-white/5 rounded-2xl p-2">
-                <SelectItem value="High" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-red-500/20 focus:text-red-400">{t("high")}</SelectItem>
-                <SelectItem value="Medium" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-amber-500/20 focus:text-amber-400">{t("medium")}</SelectItem>
-                <SelectItem value="Low" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-yellow-500/20 focus:text-yellow-400">{t("low")}</SelectItem>
-                <SelectItem value="No" className="rounded-xl font-bold py-3 cursor-pointer focus:bg-emerald-500/20 focus:text-emerald-400">{t("no_risk")}</SelectItem>
+                <SelectItem
+                  value="High"
+                  className="rounded-xl font-bold py-3 cursor-pointer focus:bg-red-500/20 focus:text-red-400"
+                >
+                  {t("high")}
+                </SelectItem>
+                <SelectItem
+                  value="Medium"
+                  className="rounded-xl font-bold py-3 cursor-pointer focus:bg-amber-500/20 focus:text-amber-400"
+                >
+                  {t("medium")}
+                </SelectItem>
+                <SelectItem
+                  value="Low"
+                  className="rounded-xl font-bold py-3 cursor-pointer focus:bg-yellow-500/20 focus:text-yellow-400"
+                >
+                  {t("low")}
+                </SelectItem>
+                <SelectItem
+                  value="No"
+                  className="rounded-xl font-bold py-3 cursor-pointer focus:bg-emerald-500/20 focus:text-emerald-400"
+                >
+                  {t("no_risk")}
+                </SelectItem>
               </SelectContent>
             </Select>
           </Field>
@@ -848,31 +972,44 @@ function ImportJsonModal({
     if (!jsonText.trim()) return;
 
     try {
-      const parsed = JSON.parse(jsonText);
+      const parsed: unknown = JSON.parse(jsonText);
       if (!Array.isArray(parsed)) {
         throw new Error("The JSON root must be an array of drug objects.");
       }
       setIsImporting(true);
 
       // Execute all creations in parallel
-      const importPromises = parsed.map(async (item: any) => {
-        if (!item.name || !item.drugClass) {
-          throw new Error("One or more items missing required 'name' or 'drugClass'.");
+      const importPromises = parsed.map(async (item) => {
+        if (!isRecord(item)) {
+          throw new Error("Each item must be a JSON object.");
         }
 
-        const payload = {
-          name: item.name,
-          drugClass: item.drugClass,
-          indications: Array.isArray(item.indications) ? item.indications : [],
-          sideEffects: Array.isArray(item.sideEffects) ? item.sideEffects : [],
-          contraindications: Array.isArray(item.contraindications) ? item.contraindications : [],
-          drugInteractions: Array.isArray(item.drugInteractions) ? item.drugInteractions : [],
-          dosage: typeof item.dosage === "object" && item.dosage !== null ? item.dosage : {},
-          toxicity: typeof item.toxicity === "object" && item.toxicity !== null ? item.toxicity : {},
-          ...(isAdmin && item.clinic_id !== undefined ? { clinic_id: item.clinic_id } : {})
+        const name = typeof item.name === "string" ? item.name.trim() : "";
+        const drugClass =
+          typeof item.drugClass === "string" ? item.drugClass.trim() : "";
+
+        if (!name || !drugClass) {
+          throw new Error(
+            "One or more items missing required 'name' or 'drugClass'.",
+          );
+        }
+
+        const payload: DrugCreate = {
+          name,
+          drugClass,
+          indications: asStringArray(item.indications),
+          sideEffects: asStringArray(item.sideEffects),
+          contraindications: asStringArray(item.contraindications),
+          drugInteractions: asStringArray(item.drugInteractions),
+          dosage: asObject(item.dosage),
+          toxicity: asObject(item.toxicity),
+          ...(isAdmin &&
+            (typeof item.clinic_id === "string" || item.clinic_id === null) && {
+              clinic_id: item.clinic_id,
+            }),
         };
 
-        return createDrug.mutateAsync(payload as any);
+        return createDrug.mutateAsync(payload);
       });
 
       await Promise.all(importPromises);
@@ -880,9 +1017,13 @@ function ImportJsonModal({
       setIsImporting(false);
       onOpenChange(false);
       setJsonText("");
-    } catch (e: any) {
+    } catch (e: unknown) {
       setIsImporting(false);
-      setError(e.message || "Failed to parse JSON. Please check the format.");
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Failed to parse JSON. Please check the format.",
+      );
     }
   };
 
@@ -949,6 +1090,7 @@ export default function DrugsPage() {
   const { t } = useLang();
   const level = useManageLevel();
   const isAdmin = level === "admin";
+  const isOwner = user?.role === "owner";
   const isClinicStaff = level === "clinic";
   const clinicId = user?.clinicId ?? null;
 
@@ -960,13 +1102,16 @@ export default function DrugsPage() {
   const [editDrug, setEditDrug] = React.useState<Drug | null>(null);
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isImportOpen, setIsImportOpen] = React.useState(false);
+  const [ownerClinicFilter, setOwnerClinicFilter] =
+    React.useState<string>("all");
 
   const { data: drugsData, isLoading, isError } = useDrugs();
   const { data: clinicsData } = useClinics();
   const deleteDrug = useDeleteDrug();
 
-  const allDrugs = drugsData?.data ?? [];
-  const clinics = clinicsData?.data ?? [];
+  const allDrugs = drugsData?.data ?? EMPTY_DRUGS;
+  const clinics = clinicsData?.data ?? EMPTY_CLINICS;
+  const ownerClinicOptions = isOwner ? clinics : [];
 
   // Clinic name lookup
   const clinicNameMap = React.useMemo(() => {
@@ -995,9 +1140,13 @@ export default function DrugsPage() {
         scopeFilter === "all" ||
         (scopeFilter === "global" && !d.clinic_id) ||
         (scopeFilter === "clinic" && !!d.clinic_id);
-      return matchSearch && matchScope;
+      const matchOwnerClinic =
+        !isOwner ||
+        ownerClinicFilter === "all" ||
+        d.clinic_id === ownerClinicFilter;
+      return matchSearch && matchScope && matchOwnerClinic;
     });
-  }, [allDrugs, search, scopeFilter]);
+  }, [allDrugs, search, scopeFilter, isOwner, ownerClinicFilter]);
 
   const globalCount = allDrugs.filter((d) => !d.clinic_id).length;
   const clinicCount = allDrugs.filter((d) => !!d.clinic_id).length;
@@ -1037,7 +1186,9 @@ export default function DrugsPage() {
           </h1>
           <p className="text-muted-foreground font-medium">
             {allDrugs.length} {t("drugs_label")} ·{" "}
-            <span className="text-blue-400">{globalCount} {t("global_visible")}</span>
+            <span className="text-blue-400">
+              {globalCount} {t("global_visible")}
+            </span>
           </p>
         </div>
         {canAdd && (
@@ -1146,10 +1297,38 @@ export default function DrugsPage() {
                   : "bg-white/5 border border-white/5 text-muted-foreground hover:border-emerald/20 hover:text-emerald"
               }`}
             >
-              {f === "all" ? t("scope_all") : f === "global" ? t("scope_global") : t("scope_clinic")}
+              {f === "all"
+                ? t("scope_all")
+                : f === "global"
+                  ? t("scope_global")
+                  : t("scope_clinic")}
             </button>
           ))}
         </div>
+        {isOwner && ownerClinicOptions.length > 1 && (
+          <Select
+            value={ownerClinicFilter}
+            onValueChange={setOwnerClinicFilter}
+          >
+            <SelectTrigger className="h-12 bg-white/5 border-white/5 focus:border-emerald/30 rounded-xl font-bold min-w-52">
+              <SelectValue placeholder="Clinic filter" />
+            </SelectTrigger>
+            <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2">
+              <SelectItem value="all" className="rounded-xl font-bold py-3">
+                All Clinics
+              </SelectItem>
+              {ownerClinicOptions.map((c) => (
+                <SelectItem
+                  key={c.clinic_id}
+                  value={c.clinic_id}
+                  className="rounded-xl font-bold py-3"
+                >
+                  {c.clinicName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* ── Drug list ── */}
@@ -1221,6 +1400,13 @@ export default function DrugsPage() {
           clinicId={clinicId}
           userClinicName={user?.clinicName ?? null}
           clinics={clinics}
+          ownerClinicOptions={ownerClinicOptions}
+          enableClinicSelectionForOwner={isOwner}
+          defaultClinicIdForCreate={
+            ownerClinicFilter !== "all"
+              ? ownerClinicFilter
+              : (ownerClinicOptions[0]?.clinic_id ?? clinicId)
+          }
           onSuccess={() => {
             setIsFormOpen(false);
             setEditDrug(null);
