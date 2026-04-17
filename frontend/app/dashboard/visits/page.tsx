@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { type KeyboardEvent, useMemo, useState } from "react";
 import { motion } from "@/app/_components/fast-motion";
 import {
   Dog,
@@ -432,7 +432,7 @@ export default function VisitsPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
                     onClick={() => setSelectedVisit(visit)}
-                    onKeyDown={(event) => {
+                    onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
                         setSelectedVisit(visit);
@@ -564,7 +564,7 @@ export default function VisitsPage() {
                   onClick={() => {
                     if (canOpenDetails) setSelectedVisit(visit);
                   }}
-                  onKeyDown={(event) => {
+                  onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
                     if (!canOpenDetails) return;
                     if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();

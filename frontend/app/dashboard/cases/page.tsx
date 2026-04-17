@@ -360,7 +360,9 @@ export default function CasesPage() {
                         setSelectedVisitDetails(caseItem.originalVisit);
                       }
                     }}
-                    onKeyDown={(event) => {
+                    onKeyDown={(
+                      event: React.KeyboardEvent<HTMLTableRowElement>,
+                    ) => {
                       if (!canOpenVisitDetails) return;
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
