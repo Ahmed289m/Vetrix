@@ -59,10 +59,11 @@ export default function PetsPage() {
   const { t } = useLang();
 
   const isClient = user?.role === "client";
+  const canLoadClients = !isClient && Boolean(user?.clinicId);
 
   const { data: petsData, isLoading: isPetsLoading } = usePets();
   // Only fetch all users for roles that have users.read permission
-  const { data: usersData } = useUsers({ enabled: !isClient });
+  const { data: usersData } = useUsers({ enabled: canLoadClients });
 
   const createPet = useCreatePet();
   const updatePet = useUpdatePet();
@@ -71,14 +72,18 @@ export default function PetsPage() {
   const pets = petsData?.data || [];
   const clients = isClient
     ? []
-    : (usersData?.data || []).filter((u) => u.role === "client");
+    : canLoadClients
+      ? (usersData?.data || []).filter((u) => u.role === "client")
+      : [];
 
   const filteredPets = React.useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return pets.filter((pet) => {
       const ownerName = isClient
         ? (user?.fullname || "").toLowerCase()
-        : (clients.find((c) => c.user_id === pet.client_id)?.fullname || "").toLowerCase();
+        : (
+            clients.find((c) => c.user_id === pet.client_id)?.fullname || ""
+          ).toLowerCase();
 
       const matchesSearch =
         q.length === 0 ||
