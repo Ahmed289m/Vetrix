@@ -117,19 +117,21 @@ const getErrorDetail = (error: unknown, fallback: string): string => {
 const getDrugDosageForSpecies = (
   drug: Drug | undefined,
   key: string | null,
-): unknown => {
+): string | null => {
   if (!drug || !key) return null;
   const dosage = drug.dosage as Record<string, unknown>;
-  return dosage[key] ?? null;
+  const raw = dosage[key];
+  return raw === undefined || raw === null ? null : formatDose(raw);
 };
 
 const getDrugToxicityForSpecies = (
   drug: Drug | undefined,
   key: string | null,
-): unknown => {
+): string | null => {
   if (!drug || !key) return null;
   const toxicity = drug.toxicity as Record<string, unknown>;
-  return toxicity[key] ?? null;
+  const raw = toxicity[key];
+  return raw === undefined || raw === null ? null : formatDose(raw);
 };
 
 const getDrugSeverityForSpecies = (
@@ -1389,7 +1391,9 @@ export default function SimulationMode({ role }: Props) {
                           <p className="text-[10px] font-bold uppercase tracking-widest text-cyan mb-1">
                             Dosage for {pet?.type || "this species"}
                           </p>
-                          <p className="font-semibold text-cyan">{dosage}</p>
+                          <p className="font-semibold text-cyan">
+                            {formatDose(dosage)}
+                          </p>
                         </div>
                       )}
 
@@ -1406,7 +1410,7 @@ export default function SimulationMode({ role }: Props) {
                           <p
                             className={`font-semibold ${severityColor(sev).text}`}
                           >
-                            {tox}
+                            {formatDose(tox)}
                           </p>
                         </div>
                       )}
