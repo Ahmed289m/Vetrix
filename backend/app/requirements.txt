@@ -20,7 +20,7 @@ python-multipart
 python-dotenv
 email-validator
 
-# AI (نسخة خفيفة)
-crewai==0.28.8
-groq
-langchain-groq
+# AI
+crewai==1.14.2
+groq>=0.30.0,<1.0.0
+langchain-groq==0.3.8
