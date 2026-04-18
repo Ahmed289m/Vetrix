@@ -12,8 +12,8 @@ pydantic-settings>=2.2.0
 
 # Auth & Security
 python-jose[cryptography]>=3.3.0
-passlib[bcrypt]>=1.7.4
-bcrypt
+passlib[bcrypt]>=1.7.5
+
 # Forms & uploads
 python-multipart>=0.0.9
 
@@ -23,11 +23,7 @@ python-dotenv>=1.0.1
 # Utilities
 email-validator>=2.1.0
 
-# Ai Agent
+# AI Agent
 crewai==1.14.2
 groq>=0.30.0,<1.0.0
 langchain-groq==0.3.8
-
-
-
-
