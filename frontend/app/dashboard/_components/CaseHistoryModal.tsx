@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { createPortal } from "react-dom";
 import { BookOpen, X, FileText, Dog, Cat, FlaskConical } from "lucide-react";
 import { useLang } from "@/app/_hooks/useLanguage";
 
@@ -26,7 +27,9 @@ export function CaseHistoryModal({
 }: CaseHistoryModalProps) {
   const { t } = useLang();
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <AnimatePresence>
       {open && (
         <>
@@ -36,9 +39,9 @@ export function CaseHistoryModal({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
             onClick={onClose}
-            className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm"
+            className="fixed inset-0 z-10000 bg-background/80 backdrop-blur-sm"
           />
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 pointer-events-none">
+          <div className="fixed inset-0 z-10000 flex items-center justify-center p-4 pointer-events-none">
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 16 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -128,6 +131,7 @@ export function CaseHistoryModal({
           </div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

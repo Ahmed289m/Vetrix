@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { createPortal } from "react-dom";
 import {
   X,
   Droplets,
@@ -219,7 +220,9 @@ export function FluidTherapyModal({
   const hasWeight = w > 0;
   const phase1Hours = smartPlan[0].hours[1];
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <AnimatePresence>
       {open && (
         <>
@@ -896,6 +899,7 @@ export function FluidTherapyModal({
           </div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
