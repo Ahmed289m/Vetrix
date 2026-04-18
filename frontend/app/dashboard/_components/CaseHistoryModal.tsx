@@ -12,11 +12,8 @@ import {
   FlaskConical,
   Loader2,
   AlertTriangle,
-  CalendarDays,
-  Pill,
 } from "lucide-react";
 import { useLang } from "@/app/_hooks/useLanguage";
-import type { CaseHistoryVisit } from "@/app/_lib/api/crew.api";
 
 export interface CaseHistoryPatient {
   petName: string;
@@ -30,7 +27,7 @@ interface CaseHistoryModalProps {
   open: boolean;
   onClose: () => void;
   patient: CaseHistoryPatient | null;
-  visits?: CaseHistoryVisit[];
+  rawJson?: unknown;
   isLoading?: boolean;
   errorMessage?: string | null;
 }
@@ -39,11 +36,28 @@ export function CaseHistoryModal({
   open,
   onClose,
   patient,
-  visits = [],
+  rawJson,
   isLoading = false,
   errorMessage = null,
 }: CaseHistoryModalProps) {
   const { t } = useLang();
+  const hasRawJson = rawJson !== undefined && rawJson !== null;
+  const formattedJson = React.useMemo(() => {
+    if (!hasRawJson) return "";
+    if (typeof rawJson === "string") {
+      try {
+        return JSON.stringify(JSON.parse(rawJson), null, 2);
+      } catch {
+        return rawJson;
+      }
+    }
+
+    try {
+      return JSON.stringify(rawJson, null, 2);
+    } catch {
+      return String(rawJson);
+    }
+  }, [hasRawJson, rawJson]);
 
   if (typeof document === "undefined") return null;
 
@@ -144,34 +158,14 @@ export function CaseHistoryModal({
                     </p>
                   </div>
                 </div>
-              ) : visits.length > 0 ? (
+              ) : hasRawJson ? (
                 <div className="space-y-2">
                   <p className="text-[10px] font-black uppercase tracking-[0.15em] text-violet-400/90 px-1">
-                    {visits.length} visit{visits.length > 1 ? "s" : ""} in
-                    timeline
+                    JSON result
                   </p>
-                  {visits.map((visit, index) => (
-                    <div
-                      key={`${visit.date}-${index}`}
-                      className="p-3 rounded-xl border border-violet-500/15 bg-violet-500/5 space-y-2"
-                    >
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <span className="text-[11px] font-bold text-violet-300 flex items-center gap-1.5">
-                          <CalendarDays className="w-3.5 h-3.5" />
-                          {visit.date || "Unknown date"}
-                        </span>
-                        {visit.medications && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-lg bg-emerald/10 border border-emerald/20 text-emerald font-bold uppercase tracking-wide flex items-center gap-1">
-                            <Pill className="w-3 h-3" />
-                            {visit.medications}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-foreground/85 leading-relaxed whitespace-pre-wrap">
-                        {visit.notes || "No notes recorded for this visit."}
-                      </p>
-                    </div>
-                  ))}
+                  <pre className="p-3 rounded-xl border border-violet-500/15 bg-violet-500/5 text-[11px] leading-relaxed whitespace-pre-wrap wrap-break-word overflow-x-auto font-mono text-violet-100/95">
+                    {formattedJson}
+                  </pre>
                 </div>
               ) : (
                 <div className="p-8 rounded-xl border-2 border-dashed border-violet-500/20 bg-violet-500/5 text-center space-y-3">

@@ -793,7 +793,7 @@ export default function PetsPage() {
               }
             : null
         }
-        visits={caseHistoryCrew.data?.data?.visits ?? []}
+        rawJson={caseHistoryCrew.data}
         isLoading={caseHistoryCrew.isPending}
         errorMessage={
           caseHistoryCrew.isError
