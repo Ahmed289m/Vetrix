@@ -192,7 +192,10 @@ export default function AppointmentsPage() {
    */
   const getClientName = (clientId: string) => {
     if (isClient) return user?.fullname || "—";
-    return clientsList.find((c) => c.user_id === clientId)?.fullname || "Unknown Owner";
+    return (
+      clientsList.find((c) => c.user_id === clientId)?.fullname ||
+      "Unknown Owner"
+    );
   };
 
   const filteredAppointments = React.useMemo(() => {
