@@ -1,8 +1,7 @@
-from langchain_groq import ChatGroq
+from crewai import LLM
 from app.core.config import settings
 
-
-llm = ChatGroq(
-    model="llama-3.1-70b-versatile",
+llm = LLM(
+    model="groq/llama-3.1-70b-versatile",
     api_key=settings.groq_api_key,
 )
