@@ -23,3 +23,7 @@ python-dotenv>=1.0.1
 
 # Utilities
 email-validator>=2.1.0
+
+# Ai Agent
+crewai>=1.14.2
+
