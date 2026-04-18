@@ -136,16 +136,16 @@ async def show_password(
     controller: UserController = Depends(get_user_controller),
 ) -> CreateUserResponse:
     """
-    Show the current password for a user.
+    Reset and return the current password for a user.
     
-    - ADMIN can view any user's password
-    - OWNER can view DOCTOR, STAFF, CLIENT passwords in their clinic
+    - ADMIN can reset any user's password
+    - OWNER can reset DOCTOR, STAFF, CLIENT passwords in their clinic
     
-    Returns the current user password (regenerated from user data).
+    Returns the new user password after persisting its hash.
     """
     result = await controller.get_user_password(user_id, current_user)
     return {
         "success": True,
-        "message": "Password retrieved successfully.",
+        "message": "Password reset successfully.",
         "data": result,
     }
