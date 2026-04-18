@@ -115,30 +115,37 @@ export default function AppointmentsPage() {
   const appointments = React.useMemo<Appointment[]>(() => {
     const rawAppointments = asArray<unknown>(appData?.data);
 
-    const normalized = rawAppointments
-      .map((item) => {
-        const app = asRecord(item);
-        if (!app) return null;
+    const normalized: Appointment[] = [];
+    for (const item of rawAppointments) {
+      const app = asRecord(item);
+      if (!app) continue;
 
-        return {
-          appointment_id: asString(app.appointment_id),
-          clinic_id: asString(app.clinic_id),
-          pet_id: asString(app.pet_id),
-          client_id: asString(app.client_id),
-          doctor_id:
-            app.doctor_id === undefined ? undefined : asString(app.doctor_id),
-          appointment_date:
-            app.appointment_date === undefined
-              ? undefined
-              : asString(app.appointment_date),
-          reason: app.reason === undefined ? undefined : asString(app.reason),
-          status: asString(app.status),
-        };
-      })
-      .filter(
-        (app): app is Appointment =>
-          app !== null && app.appointment_id.length > 0,
-      );
+      const appointmentId = asString(app.appointment_id);
+      if (!appointmentId) continue;
+
+      const normalizedAppointment: Appointment = {
+        appointment_id: appointmentId,
+        clinic_id: asString(app.clinic_id),
+        pet_id: asString(app.pet_id),
+        client_id: asString(app.client_id),
+        status: asString(app.status),
+      };
+
+      if (app.doctor_id !== undefined && app.doctor_id !== null) {
+        normalizedAppointment.doctor_id = asString(app.doctor_id);
+      }
+      if (
+        app.appointment_date !== undefined &&
+        app.appointment_date !== null
+      ) {
+        normalizedAppointment.appointment_date = asString(app.appointment_date);
+      }
+      if (app.reason !== undefined && app.reason !== null) {
+        normalizedAppointment.reason = asString(app.reason);
+      }
+
+      normalized.push(normalizedAppointment);
+    }
 
     return normalized.length > 0 ? normalized : EMPTY_APPOINTMENTS;
   }, [appData?.data]);
