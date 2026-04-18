@@ -78,6 +78,11 @@ type UserListItem = {
 const asArray = <T,>(value: unknown): T[] =>
   Array.isArray(value) ? (value as T[]) : [];
 
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : null;
+
 const asString = (value: unknown): string => {
   if (typeof value === "string") return value;
   if (value === null || value === undefined) return EMPTY_STRING;
@@ -108,47 +113,67 @@ export default function AppointmentsPage() {
   const updateAppointment = useUpdateAppointment();
 
   const appointments = React.useMemo<Appointment[]>(() => {
-    const rawAppointments = asArray<Partial<Appointment>>(appData?.data);
+    const rawAppointments = asArray<unknown>(appData?.data);
 
     const normalized = rawAppointments
-      .map((app) => ({
-        appointment_id: asString(app.appointment_id),
-        clinic_id: asString(app.clinic_id),
-        pet_id: asString(app.pet_id),
-        client_id: asString(app.client_id),
-        doctor_id:
-          app.doctor_id === undefined ? undefined : asString(app.doctor_id),
-        appointment_date:
-          app.appointment_date === undefined
-            ? undefined
-            : asString(app.appointment_date),
-        reason: app.reason === undefined ? undefined : asString(app.reason),
-        status: asString(app.status),
-      }))
-      .filter((app) => app.appointment_id.length > 0);
+      .map((item) => {
+        const app = asRecord(item);
+        if (!app) return null;
+
+        return {
+          appointment_id: asString(app.appointment_id),
+          clinic_id: asString(app.clinic_id),
+          pet_id: asString(app.pet_id),
+          client_id: asString(app.client_id),
+          doctor_id:
+            app.doctor_id === undefined ? undefined : asString(app.doctor_id),
+          appointment_date:
+            app.appointment_date === undefined
+              ? undefined
+              : asString(app.appointment_date),
+          reason: app.reason === undefined ? undefined : asString(app.reason),
+          status: asString(app.status),
+        };
+      })
+      .filter(
+        (app): app is Appointment =>
+          app !== null && app.appointment_id.length > 0,
+      );
 
     return normalized.length > 0 ? normalized : EMPTY_APPOINTMENTS;
   }, [appData?.data]);
 
   const petsList = React.useMemo<PetListItem[]>(() => {
-    const rawPets = asArray<Record<string, unknown>>(petsData?.data);
+    const rawPets = asArray<unknown>(petsData?.data);
     return rawPets
-      .map((pet) => ({
-        pet_id: asString(pet.pet_id),
-        name: asString(pet.name),
-        client_id: asString(pet.client_id),
-      }))
+      .map((item) => {
+        const pet = asRecord(item);
+        if (!pet) return null;
+
+        return {
+          pet_id: asString(pet.pet_id),
+          name: asString(pet.name),
+          client_id: asString(pet.client_id),
+        };
+      })
+      .filter((pet): pet is PetListItem => pet !== null)
       .filter((pet) => pet.pet_id.length > 0);
   }, [petsData?.data]);
 
   const usersList = React.useMemo<UserListItem[]>(() => {
-    const rawUsers = asArray<Record<string, unknown>>(usersData?.data);
+    const rawUsers = asArray<unknown>(usersData?.data);
     return rawUsers
-      .map((u) => ({
-        user_id: asString(u.user_id),
-        fullname: asString(u.fullname),
-        role: asString(u.role),
-      }))
+      .map((item) => {
+        const u = asRecord(item);
+        if (!u) return null;
+
+        return {
+          user_id: asString(u.user_id),
+          fullname: asString(u.fullname),
+          role: asString(u.role),
+        };
+      })
+      .filter((u): u is UserListItem => u !== null)
       .filter((u) => u.user_id.length > 0);
   }, [usersData?.data]);
 
