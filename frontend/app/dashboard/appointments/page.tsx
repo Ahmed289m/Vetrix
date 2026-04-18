@@ -61,6 +61,28 @@ import { useLang } from "@/app/_hooks/useLanguage";
 import type { Appointment } from "@/app/_lib/types/models";
 
 const EMPTY_APPOINTMENTS: Appointment[] = [];
+const EMPTY_STRING = "";
+
+type PetListItem = {
+  pet_id: string;
+  name: string;
+  client_id: string;
+};
+
+type UserListItem = {
+  user_id: string;
+  fullname: string;
+  role: string;
+};
+
+const asArray = <T,>(value: unknown): T[] =>
+  Array.isArray(value) ? (value as T[]) : [];
+
+const asString = (value: unknown): string => {
+  if (typeof value === "string") return value;
+  if (value === null || value === undefined) return EMPTY_STRING;
+  return String(value);
+};
 
 export default function AppointmentsPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -85,13 +107,55 @@ export default function AppointmentsPage() {
   const deleteAppointment = useDeleteAppointment();
   const updateAppointment = useUpdateAppointment();
 
-  const appointments = appData?.data ?? EMPTY_APPOINTMENTS;
-  const petsList = petsData?.data || [];
+  const appointments = React.useMemo<Appointment[]>(() => {
+    const rawAppointments = asArray<Partial<Appointment>>(appData?.data);
+
+    const normalized = rawAppointments
+      .map((app) => ({
+        appointment_id: asString(app.appointment_id),
+        clinic_id: asString(app.clinic_id),
+        pet_id: asString(app.pet_id),
+        client_id: asString(app.client_id),
+        doctor_id:
+          app.doctor_id === undefined ? undefined : asString(app.doctor_id),
+        appointment_date:
+          app.appointment_date === undefined
+            ? undefined
+            : asString(app.appointment_date),
+        reason: app.reason === undefined ? undefined : asString(app.reason),
+        status: asString(app.status),
+      }))
+      .filter((app) => app.appointment_id.length > 0);
+
+    return normalized.length > 0 ? normalized : EMPTY_APPOINTMENTS;
+  }, [appData?.data]);
+
+  const petsList = React.useMemo<PetListItem[]>(() => {
+    const rawPets = asArray<Record<string, unknown>>(petsData?.data);
+    return rawPets
+      .map((pet) => ({
+        pet_id: asString(pet.pet_id),
+        name: asString(pet.name),
+        client_id: asString(pet.client_id),
+      }))
+      .filter((pet) => pet.pet_id.length > 0);
+  }, [petsData?.data]);
+
+  const usersList = React.useMemo<UserListItem[]>(() => {
+    const rawUsers = asArray<Record<string, unknown>>(usersData?.data);
+    return rawUsers
+      .map((u) => ({
+        user_id: asString(u.user_id),
+        fullname: asString(u.fullname),
+        role: asString(u.role),
+      }))
+      .filter((u) => u.user_id.length > 0);
+  }, [usersData?.data]);
 
   // For CLIENT: empty list — they see their own name directly
   const clientsList = isClient
     ? []
-    : (usersData?.data || []).filter((u) => u.role === "client");
+    : usersList.filter((u) => u.role === "client");
 
   // Sort appointments by operation priority then by latest date.
   // Priority: pending -> confirmed -> completed -> cancelled.
@@ -128,10 +192,7 @@ export default function AppointmentsPage() {
    */
   const getClientName = (clientId: string) => {
     if (isClient) return user?.fullname || "—";
-    return (
-      clientsList.find((c) => c.user_id === clientId)?.fullname ||
-      "Unknown Owner"
-    );
+    return clientsList.find((c) => c.user_id === clientId)?.fullname || "Unknown Owner";
   };
 
   const filteredAppointments = React.useMemo(() => {
