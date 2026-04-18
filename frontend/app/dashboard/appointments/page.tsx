@@ -352,7 +352,16 @@ export default function AppointmentsPage() {
 
   React.useEffect(() => {
     const allowed = new Set(bulkCancelableIds);
-    setSelectedAppointmentIds((prev) => prev.filter((id) => allowed.has(id)));
+    setSelectedAppointmentIds((prev) => {
+      const next = prev.filter((id) => allowed.has(id));
+      if (
+        next.length === prev.length &&
+        next.every((id, index) => id === prev[index])
+      ) {
+        return prev;
+      }
+      return next;
+    });
   }, [bulkCancelableIds]);
 
   const toggleAppointmentSelection = (appointmentId: string) => {

@@ -114,7 +114,16 @@ export default function ClinicsPage() {
 
   React.useEffect(() => {
     const allowed = new Set(bulkDeletableClinicIds);
-    setSelectedClinicIds((prev) => prev.filter((id) => allowed.has(id)));
+    setSelectedClinicIds((prev) => {
+      const next = prev.filter((id) => allowed.has(id));
+      if (
+        next.length === prev.length &&
+        next.every((id, index) => id === prev[index])
+      ) {
+        return prev;
+      }
+      return next;
+    });
   }, [bulkDeletableClinicIds]);
 
   const formik = useFormik({

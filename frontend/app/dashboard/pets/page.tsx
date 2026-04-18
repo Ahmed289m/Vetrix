@@ -132,7 +132,16 @@ export default function PetsPage() {
 
   React.useEffect(() => {
     const allowed = new Set(bulkDeletablePetIds);
-    setSelectedPetIds((prev) => prev.filter((id) => allowed.has(id)));
+    setSelectedPetIds((prev) => {
+      const next = prev.filter((id) => allowed.has(id));
+      if (
+        next.length === prev.length &&
+        next.every((id, index) => id === prev[index])
+      ) {
+        return prev;
+      }
+      return next;
+    });
   }, [bulkDeletablePetIds]);
 
   const formik = useFormik({

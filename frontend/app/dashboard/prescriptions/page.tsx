@@ -224,7 +224,16 @@ export default function PrescriptionsPage() {
 
   React.useEffect(() => {
     const allowed = new Set(bulkDeletablePrescriptionIds);
-    setSelectedPrescriptionIds((prev) => prev.filter((id) => allowed.has(id)));
+    setSelectedPrescriptionIds((prev) => {
+      const next = prev.filter((id) => allowed.has(id));
+      if (
+        next.length === prev.length &&
+        next.every((id, index) => id === prev[index])
+      ) {
+        return prev;
+      }
+      return next;
+    });
   }, [bulkDeletablePrescriptionIds]);
 
   // ── Form ─────────────────────────────────────────────────────────────────

@@ -1279,7 +1279,16 @@ export default function DrugsPage() {
 
   React.useEffect(() => {
     const allowed = new Set(bulkDeletableDrugIds);
-    setSelectedDrugIds((prev) => prev.filter((id) => allowed.has(id)));
+    setSelectedDrugIds((prev) => {
+      const next = prev.filter((id) => allowed.has(id));
+      if (
+        next.length === prev.length &&
+        next.every((id, index) => id === prev[index])
+      ) {
+        return prev;
+      }
+      return next;
+    });
   }, [bulkDeletableDrugIds]);
 
   const globalCount = allDrugs.filter((d) => !d.clinic_id).length;

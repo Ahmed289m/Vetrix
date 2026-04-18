@@ -127,7 +127,16 @@ export default function UsersPage() {
 
   React.useEffect(() => {
     const allowed = new Set(bulkDeletableUserIds);
-    setSelectedUserIds((prev) => prev.filter((id) => allowed.has(id)));
+    setSelectedUserIds((prev) => {
+      const next = prev.filter((id) => allowed.has(id));
+      if (
+        next.length === prev.length &&
+        next.every((id, index) => id === prev[index])
+      ) {
+        return prev;
+      }
+      return next;
+    });
   }, [bulkDeletableUserIds]);
 
   const formik = useFormik({
