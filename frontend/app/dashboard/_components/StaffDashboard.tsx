@@ -11,6 +11,7 @@ import {
   AlertCircle,
   Play,
 } from "lucide-react";
+import { fadeUp, stagger } from "@/app/_lib/utils/shared-animations";
 import SimulationMode from "@/app/_components/SimulationMode";
 import { useLang } from "@/app/_hooks/useLanguage";
 import { useAppointments } from "@/app/_hooks/queries/use-appointments";
@@ -31,16 +32,6 @@ const EMPTY_PRESCRIPTIONS: Prescription[] = [];
 const EMPTY_VISITS: Visit[] = [];
 const EMPTY_PETS: Pet[] = [];
 const EMPTY_DRUGS: Drug[] = [];
-
-const stagger = { animate: { transition: { staggerChildren: 0.06 } } };
-const fadeUp = {
-  initial: { opacity: 0, y: 16 },
-  animate: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.4, ease: "easeOut" as const },
-  },
-};
 
 export function StaffDashboard() {
   const [showSim, setShowSim] = useState(false);

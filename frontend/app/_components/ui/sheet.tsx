@@ -36,9 +36,9 @@ const SheetOverlay = React.forwardRef<
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.14, ease: "easeOut" }}
       className={cn(
-        "fixed inset-0 z-50 bg-black/35 backdrop-blur-[2px] will-change-[opacity]",
+        "fixed inset-0 z-50 bg-black/40 will-change-opacity",
         className,
       )}
     />
@@ -94,7 +94,7 @@ const SheetContent = React.forwardRef<
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.14, ease: [0.25, 0.46, 0.45, 0.94] }}
                 className={cn(
                   sheetVariants({ side }),
                   "will-change-transform",

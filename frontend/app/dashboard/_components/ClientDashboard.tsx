@@ -17,6 +17,7 @@ import {
   Stethoscope,
   X,
 } from "lucide-react";
+import { fadeUp, stagger } from "@/app/_lib/utils/shared-animations";
 import { useLang } from "@/app/_hooks/useLanguage";
 import { useAuth } from "@/app/_hooks/useAuth";
 import { useAppointments } from "@/app/_hooks/queries/use-appointments";
@@ -25,16 +26,6 @@ import { usePrescriptions } from "@/app/_hooks/queries/use-prescriptions";
 import { useWebSocket } from "@/app/_hooks/useWebSocket";
 import type { Appointment, Pet } from "@/app/_lib/types/models";
 import { cn } from "@/app/_lib/utils";
-
-const stagger = { animate: { transition: { staggerChildren: 0.06 } } };
-const fadeUp = {
-  initial: { opacity: 0, y: 16 },
-  animate: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.4, ease: "easeOut" as const },
-  },
-};
 
 /** Status badge colors for appointment states */
 const statusStyle = (status: string) => {

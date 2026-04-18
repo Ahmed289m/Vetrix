@@ -17,6 +17,7 @@ import {
   Timer,
   Play,
 } from "lucide-react";
+import { fadeUp, stagger } from "@/app/_lib/utils/shared-animations";
 import {
   PieChart,
   Pie,
@@ -35,16 +36,6 @@ import { useUsers } from "@/app/_hooks/queries/use-users";
 import { useAppointments } from "@/app/_hooks/queries/use-appointments";
 import { usePets } from "@/app/_hooks/queries/use-pets";
 import { useLang } from "@/app/_hooks/useLanguage";
-
-const stagger = { animate: { transition: { staggerChildren: 0.06 } } };
-const fadeUp = {
-  initial: { opacity: 0, y: 16 },
-  animate: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.4, ease: "easeOut" as const },
-  },
-};
 
 const quickActions = [
   {

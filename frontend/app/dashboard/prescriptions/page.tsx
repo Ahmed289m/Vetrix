@@ -935,16 +935,18 @@ function ClientPrescriptionView({
             )}
 
             {/* Footer */}
-            <div className="flex items-center justify-between pt-1">
-              <span className="text-xs text-muted-foreground">
-                🐾 {getPetName(rx.pet_id)}
-              </span>
-              <span className="text-xs text-muted-foreground font-semibold">
-                {getPrescriptionDateLabel(rx)}
-              </span>
-              <button className="flex items-center gap-1 text-xs font-bold text-emerald hover:underline">
-                Details <ChevronRight className="w-3 h-3" />
-              </button>
+            <div className="pt-1 space-y-2">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span className="truncate">🐾 {getPetName(rx.pet_id)}</span>
+                <span className="font-semibold shrink-0 ml-2">
+                  {getPrescriptionDateLabel(rx)}
+                </span>
+              </div>
+              <div className="flex items-center justify-end">
+                <button className="flex items-center gap-1 text-xs font-bold text-emerald hover:underline">
+                  Details <ChevronRight className="w-3 h-3" />
+                </button>
+              </div>
             </div>
           </motion.div>
         );

@@ -346,8 +346,8 @@ const SidebarInset = React.forwardRef<
     <main
       ref={ref}
       className={cn(
-        "relative flex h-svh flex-1 flex-col bg-background transition-all duration-150",
-        openMobile && "blur-[1px] md:blur-0",
+        "relative flex h-svh flex-1 flex-col bg-background transition-opacity duration-150",
+        openMobile && "opacity-60 pointer-events-none md:opacity-100 md:pointer-events-auto",
         "peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-2xl md:peer-data-[variant=inset]:shadow",
         className,
       )}

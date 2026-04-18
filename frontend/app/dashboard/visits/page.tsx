@@ -14,6 +14,7 @@ import {
   ChevronRight,
   ClipboardList,
   Clock,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useFormik } from "formik";
@@ -26,6 +27,7 @@ import {
   type DatePartsFilter,
   type DateRangeFilter,
 } from "@/app/_lib/utils/date-filter";
+import { fadeUp, stagger } from "@/app/_lib/utils/shared-animations";
 import { Button } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
 import { Label } from "@/app/_components/ui/label";
@@ -59,16 +61,7 @@ import {
   SeverityBadge,
 } from "@/app/dashboard/_components/VisitDetailModal";
 
-// ── Main page ─────────────────────────────────────────────────────────────────
-
-const fadeUp = {
-  initial: { opacity: 0, y: 16 },
-  animate: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.4, ease: "easeOut" as const },
-  },
-};
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const parseDatePart = (
   value: string,
@@ -77,14 +70,41 @@ const parseDatePart = (
 ): number | undefined => {
   const trimmed = value.trim();
   if (!trimmed) return undefined;
-
   const parsed = Number.parseInt(trimmed, 10);
   if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
     return undefined;
   }
-
   return parsed;
 };
+
+// ── Reusable info tile ────────────────────────────────────────────────────────
+function InfoTile({
+  icon: Icon,
+  label,
+  value,
+  className,
+  valueClassName,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  className?: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className={cn("p-2.5 rounded-xl border space-y-0.5", className)}>
+      <p className="text-[10px] font-bold uppercase text-muted-foreground/60 flex items-center gap-1">
+        <Icon className="w-3 h-3 shrink-0" />
+        {label}
+      </p>
+      <p className={cn("text-xs font-bold truncate", valueClassName)}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function VisitsPage() {
   const [dateFilter, setDateFilter] = useState<DateRangeFilter>("all");
@@ -288,13 +308,21 @@ export default function VisitsPage() {
     }
   };
 
+  // ── Skeletons ──────────────────────────────────────────────────────────────
+  const CardSkeleton = () => (
+    <div className="h-48 rounded-2xl bg-white/5 border border-white/5 animate-pulse" />
+  );
+  const RowSkeleton = () => (
+    <div className="h-28 rounded-2xl bg-white/5 border border-white/5 animate-pulse" />
+  );
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <motion.div
       variants={{ animate: { transition: { staggerChildren: 0.06 } } }}
       initial="initial"
       animate="animate"
-      className="space-y-6 max-w-6xl mx-auto p-4 sm:p-6 lg:p-8"
+      className="space-y-6 max-w-6xl mx-auto"
     >
       {/* Header */}
       <motion.div
@@ -335,13 +363,13 @@ export default function VisitsPage() {
       {/* Date filter */}
       <motion.div
         variants={fadeUp}
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+        className="grid grid-cols-2 sm:grid-cols-4 gap-3"
       >
         <Select
           value={dateFilter}
           onValueChange={(v) => setDateFilter(v as DateRangeFilter)}
         >
-          <SelectTrigger className="h-11 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
+          <SelectTrigger className="h-11 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold col-span-2 sm:col-span-1">
             <SelectValue placeholder="Date" />
           </SelectTrigger>
           <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5">
@@ -390,12 +418,9 @@ export default function VisitsPage() {
       {isClient ? (
         <motion.div variants={fadeUp}>
           {visitsLoading ? (
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => (
-                <div
-                  key={i}
-                  className="h-36 rounded-2xl bg-white/5 border border-white/5 animate-pulse"
-                />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[...Array(4)].map((_, i) => (
+                <CardSkeleton key={i} />
               ))}
             </div>
           ) : visibleVisits.length === 0 ? (
@@ -425,6 +450,7 @@ export default function VisitsPage() {
                   t("clinical_visit") ||
                   "Clinical Visit";
                 const PetIcon = pet?.type === "cat" ? Cat : Dog;
+
                 return (
                   <motion.div
                     key={visit.visit_id}
@@ -444,46 +470,43 @@ export default function VisitsPage() {
                   >
                     {/* Card header */}
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
                         <div className="w-11 h-11 rounded-xl bg-linear-to-br from-emerald/20 to-cyan/10 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                           <PetIcon className="w-6 h-6 text-emerald" />
                         </div>
-                        <div>
-                          <p className="font-black text-foreground group-hover:text-emerald transition-colors">
+                        <div className="min-w-0">
+                          <p className="font-black text-foreground group-hover:text-emerald transition-colors truncate">
                             {pet?.name || "Unknown Pet"}
                           </p>
                           <p className="text-xs text-muted-foreground capitalize">
-                            {pet?.type || "pet"}{" "}
-                            {pet?.breed ? `· ${pet.breed}` : ""}
+                            {pet?.type || "pet"}
+                            {pet?.breed ? ` · ${pet.breed}` : ""}
                           </p>
                         </div>
                       </div>
-                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase bg-emerald/15 text-emerald border border-emerald/20">
+                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase bg-emerald/15 text-emerald border border-emerald/20 shrink-0">
                         Completed
                       </span>
                     </div>
 
-                    {/* Date + Doctor */}
+                    {/* Date + Doctor info tiles */}
                     <div className="grid grid-cols-2 gap-2">
-                      <div className="p-2.5 rounded-xl bg-white/5 border border-white/5">
-                        <p className="text-[10px] font-bold uppercase text-muted-foreground/60 mb-0.5 flex items-center gap-1">
-                          <Calendar className="w-3 h-3" /> Date
-                        </p>
-                        <p className="text-xs font-bold">
-                          {fmtDateTime(visit.date)}
-                        </p>
-                      </div>
-                      <div className="p-2.5 rounded-xl bg-cyan/5 border border-cyan/15">
-                        <p className="text-[10px] font-bold uppercase text-muted-foreground/60 mb-0.5 flex items-center gap-1">
-                          <User className="w-3 h-3" /> Doctor
-                        </p>
-                        <p className="text-xs font-bold text-cyan truncate">
-                          Dr. {doctorName}
-                        </p>
-                      </div>
+                      <InfoTile
+                        icon={Calendar}
+                        label="Date"
+                        value={fmtDateTime(visit.date)}
+                        className="bg-white/5 border-white/5"
+                      />
+                      <InfoTile
+                        icon={User}
+                        label="Doctor"
+                        value={`Dr. ${doctorName}`}
+                        className="bg-cyan/5 border-cyan/15"
+                        valueClassName="text-cyan"
+                      />
                     </div>
 
-                    {/* Notes snippet */}
+                    {/* Visit notes snippet */}
                     {visitReason && (
                       <p className="text-xs text-muted-foreground line-clamp-2 italic bg-white/5 px-3 py-2 rounded-xl border border-white/5">
                         {visitReason}
@@ -491,28 +514,32 @@ export default function VisitsPage() {
                     )}
 
                     {/* Drug badges */}
-                    {pDrugs.map(({ drug }, idx: number) => {
-                      const sK = speciesKey(pet?.type);
-                      const toxicityBySpecies = drug.toxicity as Record<
-                        string,
-                        { status?: string }
-                      >;
-                      const s = sK
-                        ? toxicityBySpecies?.[sK]?.status || null
-                        : null;
-                      return (
-                        <div
-                          key={idx}
-                          className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald/5 border border-emerald/10 mb-2"
-                        >
-                          <Pill className="w-4 h-4 text-emerald shrink-0" />
-                          <span className="text-xs font-bold text-emerald flex-1 truncate">
-                            {drug.name}
-                          </span>
-                          {s && <SeverityBadge severity={s} />}
-                        </div>
-                      );
-                    })}
+                    {pDrugs.length > 0 && (
+                      <div className="space-y-1.5">
+                        {pDrugs.map(({ drug }, idx: number) => {
+                          const sK = speciesKey(pet?.type);
+                          const toxicityBySpecies = drug.toxicity as Record<
+                            string,
+                            { status?: string }
+                          >;
+                          const s = sK
+                            ? toxicityBySpecies?.[sK]?.status || null
+                            : null;
+                          return (
+                            <div
+                              key={idx}
+                              className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald/5 border border-emerald/10"
+                            >
+                              <Pill className="w-4 h-4 text-emerald shrink-0" />
+                              <span className="text-xs font-bold text-emerald flex-1 truncate">
+                                {drug.name}
+                              </span>
+                              {s && <SeverityBadge severity={s} />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
 
                     <p className="text-right text-xs text-emerald font-bold flex items-center justify-end gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
                       View full details <ChevronRight className="w-3.5 h-3.5" />
@@ -524,20 +551,22 @@ export default function VisitsPage() {
           )}
         </motion.div>
       ) : (
-        /* ── STAFF / DOCTOR VIEW — list ── */
+        /* ── STAFF / DOCTOR VIEW — organized cards ── */
         <motion.div variants={fadeUp} className="space-y-3">
           {visitsLoading ? (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
-                <div
-                  key={i}
-                  className="h-20 rounded-2xl bg-white/5 border border-white/5 animate-pulse"
-                />
+                <RowSkeleton key={i} />
               ))}
             </div>
           ) : visibleVisits.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              {t("no_visits_found") || "No visits found"}
+            <div className="flex flex-col items-center justify-center py-16 space-y-3">
+              <div className="w-16 h-16 rounded-2xl bg-muted/20 flex items-center justify-center">
+                <ClipboardList className="w-8 h-8 text-muted-foreground/30" />
+              </div>
+              <p className="text-muted-foreground font-medium">
+                {t("no_visits_found") || "No visits found"}
+              </p>
             </div>
           ) : (
             visibleVisits.map((visit, i) => {
@@ -558,7 +587,7 @@ export default function VisitsPage() {
               return (
                 <motion.div
                   key={visit.visit_id}
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.04 }}
                   onClick={() => {
@@ -574,57 +603,90 @@ export default function VisitsPage() {
                   role={canOpenDetails ? "button" : undefined}
                   tabIndex={canOpenDetails ? 0 : -1}
                   className={cn(
-                    "glass-card p-4 sm:p-5 border border-border/30 hover:border-emerald/20 hover:shadow-[0_0_24px_-8px_rgba(16,185,129,0.12)] transition-all group",
+                    "glass-card p-4 sm:p-5 border border-border/30 hover:border-emerald/20 hover:shadow-[0_0_24px_-8px_rgba(16,185,129,0.12)] transition-all group space-y-3",
                     canOpenDetails ? "cursor-pointer" : "cursor-default",
                   )}
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                    <div className="flex items-center gap-4 flex-1 min-w-0">
-                      <div className="w-11 h-11 rounded-xl bg-muted/30 flex items-center justify-center shrink-0 group-hover:bg-emerald/10 transition-colors">
+                  {/* ── Row 1: Pet identity + status ── */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-muted/30 flex items-center justify-center shrink-0 group-hover:bg-emerald/10 transition-colors">
                         <PetIcon className="w-5 h-5 text-muted-foreground group-hover:text-emerald transition-colors" />
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-[10px] text-muted-foreground">
-                            ID-{visit.visit_id.slice(0, 8).toUpperCase()}
-                          </span>
-                          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase bg-emerald/15 text-emerald">
-                            {t("completed_status") || "Completed"}
-                          </span>
-                          {pDrugs.slice(0, 2).map(({ drug }, idx) => (
-                            <span
-                              key={idx}
-                              className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase bg-blue-500/10 text-blue-400 flex items-center gap-1"
-                            >
-                              <Pill className="w-2.5 h-2.5" /> {drug.name}
-                            </span>
-                          ))}
-                          {pDrugs.length > 2 && (
-                            <span className="text-[10px] text-muted-foreground font-bold">
-                              +{pDrugs.length - 2} more
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm font-bold mt-0.5">
+                        <p className="text-sm font-bold group-hover:text-emerald transition-colors truncate">
                           {pet?.name || "Unknown Pet"}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {owner?.fullname || "Unknown"} · Dr. {doctorName}
-                        </p>
-                        <p className="text-xs text-foreground/75 mt-1 line-clamp-1">
-                          {visitReason}
+                        <p className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-wider">
+                          ID-{visit.visit_id.slice(0, 8).toUpperCase()}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-xs text-muted-foreground bg-white/5 py-1 px-3 rounded-full flex items-center gap-1.5">
-                        <Clock className="w-3 h-3" /> {fmtDateTime(visit.date)}
-                      </span>
+                    <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase bg-emerald/15 text-emerald border border-emerald/20 shrink-0">
+                      {t("completed_status") || "Completed"}
+                    </span>
+                  </div>
+
+                  {/* ── Row 2: Info tiles grid ── */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <InfoTile
+                      icon={Clock}
+                      label="Date"
+                      value={fmtDateTime(visit.date)}
+                      className="bg-white/5 border-white/5 col-span-2 sm:col-span-1"
+                    />
+                    <InfoTile
+                      icon={User}
+                      label="Doctor"
+                      value={`Dr. ${doctorName}`}
+                      className="bg-cyan/5 border-cyan/15"
+                      valueClassName="text-cyan"
+                    />
+                    <InfoTile
+                      icon={User}
+                      label="Owner"
+                      value={owner?.fullname || "Unknown"}
+                      className="bg-white/5 border-white/5"
+                    />
+                    <InfoTile
+                      icon={FileText}
+                      label="Reason"
+                      value={visitReason}
+                      className="bg-white/5 border-white/5"
+                    />
+                  </div>
+
+                  {/* ── Row 3: Drug badges + actions ── */}
+                  {(pDrugs.length > 0 || hasRowActions) && (
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      {/* Drug pill badges */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {pDrugs.slice(0, 3).map(({ drug }, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase bg-blue-500/10 text-blue-400 flex items-center gap-1"
+                          >
+                            <Pill className="w-2.5 h-2.5" /> {drug.name}
+                          </span>
+                        ))}
+                        {pDrugs.length > 3 && (
+                          <span className="text-[10px] text-muted-foreground font-bold">
+                            +{pDrugs.length - 3} more
+                          </span>
+                        )}
+                        {pDrugs.length === 0 && (
+                          <span className="text-[10px] text-muted-foreground/50 italic">
+                            No prescription
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Action buttons */}
                       {hasRowActions && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                           {canOpenDetails && (
-                            <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-muted/30 border border-border/50 group-hover:border-emerald/30 group-hover:text-emerald transition-all">
-                              <Eye className="w-3.5 h-3.5" />{" "}
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-muted/30 border border-border/50 group-hover:border-emerald/30 group-hover:text-emerald transition-all">
+                              <Eye className="w-3.5 h-3.5" />
                               {t("details_btn") || "Details"}
                               <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                             </div>
@@ -636,7 +698,7 @@ export default function VisitsPage() {
                                 e.stopPropagation();
                                 void handleDeleteVisit(visit);
                               }}
-                              className="px-3 py-2 rounded-xl text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
                             >
                               Delete
                             </button>
@@ -644,7 +706,7 @@ export default function VisitsPage() {
                         </div>
                       )}
                     </div>
-                  </div>
+                  )}
                 </motion.div>
               );
             })
@@ -662,7 +724,7 @@ export default function VisitsPage() {
         isClient={isClient}
       />
 
-      {/* ── Create Visit Form (staff/doctor only) ── */}
+      {/* ── Create Visit Form (owner only) ── */}
       {canCreate && (
         <DashboardForm
           title={t("record_visit") || "Record Clinical Visit"}
