@@ -17,6 +17,7 @@ import { useFormik } from "formik";
 import { toast } from "sonner";
 import { Button } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
+import { Checkbox } from "@/app/_components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -66,6 +67,9 @@ export default function AppointmentsPage() {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("all");
   const [dateFilter, setDateFilter] = React.useState<DateRangeFilter>("all");
+  const [selectedAppointmentIds, setSelectedAppointmentIds] = React.useState<
+    string[]
+  >([]);
   const { user } = useAuth();
   const { t } = useLang();
 
@@ -223,10 +227,91 @@ export default function AppointmentsPage() {
   const handleDelete = (id: string) => {
     if (confirm(t("confirm_cancel_appointment"))) {
       deleteAppointment.mutate(id, {
-        onSuccess: () => toast.success(t("appointment_cancelled")),
+        onSuccess: () => {
+          setSelectedAppointmentIds((prev) =>
+            prev.filter((item) => item !== id),
+          );
+          toast.success(t("appointment_cancelled"));
+        },
         onError: () => toast.error(t("appointment_cancel_failed")),
       });
     }
+  };
+
+  const canCheckInAppointment = React.useCallback(
+    (app: Appointment) =>
+      isStaff && (app.status || "").toLowerCase() === "pending",
+    [isStaff],
+  );
+
+  const canCancelAppointment = React.useCallback((app: Appointment) => {
+    const normalizedStatus = (app.status || "").toLowerCase();
+    return normalizedStatus === "pending" || normalizedStatus === "confirmed";
+  }, []);
+
+  const bulkCancelableIds = React.useMemo(
+    () =>
+      filteredAppointments
+        .filter((app) => canCancelAppointment(app))
+        .map((app) => app.appointment_id),
+    [filteredAppointments, canCancelAppointment],
+  );
+
+  React.useEffect(() => {
+    const allowed = new Set(bulkCancelableIds);
+    setSelectedAppointmentIds((prev) => prev.filter((id) => allowed.has(id)));
+  }, [bulkCancelableIds]);
+
+  const toggleAppointmentSelection = (appointmentId: string) => {
+    setSelectedAppointmentIds((prev) =>
+      prev.includes(appointmentId)
+        ? prev.filter((id) => id !== appointmentId)
+        : [...prev, appointmentId],
+    );
+  };
+
+  const toggleSelectAllAppointments = () => {
+    setSelectedAppointmentIds((prev) =>
+      prev.length === bulkCancelableIds.length ? [] : bulkCancelableIds,
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedAppointmentIds.length === 0) return;
+    const count = selectedAppointmentIds.length;
+    if (
+      !confirm(`Cancel ${count} selected appointment${count > 1 ? "s" : ""}?`)
+    ) {
+      return;
+    }
+
+    const ids = [...selectedAppointmentIds];
+    const results = await Promise.allSettled(
+      ids.map((id) => deleteAppointment.mutateAsync(id)),
+    );
+
+    const failedIds: string[] = [];
+    let successCount = 0;
+    results.forEach((result, index) => {
+      if (result.status === "fulfilled") {
+        successCount += 1;
+      } else {
+        failedIds.push(ids[index]);
+      }
+    });
+
+    if (successCount > 0) {
+      toast.success(
+        `Cancelled ${successCount} appointment${successCount > 1 ? "s" : ""}.`,
+      );
+    }
+    if (failedIds.length > 0) {
+      toast.error(
+        `Failed to cancel ${failedIds.length} appointment${failedIds.length > 1 ? "s" : ""}.`,
+      );
+    }
+
+    setSelectedAppointmentIds(failedIds);
   };
 
   const handleCheckIn = (appointmentId: string) => {
@@ -248,10 +333,29 @@ export default function AppointmentsPage() {
 
   const statusColor = (status: string) => {
     const s = status.toLowerCase();
-    if (s === "confirmed") return { bg: "bg-emerald/10", text: "text-emerald", border: "border-emerald/20" };
-    if (s === "pending") return { bg: "bg-sky-500/10", text: "text-sky-400", border: "border-sky-500/20" };
-    if (s === "completed") return { bg: "bg-purple-500/10", text: "text-purple-300", border: "border-purple-500/20" };
-    return { bg: "bg-red-500/10", text: "text-red-400", border: "border-red-500/20" };
+    if (s === "confirmed")
+      return {
+        bg: "bg-emerald/10",
+        text: "text-emerald",
+        border: "border-emerald/20",
+      };
+    if (s === "pending")
+      return {
+        bg: "bg-sky-500/10",
+        text: "text-sky-400",
+        border: "border-sky-500/20",
+      };
+    if (s === "completed")
+      return {
+        bg: "bg-purple-500/10",
+        text: "text-purple-300",
+        border: "border-purple-500/20",
+      };
+    return {
+      bg: "bg-red-500/10",
+      text: "text-red-400",
+      border: "border-red-500/20",
+    };
   };
 
   return (
@@ -322,12 +426,48 @@ export default function AppointmentsPage() {
         </Select>
       </div>
 
+      {bulkCancelableIds.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-emerald/20 bg-emerald/5 px-4 py-3">
+          <p className="text-sm font-semibold text-foreground">
+            {selectedAppointmentIds.length} selected
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={toggleSelectAllAppointments}
+              className="h-9 rounded-xl border-emerald/30 text-emerald hover:bg-emerald/10"
+            >
+              {selectedAppointmentIds.length === bulkCancelableIds.length
+                ? "Clear selection"
+                : "Select all"}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                void handleBulkDelete();
+              }}
+              disabled={
+                selectedAppointmentIds.length === 0 ||
+                deleteAppointment.isPending
+              }
+              className="h-9 rounded-xl bg-red-500/90 text-white hover:bg-red-500 disabled:opacity-60"
+            >
+              Delete selected
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* ── Mobile card list (< md) ── */}
       <div className="md:hidden space-y-3">
         {appLoading ? (
           <div className="space-y-3">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-28 rounded-2xl bg-tint/5 border border-tint/5 animate-pulse" />
+              <div
+                key={i}
+                className="h-28 rounded-2xl bg-tint/5 border border-tint/5 animate-pulse"
+              />
             ))}
           </div>
         ) : filteredAppointments.length === 0 ? (
@@ -338,8 +478,11 @@ export default function AppointmentsPage() {
           filteredAppointments.map((app, i) => {
             const normalizedStatus = (app.status || "").toLowerCase();
             const sc = statusColor(normalizedStatus);
-            const canCheckIn = isStaff && normalizedStatus === "pending";
-            const canCancel = normalizedStatus === "pending" || normalizedStatus === "confirmed";
+            const canCheckIn = canCheckInAppointment(app);
+            const canCancel = canCancelAppointment(app);
+            const isSelected = selectedAppointmentIds.includes(
+              app.appointment_id,
+            );
             return (
               <motion.div
                 key={app.appointment_id}
@@ -349,18 +492,34 @@ export default function AppointmentsPage() {
                 className="glass-card p-4 space-y-3"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-bold text-sm truncate flex items-center gap-2">
-                      <Dog className="w-4 h-4 text-emerald shrink-0" />
-                      {getPetName(app.pet_id)}
-                    </p>
-                    {!isClient && (
-                      <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                        <User className="w-3 h-3" /> {getClientName(app.client_id)}
-                      </p>
+                  <div className="min-w-0 flex items-start gap-2">
+                    {canCancel && (
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() =>
+                          toggleAppointmentSelection(app.appointment_id)
+                        }
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-0.5 border-emerald/30 data-[state=checked]:bg-emerald data-[state=checked]:text-white"
+                        aria-label="Select appointment"
+                      />
                     )}
+                    <div className="min-w-0">
+                      <p className="font-bold text-sm truncate flex items-center gap-2">
+                        <Dog className="w-4 h-4 text-emerald shrink-0" />
+                        {getPetName(app.pet_id)}
+                      </p>
+                      {!isClient && (
+                        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                          <User className="w-3 h-3" />{" "}
+                          {getClientName(app.client_id)}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <span className={`text-[10px] px-2.5 py-1 rounded-lg font-bold uppercase border shrink-0 ${sc.bg} ${sc.text} ${sc.border}`}>
+                  <span
+                    className={`text-[10px] px-2.5 py-1 rounded-lg font-bold uppercase border shrink-0 ${sc.bg} ${sc.text} ${sc.border}`}
+                  >
                     {app.status}
                   </span>
                 </div>
@@ -368,26 +527,50 @@ export default function AppointmentsPage() {
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
                     {app.appointment_date
-                      ? new Date(app.appointment_date).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                      ? new Date(app.appointment_date).toLocaleString("en-GB", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
                       : "—"}
                   </span>
                   {(canCheckIn || canCancel) && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl bg-tint/5">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-xl bg-tint/5"
+                        >
                           <MoreHorizontal className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl p-2 w-52 shadow-2xl">
-                        <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">{t("operations")}</DropdownMenuLabel>
+                      <DropdownMenuContent
+                        align="end"
+                        className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl p-2 w-52 shadow-2xl"
+                      >
+                        <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
+                          {t("operations")}
+                        </DropdownMenuLabel>
                         {canCheckIn && (
-                          <DropdownMenuItem onClick={() => handleCheckIn(app.appointment_id)} className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4" /> {t("check_in_patient")}
+                          <DropdownMenuItem
+                            onClick={() => handleCheckIn(app.appointment_id)}
+                            className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2"
+                          >
+                            <CheckCircle className="w-4 h-4" />{" "}
+                            {t("check_in_patient")}
                           </DropdownMenuItem>
                         )}
-                        {canCheckIn && canCancel && <DropdownMenuSeparator className="bg-tint/5 mx-2" />}
+                        {canCheckIn && canCancel && (
+                          <DropdownMenuSeparator className="bg-tint/5 mx-2" />
+                        )}
                         {canCancel && (
-                          <DropdownMenuItem onClick={() => handleDelete(app.appointment_id)} className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold">
+                          <DropdownMenuItem
+                            onClick={() => handleDelete(app.appointment_id)}
+                            className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
+                          >
                             {t("cancel_appointment")}
                           </DropdownMenuItem>
                         )}
@@ -408,6 +591,17 @@ export default function AppointmentsPage() {
           <Table>
             <TableHeader className="bg-tint/5">
               <TableRow className="border-b border-tint/5 hover:bg-transparent">
+                <TableHead className="py-4 px-4 w-12">
+                  <Checkbox
+                    checked={
+                      bulkCancelableIds.length > 0 &&
+                      selectedAppointmentIds.length === bulkCancelableIds.length
+                    }
+                    onCheckedChange={toggleSelectAllAppointments}
+                    className="border-emerald/30 data-[state=checked]:bg-emerald data-[state=checked]:text-white"
+                    aria-label="Select all appointments"
+                  />
+                </TableHead>
                 <TableHead className="py-4 px-6 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
                   {t("schedule_id_pet")}
                 </TableHead>
@@ -425,23 +619,47 @@ export default function AppointmentsPage() {
             <TableBody>
               {appLoading ? (
                 <TableRow>
-                  <TableCell colSpan={isClient ? 3 : 4} className="text-center py-8 text-muted-foreground">
+                  <TableCell
+                    colSpan={isClient ? 4 : 5}
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     {t("loading_appointments")}
                   </TableCell>
                 </TableRow>
               ) : filteredAppointments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={isClient ? 3 : 4} className="text-center py-8 text-muted-foreground">
+                  <TableCell
+                    colSpan={isClient ? 4 : 5}
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     {t("no_appointments_found")}
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredAppointments.map((app) => {
                   const normalizedStatus = (app.status || "").toLowerCase();
-                  const canCheckIn = isStaff && normalizedStatus === "pending";
-                  const canCancel = normalizedStatus === "pending" || normalizedStatus === "confirmed";
+                  const canCheckIn = canCheckInAppointment(app);
+                  const canCancel = canCancelAppointment(app);
+                  const isSelected = selectedAppointmentIds.includes(
+                    app.appointment_id,
+                  );
                   return (
-                    <TableRow key={app.appointment_id} className="border-b border-tint/5 hover:bg-tint/5 transition-colors group/row">
+                    <TableRow
+                      key={app.appointment_id}
+                      className="border-b border-tint/5 hover:bg-tint/5 transition-colors group/row"
+                    >
+                      <TableCell className="py-4 px-4">
+                        {canCancel && (
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() =>
+                              toggleAppointmentSelection(app.appointment_id)
+                            }
+                            className="border-emerald/30 data-[state=checked]:bg-emerald data-[state=checked]:text-white"
+                            aria-label="Select appointment"
+                          />
+                        )}
+                      </TableCell>
                       <TableCell className="py-4 px-6">
                         <div className="flex flex-col gap-1">
                           <span className="font-black text-foreground group-hover/row:text-emerald transition-colors tracking-tight">
@@ -450,7 +668,16 @@ export default function AppointmentsPage() {
                           <span className="text-xs text-muted-foreground font-semibold flex items-center gap-1">
                             <Calendar className="w-3.5 h-3.5" />
                             {app.appointment_date
-                              ? new Date(app.appointment_date).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                              ? new Date(app.appointment_date).toLocaleString(
+                                  "en-GB",
+                                  {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  },
+                                )
                               : "—"}
                           </span>
                           <span className="text-[10px] text-muted-foreground font-black tracking-widest uppercase opacity-50">
@@ -469,10 +696,13 @@ export default function AppointmentsPage() {
                         <Badge
                           className={cn(
                             "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest border-none",
-                            normalizedStatus === "confirmed" ? "bg-emerald/10 text-emerald"
-                              : normalizedStatus === "pending" ? "bg-sky-500/10 text-sky-400"
-                              : normalizedStatus === "completed" ? "bg-purple-500/10 text-purple-300"
-                              : "bg-red-500/10 text-red-400",
+                            normalizedStatus === "confirmed"
+                              ? "bg-emerald/10 text-emerald"
+                              : normalizedStatus === "pending"
+                                ? "bg-sky-500/10 text-sky-400"
+                                : normalizedStatus === "completed"
+                                  ? "bg-purple-500/10 text-purple-300"
+                                  : "bg-red-500/10 text-red-400",
                           )}
                         >
                           {app.status}
@@ -482,22 +712,42 @@ export default function AppointmentsPage() {
                         {(canCheckIn || canCancel) && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="group-hover/row:bg-tint/10 rounded-xl h-10 w-10">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="group-hover/row:bg-tint/10 rounded-xl h-10 w-10"
+                              >
                                 <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl p-2 w-56 shadow-2xl">
+                            <DropdownMenuContent
+                              align="end"
+                              className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl p-2 w-56 shadow-2xl"
+                            >
                               <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
                                 {t("operations")}
                               </DropdownMenuLabel>
                               {canCheckIn && (
-                                <DropdownMenuItem onClick={() => handleCheckIn(app.appointment_id)} className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2">
-                                  <CheckCircle className="w-4 h-4" /> {t("check_in_patient")}
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleCheckIn(app.appointment_id)
+                                  }
+                                  className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2"
+                                >
+                                  <CheckCircle className="w-4 h-4" />{" "}
+                                  {t("check_in_patient")}
                                 </DropdownMenuItem>
                               )}
-                              {canCheckIn && canCancel && <DropdownMenuSeparator className="bg-tint/5 mx-2" />}
+                              {canCheckIn && canCancel && (
+                                <DropdownMenuSeparator className="bg-tint/5 mx-2" />
+                              )}
                               {canCancel && (
-                                <DropdownMenuItem onClick={() => handleDelete(app.appointment_id)} className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold">
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleDelete(app.appointment_id)
+                                  }
+                                  className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
+                                >
                                   {t("cancel_appointment")}
                                 </DropdownMenuItem>
                               )}

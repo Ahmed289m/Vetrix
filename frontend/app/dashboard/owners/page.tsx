@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Plus,
   Search,
@@ -23,6 +23,7 @@ import { useFormik } from "formik";
 import { DashboardForm } from "@/app/_components/ui/dashboard-form";
 import { Button } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
+import { Checkbox } from "@/app/_components/ui/checkbox";
 import { Label } from "@/app/_components/ui/label";
 import {
   Select,
@@ -46,7 +47,6 @@ import {
 import { usePets, useCreatePet } from "@/app/_hooks/queries/use-pets";
 import type { UserRole, PetType, UserCreated } from "@/app/_lib/types/models";
 
-
 export default function OwnersPage() {
   const [search, setSearch] = useState("");
   const [showCreateOwner, setShowCreateOwner] = useState(false);
@@ -60,6 +60,7 @@ export default function OwnersPage() {
   const [showResettedPassword, setShowResettedPassword] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copiedResetted, setCopiedResetted] = useState(false);
+  const [selectedOwnerIds, setSelectedOwnerIds] = useState<string[]>([]);
   const { user } = useAuth();
   const { t } = useLang();
   const isAdminReadOnly = user?.role === "admin";
@@ -80,6 +81,77 @@ export default function OwnersPage() {
       o.fullname.toLowerCase().includes(search.toLowerCase()) ||
       o.email.toLowerCase().includes(search.toLowerCase()),
   );
+
+  const canDeleteOwners = user?.role === "owner" && !isAdminReadOnly;
+  const bulkDeletableOwnerIds = useMemo(
+    () =>
+      canDeleteOwners
+        ? filtered
+            .filter((owner) => owner.user_id !== user?.userId)
+            .map((owner) => owner.user_id)
+        : [],
+    [canDeleteOwners, filtered, user?.userId],
+  );
+  const deletableOwnerIdSet = useMemo(
+    () => new Set(bulkDeletableOwnerIds),
+    [bulkDeletableOwnerIds],
+  );
+  const effectiveSelectedOwnerIds = selectedOwnerIds.filter((id) =>
+    deletableOwnerIdSet.has(id),
+  );
+
+  const toggleOwnerSelection = (ownerId: string) => {
+    if (!deletableOwnerIdSet.has(ownerId)) return;
+    setSelectedOwnerIds((prev) =>
+      prev.includes(ownerId)
+        ? prev.filter((id) => id !== ownerId)
+        : [...prev, ownerId],
+    );
+  };
+
+  const toggleSelectAllOwners = () => {
+    setSelectedOwnerIds(() =>
+      effectiveSelectedOwnerIds.length === bulkDeletableOwnerIds.length
+        ? []
+        : bulkDeletableOwnerIds,
+    );
+  };
+
+  const handleBulkDeleteOwners = async () => {
+    if (effectiveSelectedOwnerIds.length === 0) return;
+    const count = effectiveSelectedOwnerIds.length;
+    if (!confirm(`Delete ${count} selected client${count > 1 ? "s" : ""}?`)) {
+      return;
+    }
+
+    const ids = [...effectiveSelectedOwnerIds];
+    const results = await Promise.allSettled(
+      ids.map((id) => deleteUser.mutateAsync(id)),
+    );
+
+    const failedIds: string[] = [];
+    let successCount = 0;
+    results.forEach((result, index) => {
+      if (result.status === "fulfilled") {
+        successCount += 1;
+      } else {
+        failedIds.push(ids[index]);
+      }
+    });
+
+    if (successCount > 0) {
+      toast.success(
+        `Deleted ${successCount} client${successCount > 1 ? "s" : ""}.`,
+      );
+    }
+    if (failedIds.length > 0) {
+      toast.error(
+        `Failed to delete ${failedIds.length} client${failedIds.length > 1 ? "s" : ""}.`,
+      );
+    }
+
+    setSelectedOwnerIds(failedIds);
+  };
 
   const formikOwner = useFormik({
     initialValues: {
@@ -163,7 +235,10 @@ export default function OwnersPage() {
 
     if (confirm(t("confirm_delete_client"))) {
       deleteUser.mutate(ownerId, {
-        onSuccess: () => toast.success(t("client_deactivated_success")),
+        onSuccess: () => {
+          setSelectedOwnerIds((prev) => prev.filter((id) => id !== ownerId));
+          toast.success(t("client_deactivated_success"));
+        },
         onError: () => toast.error(t("client_deactivate_failed")),
       });
     }
@@ -233,6 +308,41 @@ export default function OwnersPage() {
           />
         </div>
       </motion.div>
+
+      {bulkDeletableOwnerIds.length > 0 && (
+        <motion.div
+          variants={fadeUp}
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-emerald/20 bg-emerald/5 px-4 py-3"
+        >
+          <p className="text-sm font-semibold text-foreground">
+            {effectiveSelectedOwnerIds.length} selected
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={toggleSelectAllOwners}
+              className="h-9 rounded-xl border-emerald/30 text-emerald hover:bg-emerald/10"
+            >
+              {effectiveSelectedOwnerIds.length === bulkDeletableOwnerIds.length
+                ? "Clear selection"
+                : "Select all"}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                void handleBulkDeleteOwners();
+              }}
+              disabled={
+                effectiveSelectedOwnerIds.length === 0 || deleteUser.isPending
+              }
+              className="h-9 rounded-xl bg-red-500/90 text-white hover:bg-red-500 disabled:opacity-60"
+            >
+              Delete selected
+            </Button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Create Owner Modal */}
       <DashboardForm
@@ -367,6 +477,19 @@ export default function OwnersPage() {
                     setExpandedOwner(isExpanded ? null : owner.user_id)
                   }
                 >
+                  {canDeleteOwners && owner.user_id !== user?.userId && (
+                    <Checkbox
+                      checked={effectiveSelectedOwnerIds.includes(
+                        owner.user_id,
+                      )}
+                      onCheckedChange={() =>
+                        toggleOwnerSelection(owner.user_id)
+                      }
+                      onClick={(e) => e.stopPropagation()}
+                      className="border-emerald/30 data-[state=checked]:bg-emerald data-[state=checked]:text-white"
+                      aria-label="Select client"
+                    />
+                  )}
                   <div className="w-12 h-12 rounded-2xl gradient-emerald-cyan flex items-center justify-center text-primary-foreground font-bold text-sm shrink-0">
                     {owner.fullname[0]?.toUpperCase() || (
                       <UserPlus className="w-5 h-5" />

@@ -21,6 +21,7 @@ import {
   FileJson,
 } from "lucide-react";
 import { useFormik } from "formik";
+import { toast } from "sonner";
 
 import { useAuth } from "@/app/_hooks/useAuth";
 import { useLang } from "@/app/_hooks/useLanguage";
@@ -33,6 +34,7 @@ import {
 import { useClinics } from "@/app/_hooks/queries/use-clinics";
 import { Button } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
+import { Checkbox } from "@/app/_components/ui/checkbox";
 import { Label } from "@/app/_components/ui/label";
 import { Textarea } from "@/app/_components/ui/textarea";
 import { DashboardForm } from "@/app/_components/ui/dashboard-form";
@@ -185,7 +187,10 @@ function DrugRow({
   index,
   manageable,
   clinicName,
+  selected,
+  selectable,
   onSelect,
+  onToggleSelect,
   onEdit,
   onDelete,
 }: {
@@ -193,7 +198,10 @@ function DrugRow({
   index: number;
   manageable: boolean;
   clinicName?: string;
+  selected: boolean;
+  selectable: boolean;
   onSelect: () => void;
+  onToggleSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -206,6 +214,17 @@ function DrugRow({
       className="group relative bg-tint/5 backdrop-blur-md border border-tint/5 hover:border-emerald/20 rounded-2xl px-5 py-4 cursor-pointer transition-all duration-300 hover:bg-tint/8 hover:shadow-[0_0_28px_-8px_rgba(16,185,129,0.12)]"
     >
       <div className="flex items-center gap-4">
+        {selectable && (
+          <div onClick={(e) => e.stopPropagation()}>
+            <Checkbox
+              checked={selected}
+              onCheckedChange={onToggleSelect}
+              className="border-emerald/30 data-[state=checked]:bg-emerald data-[state=checked]:text-white"
+              aria-label="Select drug"
+            />
+          </div>
+        )}
+
         {/* Icon */}
         <div className="w-11 h-11 rounded-xl bg-linear-to-br from-emerald/20 to-cyan-500/10 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300">
           <Pill className="w-5 h-5 text-emerald" />
@@ -1203,6 +1222,7 @@ export default function DrugsPage() {
   const [editDrug, setEditDrug] = React.useState<Drug | null>(null);
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isImportOpen, setIsImportOpen] = React.useState(false);
+  const [selectedDrugIds, setSelectedDrugIds] = React.useState<string[]>([]);
   const [ownerClinicFilter, setOwnerClinicFilter] =
     React.useState<string>("all");
 
@@ -1249,6 +1269,19 @@ export default function DrugsPage() {
     });
   }, [allDrugs, search, scopeFilter, isOwner, ownerClinicFilter]);
 
+  const bulkDeletableDrugIds = React.useMemo(
+    () =>
+      filtered
+        .filter((drug) => canManageDrug(drug, level, clinicId))
+        .map((drug) => drug.drug_id),
+    [filtered, level, clinicId],
+  );
+
+  React.useEffect(() => {
+    const allowed = new Set(bulkDeletableDrugIds);
+    setSelectedDrugIds((prev) => prev.filter((id) => allowed.has(id)));
+  }, [bulkDeletableDrugIds]);
+
   const globalCount = allDrugs.filter((d) => !d.clinic_id).length;
   const clinicCount = allDrugs.filter((d) => !!d.clinic_id).length;
 
@@ -1265,8 +1298,64 @@ export default function DrugsPage() {
 
   const handleDelete = (drug: Drug) => {
     if (!confirm(`Delete "${drug.name}"? This cannot be undone.`)) return;
-    deleteDrug.mutate(drug.drug_id);
+    deleteDrug.mutate(drug.drug_id, {
+      onSuccess: () => {
+        setSelectedDrugIds((prev) =>
+          prev.filter((drugId) => drugId !== drug.drug_id),
+        );
+      },
+    });
     if (selectedDrug?.drug_id === drug.drug_id) setSelectedDrug(null);
+  };
+
+  const toggleDrugSelection = (drugId: string) => {
+    setSelectedDrugIds((prev) =>
+      prev.includes(drugId)
+        ? prev.filter((id) => id !== drugId)
+        : [...prev, drugId],
+    );
+  };
+
+  const toggleSelectAllDrugs = () => {
+    setSelectedDrugIds((prev) =>
+      prev.length === bulkDeletableDrugIds.length ? [] : bulkDeletableDrugIds,
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedDrugIds.length === 0) return;
+    const count = selectedDrugIds.length;
+    if (!confirm(`Delete ${count} selected drug${count > 1 ? "s" : ""}?`)) {
+      return;
+    }
+
+    const ids = [...selectedDrugIds];
+    const results = await Promise.allSettled(
+      ids.map((id) => deleteDrug.mutateAsync(id)),
+    );
+
+    const failedIds: string[] = [];
+    let successCount = 0;
+    results.forEach((result, index) => {
+      if (result.status === "fulfilled") {
+        successCount += 1;
+      } else {
+        failedIds.push(ids[index]);
+      }
+    });
+
+    if (successCount > 0) {
+      toast.success(
+        `Deleted ${successCount} drug${successCount > 1 ? "s" : ""}.`,
+      );
+    }
+    if (failedIds.length > 0) {
+      toast.error(
+        `Failed to delete ${failedIds.length} drug${failedIds.length > 1 ? "s" : ""}.`,
+      );
+    }
+
+    setSelectedDrugIds(failedIds);
   };
 
   const canAdd = level !== "readonly";
@@ -1432,6 +1521,36 @@ export default function DrugsPage() {
         )}
       </div>
 
+      {bulkDeletableDrugIds.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-emerald/20 bg-emerald/5 px-4 py-3">
+          <p className="text-sm font-semibold text-foreground">
+            {selectedDrugIds.length} selected
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={toggleSelectAllDrugs}
+              className="h-9 rounded-xl border-emerald/30 text-emerald hover:bg-emerald/10"
+            >
+              {selectedDrugIds.length === bulkDeletableDrugIds.length
+                ? "Clear selection"
+                : "Select all"}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                void handleBulkDelete();
+              }}
+              disabled={selectedDrugIds.length === 0 || deleteDrug.isPending}
+              className="h-9 rounded-xl bg-red-500/90 text-white hover:bg-red-500 disabled:opacity-60"
+            >
+              Delete selected
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* ── Drug list ── */}
       {isLoading ? (
         <DrugSkeleton />
@@ -1466,7 +1585,10 @@ export default function DrugsPage() {
                 index={i}
                 manageable={manageable}
                 clinicName={isAdmin ? getClinicName(drug.clinic_id) : undefined}
+                selected={selectedDrugIds.includes(drug.drug_id)}
+                selectable={manageable}
                 onSelect={() => setSelectedDrug(drug)}
+                onToggleSelect={() => toggleDrugSelection(drug.drug_id)}
                 onEdit={() => handleOpenEdit(drug)}
                 onDelete={() => handleDelete(drug)}
               />

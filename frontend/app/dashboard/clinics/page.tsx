@@ -11,8 +11,10 @@ import {
   Building2,
 } from "lucide-react";
 import { useFormik } from "formik";
+import { toast } from "sonner";
 import { Button } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
+import { Checkbox } from "@/app/_components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -59,6 +61,9 @@ export default function ClinicsPage() {
   );
   const [searchQuery, setSearchQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("all");
+  const [selectedClinicIds, setSelectedClinicIds] = React.useState<string[]>(
+    [],
+  );
   const { user } = useAuth();
   const { t } = useLang();
 
@@ -69,15 +74,21 @@ export default function ClinicsPage() {
   const updateClinic = useUpdateClinic();
   const deleteClinic = useDeleteClinic();
 
-  const clinics = clinicsData?.data || [];
-  const users = usersData?.data || [];
+  const clinics = React.useMemo(
+    () => clinicsData?.data ?? [],
+    [clinicsData?.data],
+  );
+  const users = React.useMemo(() => usersData?.data ?? [], [usersData?.data]);
 
-  const getClinicOwner = (clinicId: string) => {
-    const owner = users.find(
-      (u) => u.clinic_id === clinicId && u.role === "owner",
-    );
-    return owner ? owner.fullname : t("no_owner_assigned");
-  };
+  const getClinicOwner = React.useCallback(
+    (clinicId: string) => {
+      const owner = users.find(
+        (u) => u.clinic_id === clinicId && u.role === "owner",
+      );
+      return owner ? owner.fullname : t("no_owner_assigned");
+    },
+    [users, t],
+  );
 
   const filteredClinics = React.useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -92,7 +103,19 @@ export default function ClinicsPage() {
         statusFilter === "all" || clinic.subscriptionStatus === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [clinics, searchQuery, statusFilter, users]);
+  }, [clinics, searchQuery, statusFilter, getClinicOwner]);
+
+  const canDeleteClinics = user?.role === "admin" || user?.role === "owner";
+  const bulkDeletableClinicIds = React.useMemo(
+    () =>
+      canDeleteClinics ? filteredClinics.map((clinic) => clinic.clinic_id) : [],
+    [canDeleteClinics, filteredClinics],
+  );
+
+  React.useEffect(() => {
+    const allowed = new Set(bulkDeletableClinicIds);
+    setSelectedClinicIds((prev) => prev.filter((id) => allowed.has(id)));
+  }, [bulkDeletableClinicIds]);
 
   const formik = useFormik({
     initialValues: {
@@ -143,8 +166,66 @@ export default function ClinicsPage() {
 
   const handleDelete = (id: string) => {
     if (confirm(t("confirm_delete_clinic"))) {
-      deleteClinic.mutate(id);
+      deleteClinic.mutate(id, {
+        onSuccess: () => {
+          setSelectedClinicIds((prev) =>
+            prev.filter((clinicId) => clinicId !== id),
+          );
+        },
+      });
     }
+  };
+
+  const toggleClinicSelection = (clinicId: string) => {
+    setSelectedClinicIds((prev) =>
+      prev.includes(clinicId)
+        ? prev.filter((id) => id !== clinicId)
+        : [...prev, clinicId],
+    );
+  };
+
+  const toggleSelectAllClinics = () => {
+    setSelectedClinicIds((prev) =>
+      prev.length === bulkDeletableClinicIds.length
+        ? []
+        : bulkDeletableClinicIds,
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedClinicIds.length === 0) return;
+    const count = selectedClinicIds.length;
+    if (!confirm(`Delete ${count} selected clinic${count > 1 ? "s" : ""}?`)) {
+      return;
+    }
+
+    const ids = [...selectedClinicIds];
+    const results = await Promise.allSettled(
+      ids.map((id) => deleteClinic.mutateAsync(id)),
+    );
+
+    const failedIds: string[] = [];
+    let successCount = 0;
+    results.forEach((result, index) => {
+      if (result.status === "fulfilled") {
+        successCount += 1;
+      } else {
+        failedIds.push(ids[index]);
+      }
+    });
+
+    if (successCount > 0) {
+      toast.success(
+        `Deleted ${successCount} clinic${successCount > 1 ? "s" : ""}.`,
+      );
+    }
+    if (failedIds.length > 0) {
+      toast.error(
+        `Failed to delete ${failedIds.length} clinic${failedIds.length > 1 ? "s" : ""}.`,
+      );
+    }
+
+    setSelectedClinicIds(failedIds);
   };
 
   return (
@@ -195,12 +276,58 @@ export default function ClinicsPage() {
         </Select>
       </div>
 
+      {canDeleteClinics && bulkDeletableClinicIds.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-emerald/20 bg-emerald/5 px-4 py-3">
+          <p className="text-sm font-semibold text-foreground">
+            {selectedClinicIds.length} selected
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={toggleSelectAllClinics}
+              className="h-9 rounded-xl border-emerald/30 text-emerald hover:bg-emerald/10"
+            >
+              {selectedClinicIds.length === bulkDeletableClinicIds.length
+                ? "Clear selection"
+                : "Select all"}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                void handleBulkDelete();
+              }}
+              disabled={
+                selectedClinicIds.length === 0 || deleteClinic.isPending
+              }
+              className="h-9 rounded-xl bg-red-500/90 text-white hover:bg-red-500 disabled:opacity-60"
+            >
+              Delete selected
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="relative group">
         <div className="absolute -inset-0.5 bg-linear-to-br from-emerald/10 to-transparent rounded-3xl sm:rounded-4xl blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
         <div className="relative bg-tint/5 backdrop-blur-md rounded-3xl sm:rounded-4xl border border-tint/5 overflow-x-auto shadow-2xl">
           <Table>
             <TableHeader className="bg-tint/5">
               <TableRow className="border-b border-tint/5 hover:bg-transparent">
+                {canDeleteClinics && (
+                  <TableHead className="py-6 px-4 w-12">
+                    <Checkbox
+                      checked={
+                        bulkDeletableClinicIds.length > 0 &&
+                        selectedClinicIds.length ===
+                          bulkDeletableClinicIds.length
+                      }
+                      onCheckedChange={toggleSelectAllClinics}
+                      className="border-emerald/30 data-[state=checked]:bg-emerald data-[state=checked]:text-white"
+                      aria-label="Select all clinics"
+                    />
+                  </TableHead>
+                )}
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
                   {t("clinic_info")}
                 </TableHead>
@@ -220,7 +347,7 @@ export default function ClinicsPage() {
               {clinicsLoading ? (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={canDeleteClinics ? 6 : 5}
                     className="text-center py-8 text-muted-foreground"
                   >
                     {t("loading_clinics")}
@@ -229,7 +356,7 @@ export default function ClinicsPage() {
               ) : filteredClinics.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={canDeleteClinics ? 6 : 5}
                     className="text-center py-8 text-muted-foreground"
                   >
                     {t("no_clinics_found")}
@@ -241,6 +368,18 @@ export default function ClinicsPage() {
                     key={clinic.clinic_id}
                     className="border-b border-tint/5 hover:bg-tint/5 transition-colors group/row"
                   >
+                    {canDeleteClinics && (
+                      <TableCell className="py-6 px-4">
+                        <Checkbox
+                          checked={selectedClinicIds.includes(clinic.clinic_id)}
+                          onCheckedChange={() =>
+                            toggleClinicSelection(clinic.clinic_id)
+                          }
+                          className="border-emerald/30 data-[state=checked]:bg-emerald data-[state=checked]:text-white"
+                          aria-label="Select clinic"
+                        />
+                      </TableCell>
+                    )}
                     <TableCell className="py-6 px-8">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-tint/5 flex items-center justify-center text-emerald font-black text-lg shadow-inner group-hover/row:bg-emerald/10 transition-colors">

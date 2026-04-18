@@ -16,6 +16,7 @@ import {
 import { useFormik } from "formik";
 import { Button } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
+import { Checkbox } from "@/app/_components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -52,7 +53,13 @@ import { CaseHistoryModal } from "@/app/dashboard/_components/CaseHistoryModal";
 import { useUsers } from "@/app/_hooks/queries/use-users";
 import { useAuth } from "@/app/_hooks/useAuth";
 import { useLang } from "@/app/_hooks/useLanguage";
-import type { Pet, PetType, User as UserModel } from "@/app/_lib/types/models";
+import { toast } from "sonner";
+import type {
+  Pet,
+  PetType,
+  User as UserModel,
+  Visit,
+} from "@/app/_lib/types/models";
 
 const EMPTY_PETS: Pet[] = [];
 const EMPTY_USERS: UserModel[] = [];
@@ -64,6 +71,7 @@ export default function PetsPage() {
   const [speciesFilter, setSpeciesFilter] = React.useState("all");
   const [historyPet, setHistoryPet] = React.useState<Pet | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = React.useState(false);
+  const [selectedPetIds, setSelectedPetIds] = React.useState<string[]>([]);
   const { user } = useAuth();
   const { t } = useLang();
 
@@ -78,7 +86,7 @@ export default function PetsPage() {
   const updatePet = useUpdatePet();
   const deletePet = useDeletePet();
   const { data: visitsData } = useVisits();
-  const allVisits = visitsData?.data ?? [];
+  const allVisits: Visit[] = visitsData?.data ?? [];
 
   const pets = petsData?.data ?? EMPTY_PETS;
   const allUsers = usersData?.data ?? EMPTY_USERS;
@@ -107,6 +115,17 @@ export default function PetsPage() {
       return matchesSearch && matchesSpecies;
     });
   }, [pets, clients, searchQuery, speciesFilter, user, isClient]);
+
+  const canDeletePets = user?.role !== "doctor";
+  const bulkDeletablePetIds = React.useMemo(
+    () => (canDeletePets ? filteredPets.map((pet) => pet.pet_id) : []),
+    [canDeletePets, filteredPets],
+  );
+
+  React.useEffect(() => {
+    const allowed = new Set(bulkDeletablePetIds);
+    setSelectedPetIds((prev) => prev.filter((id) => allowed.has(id)));
+  }, [bulkDeletablePetIds]);
 
   const formik = useFormik({
     initialValues: {
@@ -162,12 +181,66 @@ export default function PetsPage() {
 
   const handleDelete = (petId: string) => {
     if (confirm(t("confirm_delete_patient"))) {
-      deletePet.mutate(petId);
+      deletePet.mutate(petId, {
+        onSuccess: () => {
+          setSelectedPetIds((prev) => prev.filter((id) => id !== petId));
+        },
+      });
     }
   };
 
+  const togglePetSelection = (petId: string) => {
+    setSelectedPetIds((prev) =>
+      prev.includes(petId)
+        ? prev.filter((id) => id !== petId)
+        : [...prev, petId],
+    );
+  };
+
+  const toggleSelectAllPets = () => {
+    setSelectedPetIds((prev) =>
+      prev.length === bulkDeletablePetIds.length ? [] : bulkDeletablePetIds,
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedPetIds.length === 0) return;
+    const count = selectedPetIds.length;
+    if (!confirm(`Delete ${count} selected patient${count > 1 ? "s" : ""}?`)) {
+      return;
+    }
+
+    const ids = [...selectedPetIds];
+    const results = await Promise.allSettled(
+      ids.map((id) => deletePet.mutateAsync(id)),
+    );
+
+    const failedIds: string[] = [];
+    let successCount = 0;
+    results.forEach((result, index) => {
+      if (result.status === "fulfilled") {
+        successCount += 1;
+      } else {
+        failedIds.push(ids[index]);
+      }
+    });
+
+    if (successCount > 0) {
+      toast.success(
+        `Deleted ${successCount} patient${successCount > 1 ? "s" : ""}.`,
+      );
+    }
+    if (failedIds.length > 0) {
+      toast.error(
+        `Failed to delete ${failedIds.length} patient${failedIds.length > 1 ? "s" : ""}.`,
+      );
+    }
+
+    setSelectedPetIds(failedIds);
+  };
+
   const getVisitCount = (petId: string) => {
-    return allVisits.filter((v: any) => v.pet_id === petId).length;
+    return allVisits.filter((visit) => visit.pet_id === petId).length;
   };
 
   const handleShowHistory = (pet: Pet) => {
@@ -247,12 +320,45 @@ export default function PetsPage() {
         </Select>
       </div>
 
+      {canDeletePets && bulkDeletablePetIds.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-emerald/20 bg-emerald/5 px-4 py-3">
+          <p className="text-sm font-semibold text-foreground">
+            {selectedPetIds.length} selected
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={toggleSelectAllPets}
+              className="h-9 rounded-xl border-emerald/30 text-emerald hover:bg-emerald/10"
+            >
+              {selectedPetIds.length === bulkDeletablePetIds.length
+                ? "Clear selection"
+                : "Select all"}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                void handleBulkDelete();
+              }}
+              disabled={selectedPetIds.length === 0 || deletePet.isPending}
+              className="h-9 rounded-xl bg-red-500/90 text-white hover:bg-red-500 disabled:opacity-60"
+            >
+              Delete selected
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* ── Mobile card list (< md) ── */}
       <div className="md:hidden space-y-3">
         {isPetsLoading ? (
           <div className="space-y-3">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-20 rounded-2xl bg-tint/5 border border-tint/5 animate-pulse" />
+              <div
+                key={i}
+                className="h-20 rounded-2xl bg-tint/5 border border-tint/5 animate-pulse"
+              />
             ))}
           </div>
         ) : filteredPets.length === 0 ? (
@@ -263,6 +369,7 @@ export default function PetsPage() {
           filteredPets.map((pet, i) => {
             const client = getClientDetails(pet.client_id);
             const Icon = pet.type.toLowerCase() === "cat" ? Cat : Dog;
+            const isSelected = selectedPetIds.includes(pet.pet_id);
             return (
               <motion.div
                 key={pet.pet_id}
@@ -272,13 +379,23 @@ export default function PetsPage() {
                 className="glass-card p-4"
               >
                 <div className="flex items-center gap-3">
+                  {canDeletePets && (
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => togglePetSelection(pet.pet_id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="border-emerald/30 data-[state=checked]:bg-emerald data-[state=checked]:text-white"
+                      aria-label="Select patient"
+                    />
+                  )}
                   <div className="w-10 h-10 rounded-xl bg-emerald/10 flex items-center justify-center shrink-0">
                     <Icon className="w-5 h-5 text-emerald" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-sm truncate">{pet.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {pet.type} · {pet.weight}kg · <span className="capitalize">{client.name}</span>
+                      {pet.type} · {pet.weight}kg ·{" "}
+                      <span className="capitalize">{client.name}</span>
                     </p>
                   </div>
                   <div className="flex items-center gap-1">
@@ -296,26 +413,41 @@ export default function PetsPage() {
                       <BookOpen className="w-4 h-4" />
                     </Button>
                     <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl bg-tint/5 shrink-0">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl p-2 w-44 shadow-2xl">
-                      <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">{t("patient_actions")}</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => handleOpenForm(pet)} className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold">
-                        {t("edit_profile")}
-                      </DropdownMenuItem>
-                      {user?.role !== "doctor" && (
-                        <>
-                          <DropdownMenuSeparator className="bg-tint/5 mx-2" />
-                          <DropdownMenuItem onClick={() => handleDelete(pet.pet_id)} className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold">
-                            {t("delete_record")}
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-xl bg-tint/5 shrink-0"
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="end"
+                        className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl p-2 w-44 shadow-2xl"
+                      >
+                        <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
+                          {t("patient_actions")}
+                        </DropdownMenuLabel>
+                        <DropdownMenuItem
+                          onClick={() => handleOpenForm(pet)}
+                          className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold"
+                        >
+                          {t("edit_profile")}
+                        </DropdownMenuItem>
+                        {user?.role !== "doctor" && (
+                          <>
+                            <DropdownMenuSeparator className="bg-tint/5 mx-2" />
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(pet.pet_id)}
+                              className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
+                            >
+                              {t("delete_record")}
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </motion.div>
@@ -331,6 +463,19 @@ export default function PetsPage() {
           <Table>
             <TableHeader className="bg-tint/5">
               <TableRow className="border-b border-tint/5 hover:bg-transparent">
+                {canDeletePets && (
+                  <TableHead className="py-4 px-4 w-12">
+                    <Checkbox
+                      checked={
+                        bulkDeletablePetIds.length > 0 &&
+                        selectedPetIds.length === bulkDeletablePetIds.length
+                      }
+                      onCheckedChange={toggleSelectAllPets}
+                      className="border-emerald/30 data-[state=checked]:bg-emerald data-[state=checked]:text-white"
+                      aria-label="Select all patients"
+                    />
+                  </TableHead>
+                )}
                 <TableHead className="py-4 px-6 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
                   {t("patient_and_owner")}
                 </TableHead>
@@ -348,21 +493,47 @@ export default function PetsPage() {
             <TableBody>
               {isPetsLoading ? (
                 <TableRow>
-                  <TableCell colSpan={isClient ? 3 : 4} className="text-center py-8 text-muted-foreground">
+                  <TableCell
+                    colSpan={
+                      isClient ? (canDeletePets ? 4 : 3) : canDeletePets ? 5 : 4
+                    }
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     {t("loading_patients")}
                   </TableCell>
                 </TableRow>
               ) : filteredPets.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={isClient ? 3 : 4} className="text-center py-8 text-muted-foreground">
+                  <TableCell
+                    colSpan={
+                      isClient ? (canDeletePets ? 4 : 3) : canDeletePets ? 5 : 4
+                    }
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     {t("no_patients_found")}
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredPets.map((pet) => {
                   const client = getClientDetails(pet.client_id);
+                  const isSelected = selectedPetIds.includes(pet.pet_id);
                   return (
-                    <TableRow key={pet.pet_id} className="border-b border-tint/5 hover:bg-tint/5 transition-colors group/row">
+                    <TableRow
+                      key={pet.pet_id}
+                      className="border-b border-tint/5 hover:bg-tint/5 transition-colors group/row"
+                    >
+                      {canDeletePets && (
+                        <TableCell className="py-4 px-4">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() =>
+                              togglePetSelection(pet.pet_id)
+                            }
+                            className="border-emerald/30 data-[state=checked]:bg-emerald data-[state=checked]:text-white"
+                            aria-label="Select patient"
+                          />
+                        </TableCell>
+                      )}
                       <TableCell className="py-4 px-6">
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-xl bg-emerald/10 flex items-center justify-center text-emerald shadow-inner group-hover/row:scale-105 transition-transform duration-300">
@@ -421,25 +592,38 @@ export default function PetsPage() {
                           </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="group-hover/row:bg-tint/10 rounded-xl h-9 w-9">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="group-hover/row:bg-tint/10 rounded-xl h-9 w-9"
+                              >
                                 <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
                               </Button>
                             </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl p-2 w-48 shadow-2xl">
-                            <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
-                              {t("patient_actions")}
-                            </DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleOpenForm(pet)} className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold">
-                              {t("edit_profile")}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-tint/5 mx-2" />
-                            {user?.role !== "doctor" && (
-                              <DropdownMenuItem onClick={() => handleDelete(pet.pet_id)} className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold">
-                                {t("delete_record")}
+                            <DropdownMenuContent
+                              align="end"
+                              className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl p-2 w-48 shadow-2xl"
+                            >
+                              <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
+                                {t("patient_actions")}
+                              </DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onClick={() => handleOpenForm(pet)}
+                                className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold"
+                              >
+                                {t("edit_profile")}
                               </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                              <DropdownMenuSeparator className="bg-tint/5 mx-2" />
+                              {user?.role !== "doctor" && (
+                                <DropdownMenuItem
+                                  onClick={() => handleDelete(pet.pet_id)}
+                                  className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
+                                >
+                                  {t("delete_record")}
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -587,7 +771,8 @@ export default function PetsPage() {
             ? {
                 petName: historyPet.name,
                 species: historyPet.type,
-                breed: (historyPet as any).breed || t("mixed"),
+                breed:
+                  (historyPet as Pet & { breed?: string }).breed || t("mixed"),
                 ownerName: getClientDetails(historyPet.client_id).name,
               }
             : null

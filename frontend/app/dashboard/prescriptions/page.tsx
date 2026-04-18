@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "@/app/_components/fast-motion";
 import { Button } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
+import { Checkbox } from "@/app/_components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -84,11 +85,15 @@ export default function PrescriptionsPage() {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [dateFilter, setDateFilter] = React.useState<DateRangeFilter>("all");
   const [selectedRx, setSelectedRx] = React.useState<Prescription | null>(null);
+  const [selectedPrescriptionIds, setSelectedPrescriptionIds] = React.useState<
+    string[]
+  >([]);
   const { user } = useAuth();
   const { t } = useLang();
 
   const isClient = user?.role === "client";
   const canCreate = false;
+  const canDeletePrescriptions = !isClient && user?.role !== "staff";
 
   const { data: rxData, isLoading: rxLoading } = usePrescriptions();
   const { data: rxItemsData } = usePrescriptionItems();
@@ -209,6 +214,19 @@ export default function PrescriptionsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prescriptions, searchQuery, dateFilter, pets, clients, rxItems, drugs]);
 
+  const bulkDeletablePrescriptionIds = React.useMemo(
+    () =>
+      canDeletePrescriptions
+        ? filteredPrescriptions.map((rx) => rx.prescription_id)
+        : [],
+    [canDeletePrescriptions, filteredPrescriptions],
+  );
+
+  React.useEffect(() => {
+    const allowed = new Set(bulkDeletablePrescriptionIds);
+    setSelectedPrescriptionIds((prev) => prev.filter((id) => allowed.has(id)));
+  }, [bulkDeletablePrescriptionIds]);
+
   // ── Form ─────────────────────────────────────────────────────────────────
   const formik = useFormik({
     initialValues: {
@@ -272,12 +290,70 @@ export default function PrescriptionsPage() {
       confirm(t("confirm_revoke_prescription") || "Revoke this prescription?")
     ) {
       deletePrescription.mutate(id, {
-        onSuccess: () =>
-          toast.success(t("prescription_revoked") || "Prescription revoked."),
+        onSuccess: () => {
+          setSelectedPrescriptionIds((prev) =>
+            prev.filter((rxId) => rxId !== id),
+          );
+          toast.success(t("prescription_revoked") || "Prescription revoked.");
+        },
         onError: () =>
           toast.error(t("prescription_revoke_failed") || "Failed to revoke."),
       });
     }
+  };
+
+  const togglePrescriptionSelection = (prescriptionId: string) => {
+    setSelectedPrescriptionIds((prev) =>
+      prev.includes(prescriptionId)
+        ? prev.filter((id) => id !== prescriptionId)
+        : [...prev, prescriptionId],
+    );
+  };
+
+  const toggleSelectAllPrescriptions = () => {
+    setSelectedPrescriptionIds((prev) =>
+      prev.length === bulkDeletablePrescriptionIds.length
+        ? []
+        : bulkDeletablePrescriptionIds,
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedPrescriptionIds.length === 0) return;
+    const count = selectedPrescriptionIds.length;
+    if (
+      !confirm(`Revoke ${count} selected prescription${count > 1 ? "s" : ""}?`)
+    ) {
+      return;
+    }
+
+    const ids = [...selectedPrescriptionIds];
+    const results = await Promise.allSettled(
+      ids.map((id) => deletePrescription.mutateAsync(id)),
+    );
+
+    const failedIds: string[] = [];
+    let successCount = 0;
+    results.forEach((result, index) => {
+      if (result.status === "fulfilled") {
+        successCount += 1;
+      } else {
+        failedIds.push(ids[index]);
+      }
+    });
+
+    if (successCount > 0) {
+      toast.success(
+        `Revoked ${successCount} prescription${successCount > 1 ? "s" : ""}.`,
+      );
+    }
+    if (failedIds.length > 0) {
+      toast.error(
+        `Failed to revoke ${failedIds.length} prescription${failedIds.length > 1 ? "s" : ""}.`,
+      );
+    }
+
+    setSelectedPrescriptionIds(failedIds);
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -357,12 +433,61 @@ export default function PrescriptionsPage() {
             </Select>
           </div>
 
+          {canDeletePrescriptions &&
+            bulkDeletablePrescriptionIds.length > 0 && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-emerald/20 bg-emerald/5 px-4 py-3">
+                <p className="text-sm font-semibold text-foreground">
+                  {selectedPrescriptionIds.length} selected
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={toggleSelectAllPrescriptions}
+                    className="h-9 rounded-xl border-emerald/30 text-emerald hover:bg-emerald/10"
+                  >
+                    {selectedPrescriptionIds.length ===
+                    bulkDeletablePrescriptionIds.length
+                      ? "Clear selection"
+                      : "Select all"}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      void handleBulkDelete();
+                    }}
+                    disabled={
+                      selectedPrescriptionIds.length === 0 ||
+                      deletePrescription.isPending
+                    }
+                    className="h-9 rounded-xl bg-red-500/90 text-white hover:bg-red-500 disabled:opacity-60"
+                  >
+                    Delete selected
+                  </Button>
+                </div>
+              </div>
+            )}
+
           <div className="relative group">
             <div className="absolute -inset-0.5 bg-linear-to-br from-emerald/10 to-transparent rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
             <div className="relative bg-tint/5 backdrop-blur-md rounded-3xl border border-tint/5 overflow-x-auto shadow-2xl">
               <Table>
                 <TableHeader className="bg-tint/5">
                   <TableRow className="border-b border-tint/5 hover:bg-transparent">
+                    {canDeletePrescriptions && (
+                      <TableHead className="py-6 px-4 w-12">
+                        <Checkbox
+                          checked={
+                            bulkDeletablePrescriptionIds.length > 0 &&
+                            selectedPrescriptionIds.length ===
+                              bulkDeletablePrescriptionIds.length
+                          }
+                          onCheckedChange={toggleSelectAllPrescriptions}
+                          className="border-emerald/30 data-[state=checked]:bg-emerald data-[state=checked]:text-white"
+                          aria-label="Select all prescriptions"
+                        />
+                      </TableHead>
+                    )}
                     <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
                       {t("rx_id_patient")}
                     </TableHead>
@@ -385,7 +510,7 @@ export default function PrescriptionsPage() {
                   {rxLoading ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={canDeletePrescriptions ? 7 : 6}
                         className="text-center py-8 text-muted-foreground"
                       >
                         {t("loading_prescriptions_text")}
@@ -394,7 +519,7 @@ export default function PrescriptionsPage() {
                   ) : filteredPrescriptions.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={canDeletePrescriptions ? 7 : 6}
                         className="text-center py-8 text-muted-foreground"
                       >
                         {t("no_prescriptions_found")}
@@ -403,6 +528,9 @@ export default function PrescriptionsPage() {
                   ) : (
                     filteredPrescriptions.map((rx) => {
                       const pDrugs = getDrugsForRx(rx);
+                      const isSelected = selectedPrescriptionIds.includes(
+                        rx.prescription_id,
+                      );
                       return (
                         <TableRow
                           key={rx.prescription_id}
@@ -411,6 +539,23 @@ export default function PrescriptionsPage() {
                             setSelectedRx(rx);
                           }}
                         >
+                          {canDeletePrescriptions && (
+                            <TableCell
+                              className="py-6 px-4"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() =>
+                                  togglePrescriptionSelection(
+                                    rx.prescription_id,
+                                  )
+                                }
+                                className="border-emerald/30 data-[state=checked]:bg-emerald data-[state=checked]:text-white"
+                                aria-label="Select prescription"
+                              />
+                            </TableCell>
+                          )}
                           <TableCell className="py-6 px-8">
                             <div className="flex flex-col gap-1">
                               <span className="text-[10px] font-black tracking-widest text-emerald bg-emerald/5 w-fit px-2 py-0.5 rounded-md uppercase">

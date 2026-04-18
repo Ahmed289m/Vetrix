@@ -27,9 +27,10 @@ import {
   type DatePartsFilter,
   type DateRangeFilter,
 } from "@/app/_lib/utils/date-filter";
-import { fadeUp, stagger } from "@/app/_lib/utils/shared-animations";
+import { fadeUp } from "@/app/_lib/utils/shared-animations";
 import { Button } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
+import { Checkbox } from "@/app/_components/ui/checkbox";
 import { Label } from "@/app/_components/ui/label";
 import {
   Select,
@@ -115,6 +116,7 @@ export default function VisitsPage() {
   const [yearFilter, setYearFilter] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
+  const [selectedVisitIds, setSelectedVisitIds] = useState<string[]>([]);
   const { t } = useLang();
   const { user } = useAuth();
 
@@ -231,6 +233,18 @@ export default function VisitsPage() {
     return filterByDateParts(ranged, "date", dateParts);
   }, [sortedVisits, dateFilter, dateParts]);
 
+  const bulkDeletableVisitIds = useMemo(
+    () => (canDelete ? visibleVisits.map((visit) => visit.visit_id) : []),
+    [canDelete, visibleVisits],
+  );
+  const deletableVisitIdSet = useMemo(
+    () => new Set(bulkDeletableVisitIds),
+    [bulkDeletableVisitIds],
+  );
+  const effectiveSelectedVisitIds = selectedVisitIds.filter((id) =>
+    deletableVisitIdSet.has(id),
+  );
+
   // ── Form ───────────────────────────────────────────────────────────────────
   const clients = isClient ? [] : usersList.filter((u) => u.role === "client");
   const doctors = isClient
@@ -294,13 +308,18 @@ export default function VisitsPage() {
     (rx) => rx.client_id === formik.values.client_id,
   );
 
+  const deleteVisitCascade = async (visit: Visit) => {
+    if (visit.prescription_id) {
+      await deletePrescription.mutateAsync(visit.prescription_id);
+    }
+    await deleteVisit.mutateAsync(visit.visit_id);
+  };
+
   const handleDeleteVisit = async (visit: Visit) => {
     if (!confirm("Delete this visit?")) return;
     try {
-      if (visit.prescription_id) {
-        await deletePrescription.mutateAsync(visit.prescription_id);
-      }
-      await deleteVisit.mutateAsync(visit.visit_id);
+      await deleteVisitCascade(visit);
+      setSelectedVisitIds((prev) => prev.filter((id) => id !== visit.visit_id));
       toast.success("Visit deleted.");
     } catch (err: unknown) {
       const msg =
@@ -308,6 +327,65 @@ export default function VisitsPage() {
           ?.detail || "Failed to delete visit.";
       toast.error(msg);
     }
+  };
+
+  const toggleVisitSelection = (visitId: string) => {
+    if (!deletableVisitIdSet.has(visitId)) return;
+    setSelectedVisitIds((prev) =>
+      prev.includes(visitId)
+        ? prev.filter((id) => id !== visitId)
+        : [...prev, visitId],
+    );
+  };
+
+  const toggleSelectAllVisits = () => {
+    setSelectedVisitIds(() =>
+      effectiveSelectedVisitIds.length === bulkDeletableVisitIds.length
+        ? []
+        : bulkDeletableVisitIds,
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (effectiveSelectedVisitIds.length === 0) return;
+    const count = effectiveSelectedVisitIds.length;
+    if (!confirm(`Delete ${count} selected visit${count > 1 ? "s" : ""}?`)) {
+      return;
+    }
+
+    const visitMap = new Map(
+      visibleVisits.map((visit) => [visit.visit_id, visit]),
+    );
+    const visitsToDelete = effectiveSelectedVisitIds
+      .map((id) => visitMap.get(id))
+      .filter(Boolean) as Visit[];
+
+    const results = await Promise.allSettled(
+      visitsToDelete.map((visit) => deleteVisitCascade(visit)),
+    );
+
+    const failedIds: string[] = [];
+    let successCount = 0;
+    results.forEach((result, index) => {
+      if (result.status === "fulfilled") {
+        successCount += 1;
+      } else {
+        failedIds.push(visitsToDelete[index].visit_id);
+      }
+    });
+
+    if (successCount > 0) {
+      toast.success(
+        `Deleted ${successCount} visit${successCount > 1 ? "s" : ""}.`,
+      );
+    }
+    if (failedIds.length > 0) {
+      toast.error(
+        `Failed to delete ${failedIds.length} visit${failedIds.length > 1 ? "s" : ""}.`,
+      );
+    }
+
+    setSelectedVisitIds(failedIds);
   };
 
   // ── Skeletons ──────────────────────────────────────────────────────────────
@@ -415,6 +493,41 @@ export default function VisitsPage() {
           className="h-11 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-semibold"
         />
       </motion.div>
+
+      {canDelete && bulkDeletableVisitIds.length > 0 && (
+        <motion.div
+          variants={fadeUp}
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-emerald/20 bg-emerald/5 px-4 py-3"
+        >
+          <p className="text-sm font-semibold text-foreground">
+            {effectiveSelectedVisitIds.length} selected
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={toggleSelectAllVisits}
+              className="h-9 rounded-xl border-emerald/30 text-emerald hover:bg-emerald/10"
+            >
+              {effectiveSelectedVisitIds.length === bulkDeletableVisitIds.length
+                ? "Clear selection"
+                : "Select all"}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                void handleBulkDelete();
+              }}
+              disabled={
+                effectiveSelectedVisitIds.length === 0 || deleteVisit.isPending
+              }
+              className="h-9 rounded-xl bg-red-500/90 text-white hover:bg-red-500 disabled:opacity-60"
+            >
+              Delete selected
+            </Button>
+          </div>
+        </motion.div>
+      )}
 
       {/* ── CLIENT VIEW — premium cards ── */}
       {isClient ? (
@@ -577,6 +690,9 @@ export default function VisitsPage() {
               const doctor = getUser(visit.doctor_id);
               const doctorName =
                 visit.doctor_name || doctor?.fullname || "Assigned";
+              const isSelected = effectiveSelectedVisitIds.includes(
+                visit.visit_id,
+              );
               const visitReason =
                 (visit as { reason?: string }).reason?.trim() ||
                 visit.notes?.trim() ||
@@ -612,6 +728,21 @@ export default function VisitsPage() {
                   {/* ── Row 1: Pet identity + status ── */}
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
+                      {canDelete && (
+                        <div
+                          className="shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() =>
+                              toggleVisitSelection(visit.visit_id)
+                            }
+                            className="border-emerald/30 data-[state=checked]:bg-emerald data-[state=checked]:text-white"
+                            aria-label="Select visit"
+                          />
+                        </div>
+                      )}
                       <div className="w-10 h-10 rounded-xl bg-muted/30 flex items-center justify-center shrink-0 group-hover:bg-emerald/10 transition-colors">
                         <PetIcon className="w-5 h-5 text-muted-foreground group-hover:text-emerald transition-colors" />
                       </div>

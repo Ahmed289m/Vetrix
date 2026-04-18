@@ -19,6 +19,7 @@ import {
 import { useFormik } from "formik";
 import { Button } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
+import { Checkbox } from "@/app/_components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -75,6 +76,7 @@ export default function UsersPage() {
   );
   const [showPassword, setShowPassword] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
+  const [selectedUserIds, setSelectedUserIds] = React.useState<string[]>([]);
   const { t } = useLang();
   const { user: authUser } = useAuth();
 
@@ -114,6 +116,19 @@ export default function UsersPage() {
       return matchesRole && matchesSearch;
     });
   }, [users, searchQuery, roleFilter, getClinicName]);
+
+  const bulkDeletableUserIds = React.useMemo(
+    () =>
+      filteredUsers
+        .filter((u) => u.user_id !== authUser?.userId)
+        .map((u) => u.user_id),
+    [filteredUsers, authUser?.userId],
+  );
+
+  React.useEffect(() => {
+    const allowed = new Set(bulkDeletableUserIds);
+    setSelectedUserIds((prev) => prev.filter((id) => allowed.has(id)));
+  }, [bulkDeletableUserIds]);
 
   const formik = useFormik({
     initialValues: {
@@ -199,10 +214,63 @@ export default function UsersPage() {
 
     if (confirm(t("confirm_delete_user"))) {
       deleteUser.mutate(id, {
-        onSuccess: () => toast.success(t("user_deactivated_success")),
+        onSuccess: () => {
+          setSelectedUserIds((prev) => prev.filter((userId) => userId !== id));
+          toast.success(t("user_deactivated_success"));
+        },
         onError: () => toast.error(t("user_deactivate_failed")),
       });
     }
+  };
+
+  const toggleUserSelection = (userId: string) => {
+    setSelectedUserIds((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId],
+    );
+  };
+
+  const toggleSelectAllUsers = () => {
+    setSelectedUserIds((prev) =>
+      prev.length === bulkDeletableUserIds.length ? [] : bulkDeletableUserIds,
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedUserIds.length === 0) return;
+    const count = selectedUserIds.length;
+    if (!confirm(`Delete ${count} selected user${count > 1 ? "s" : ""}?`)) {
+      return;
+    }
+
+    const ids = [...selectedUserIds];
+    const results = await Promise.allSettled(
+      ids.map((id) => deleteUser.mutateAsync(id)),
+    );
+
+    const failedIds: string[] = [];
+    let successCount = 0;
+    results.forEach((result, index) => {
+      if (result.status === "fulfilled") {
+        successCount += 1;
+      } else {
+        failedIds.push(ids[index]);
+      }
+    });
+
+    if (successCount > 0) {
+      toast.success(
+        `Deleted ${successCount} user${successCount > 1 ? "s" : ""}.`,
+      );
+    }
+    if (failedIds.length > 0) {
+      toast.error(
+        `Failed to delete ${failedIds.length} user${failedIds.length > 1 ? "s" : ""}.`,
+      );
+    }
+
+    setSelectedUserIds(failedIds);
   };
 
   const handleResetPassword = (userId: string) => {
@@ -268,12 +336,45 @@ export default function UsersPage() {
         </Select>
       </div>
 
+      {bulkDeletableUserIds.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-emerald/20 bg-emerald/5 px-4 py-3">
+          <p className="text-sm font-semibold text-foreground">
+            {selectedUserIds.length} selected
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={toggleSelectAllUsers}
+              className="h-9 rounded-xl border-emerald/30 text-emerald hover:bg-emerald/10"
+            >
+              {selectedUserIds.length === bulkDeletableUserIds.length
+                ? "Clear selection"
+                : "Select all"}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                void handleBulkDelete();
+              }}
+              disabled={selectedUserIds.length === 0 || deleteUser.isPending}
+              className="h-9 rounded-xl bg-red-500/90 text-white hover:bg-red-500 disabled:opacity-60"
+            >
+              Delete selected
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* ── Mobile card list (< md) ── */}
       <div className="md:hidden space-y-3">
         {usersLoading ? (
           <div className="space-y-3">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-20 rounded-2xl bg-tint/5 border border-tint/5 animate-pulse" />
+              <div
+                key={i}
+                className="h-20 rounded-2xl bg-tint/5 border border-tint/5 animate-pulse"
+              />
             ))}
           </div>
         ) : filteredUsers.length === 0 ? (
@@ -290,39 +391,80 @@ export default function UsersPage() {
               className="glass-card p-4"
             >
               <div className="flex items-center gap-3">
+                {user.user_id !== authUser?.userId && (
+                  <Checkbox
+                    checked={selectedUserIds.includes(user.user_id)}
+                    onCheckedChange={() => toggleUserSelection(user.user_id)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="border-emerald/30 data-[state=checked]:bg-emerald data-[state=checked]:text-white"
+                    aria-label="Select user"
+                  />
+                )}
                 <div className="w-10 h-10 rounded-xl bg-emerald/10 flex items-center justify-center text-emerald font-bold text-sm shrink-0">
-                  {user.fullname?.[0]?.toUpperCase() || <UserIcon className="w-4 h-4" />}
+                  {user.fullname?.[0]?.toUpperCase() || (
+                    <UserIcon className="w-4 h-4" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-sm truncate flex items-center gap-1.5">
                     {user.fullname}
-                    {user.is_superuser && <ShieldAlert className="w-3 h-3 text-emerald" />}
+                    {user.is_superuser && (
+                      <ShieldAlert className="w-3 h-3 text-emerald" />
+                    )}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
                     {user.role} · {getClinicName(user.clinic_id)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className={`text-[10px] px-2 py-0.5 rounded-lg font-bold uppercase border ${
-                    user.is_active ? "bg-emerald/10 text-emerald border-emerald/20" : "bg-red-500/10 text-red-400 border-red-500/20"
-                  }`}>
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-lg font-bold uppercase border ${
+                      user.is_active
+                        ? "bg-emerald/10 text-emerald border-emerald/20"
+                        : "bg-red-500/10 text-red-400 border-red-500/20"
+                    }`}
+                  >
                     {user.is_active ? t("active") : t("inactive")}
                   </span>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl bg-tint/5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-xl bg-tint/5"
+                      >
                         <MoreHorizontal className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl p-2 w-48 shadow-2xl">
-                      <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">{t("actions")}</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => handleOpenForm(user)} className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold">{t("edit_profile")}</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleResetPassword(user.user_id)} className="rounded-xl py-3 focus:bg-blue-500/10 focus:text-blue-400 cursor-pointer font-bold">{t("show_password")}</DropdownMenuItem>
+                    <DropdownMenuContent
+                      align="end"
+                      className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl p-2 w-48 shadow-2xl"
+                    >
+                      <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
+                        {t("actions")}
+                      </DropdownMenuLabel>
+                      <DropdownMenuItem
+                        onClick={() => handleOpenForm(user)}
+                        className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold"
+                      >
+                        {t("edit_profile")}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleResetPassword(user.user_id)}
+                        className="rounded-xl py-3 focus:bg-blue-500/10 focus:text-blue-400 cursor-pointer font-bold"
+                      >
+                        {t("show_password")}
+                      </DropdownMenuItem>
                       {user.user_id !== authUser?.userId && (
                         <>
                           <DropdownMenuSeparator className="bg-tint/5 mx-2" />
-                          <DropdownMenuItem onClick={() => handleDelete(user.user_id)} className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold">
-                            {user.is_active ? t("deactivate") : t("delete_user")}
+                          <DropdownMenuItem
+                            onClick={() => handleDelete(user.user_id)}
+                            className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
+                          >
+                            {user.is_active
+                              ? t("deactivate")
+                              : t("delete_user")}
                           </DropdownMenuItem>
                         </>
                       )}
@@ -342,6 +484,19 @@ export default function UsersPage() {
           <Table>
             <TableHeader className="bg-tint/5">
               <TableRow className="border-b border-tint/5 hover:bg-transparent">
+                {bulkDeletableUserIds.length > 0 && (
+                  <TableHead className="py-4 px-4 w-12">
+                    <Checkbox
+                      checked={
+                        bulkDeletableUserIds.length > 0 &&
+                        selectedUserIds.length === bulkDeletableUserIds.length
+                      }
+                      onCheckedChange={toggleSelectAllUsers}
+                      className="border-emerald/30 data-[state=checked]:bg-emerald data-[state=checked]:text-white"
+                      aria-label="Select all users"
+                    />
+                  </TableHead>
+                )}
                 <TableHead className="py-4 px-6 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
                   {t("user_info")}
                 </TableHead>
@@ -361,7 +516,7 @@ export default function UsersPage() {
               {usersLoading ? (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={bulkDeletableUserIds.length > 0 ? 6 : 5}
                     className="text-center py-8 text-muted-foreground"
                   >
                     {t("loading_users")}
@@ -370,7 +525,7 @@ export default function UsersPage() {
               ) : filteredUsers.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={bulkDeletableUserIds.length > 0 ? 6 : 5}
                     className="text-center py-8 text-muted-foreground"
                   >
                     {t("no_users_found")}
@@ -382,6 +537,20 @@ export default function UsersPage() {
                     key={user.user_id}
                     className="border-b border-tint/5 hover:bg-tint/5 transition-colors group/row"
                   >
+                    {bulkDeletableUserIds.length > 0 && (
+                      <TableCell className="py-4 px-4">
+                        {user.user_id !== authUser?.userId && (
+                          <Checkbox
+                            checked={selectedUserIds.includes(user.user_id)}
+                            onCheckedChange={() =>
+                              toggleUserSelection(user.user_id)
+                            }
+                            className="border-emerald/30 data-[state=checked]:bg-emerald data-[state=checked]:text-white"
+                            aria-label="Select user"
+                          />
+                        )}
+                      </TableCell>
+                    )}
                     <TableCell className="py-4 px-6">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-xl bg-emerald/10 flex items-center justify-center text-emerald font-bold text-sm shadow-inner">
