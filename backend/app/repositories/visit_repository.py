@@ -15,3 +15,7 @@ class VisitRepository(BaseMongoRepository):
         """List all visits for a specific client (owner) in a clinic."""
         return await self.collection.find({"client_id": owner_id, "clinic_id": clinic_id}).sort("date", -1).to_list(length=None)
 
+    async def list_by_pet(self, pet_id: str) -> list[dict]:
+        """List all visits for a specific pet."""
+        return await self.collection.find({"pet_id": pet_id}).sort("date", -1).to_list(length=None)
+

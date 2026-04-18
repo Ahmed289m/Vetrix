@@ -75,6 +75,16 @@ class VisitService:
         serialized = [serialize_mongo_doc(visit, "visit_id") for visit in visits]
         return await self._attach_user_names(serialized)
 
+    async def list_visits_by_pet(self, pet_id: str) -> list[dict]:
+        """List all visits for a specific pet_id."""
+        normalized_pet_id = (pet_id or "").strip()
+        if not normalized_pet_id:
+            return []
+
+        visits = await self.repository.list_by_pet(normalized_pet_id)
+        serialized = [serialize_mongo_doc(visit, "visit_id") for visit in visits]
+        return await self._attach_user_names(serialized)
+
     async def get_visit(self, visit_id: str, current_user: TokenData) -> dict:
         """
         Get a visit with clinic isolation and ownership check.
