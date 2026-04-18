@@ -7,6 +7,12 @@ export const metadata: Metadata = {
     default: "Dashboard | Vetrix",
     template: "%s | Vetrix",
   },
+  description:
+    "Vetrix clinical workspace for appointments, visits, prescriptions, patients, and operations.",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {

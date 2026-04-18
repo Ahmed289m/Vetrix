@@ -132,8 +132,9 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
         Permissions.PRESCRIPTION_ITEMS_CREATE,
         Permissions.PRESCRIPTION_ITEMS_READ,
         Permissions.PRESCRIPTION_ITEMS_UPDATE,
-        # Pet management (read-only)
+        # Pet management (read + weight-only update, enforced in service layer)
         Permissions.PETS_READ,
+        Permissions.PETS_UPDATE,
         # Drug management (read-only)
         Permissions.DRUGS_READ,
         # Appointment management (read + update for simulation: accept/complete cases)

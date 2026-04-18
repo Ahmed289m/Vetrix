@@ -70,6 +70,7 @@ async def update_pet(
 
     - ADMIN can update any pet
     - OWNER/STAFF can update pets in their clinic
+    - DOCTOR can update only pet weight in their clinic
     - CLIENT can update only their own pets
     """
     updated = await controller.update_pet(pet_id, request, current_user)

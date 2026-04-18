@@ -170,6 +170,26 @@ export function FluidTherapyModal({
     }
   }, [open, initialWeight, initialSpecies]);
 
+  React.useEffect(() => {
+    if (!open) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [open, onClose]);
+
   // ── Calculations ────────────────────────────────────────────────────────────
   const w = parseFloat(weight) || 0;
   const maintenance = calcMaintenanceAllometric(w, species);
@@ -211,11 +231,15 @@ export function FluidTherapyModal({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
             onClick={onClose}
-            className="fixed inset-0 z-100 bg-background/80 backdrop-blur-sm"
+            style={{ zIndex: 10000 }}
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm"
           />
 
           {/* Modal */}
-          <div className="fixed inset-0 z-100 flex items-center justify-center p-4 pointer-events-none">
+          <div
+            style={{ zIndex: 10000 }}
+            className="fixed inset-0 flex items-center justify-center p-3 sm:p-4 pointer-events-none"
+          >
             <motion.div
               key="fluid-modal"
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
@@ -223,37 +247,60 @@ export function FluidTherapyModal({
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-card border border-border rounded-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto shadow-2xl pointer-events-auto custom-scrollbar"
+              className="relative bg-card/95 border border-border/60 rounded-[1.75rem] w-full max-w-4xl max-h-[94vh] overflow-y-auto shadow-[0_30px_120px_-40px_rgba(14,165,233,0.45)] pointer-events-auto custom-scrollbar"
             >
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-linear-to-b from-cyan/10 via-emerald/5 to-transparent" />
+
               {/* ── Header ── */}
-              <div className="sticky top-0 z-10 flex items-center justify-between p-5 border-b border-border bg-card/95 backdrop-blur-xl">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/25 flex items-center justify-center">
-                    <Droplets className="w-5 h-5 text-blue-400" />
+              <div className="sticky top-0 z-10 border-b border-border/60 bg-card/90 backdrop-blur-2xl">
+                <div className="relative flex items-start justify-between gap-3 p-4 sm:p-5">
+                  <div className="flex items-start gap-3 sm:gap-4 min-w-0">
+                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-blue-500/15 border border-blue-500/25 flex items-center justify-center shrink-0">
+                      <Droplets className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-base sm:text-lg font-black tracking-tight">
+                        Fluid Therapy Calculator
+                      </h2>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">
+                        {petName
+                          ? `Patient: ${petName}`
+                          : "Maintenance · Deficit · Ongoing Losses"}
+                      </p>
+
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase bg-cyan/10 border border-cyan/20 text-cyan">
+                          {species === "dog" ? "Canine" : "Feline"}
+                        </span>
+                        {hasWeight && (
+                          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase bg-emerald/10 border border-emerald/20 text-emerald tabular-nums">
+                            {w.toFixed(1)} kg
+                          </span>
+                        )}
+                        <span
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase border ${colors.bg} ${colors.border} ${colors.text}`}
+                        >
+                          {severity}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-base font-black">
-                      Fluid Therapy Calculator
-                    </h2>
-                    <p className="text-[10px] text-muted-foreground">
-                      {petName
-                        ? `Patient: ${petName}`
-                        : "Maintenance · Deficit · Ongoing Losses"}
-                    </p>
-                  </div>
+
+                  <button
+                    onClick={onClose}
+                    aria-label="Close fluid therapy calculator"
+                    className="p-2 hover:bg-muted rounded-xl transition-colors shrink-0"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
-                <button
-                  onClick={onClose}
-                  className="p-2 hover:bg-muted rounded-xl transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
               </div>
 
-              <div className="p-5 space-y-5">
+              <div className="relative p-4 sm:p-5 lg:p-6 space-y-5">
                 {/* ── Input Section ── */}
-                <div className="space-y-4">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                <div className="space-y-4 rounded-2xl border border-border/40 bg-muted/10 p-4 sm:p-5">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                    <Scale className="w-3.5 h-3.5" />
                     Patient Parameters
                   </p>
 
@@ -407,9 +454,10 @@ export function FluidTherapyModal({
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="space-y-4"
+                      className="space-y-4 rounded-2xl border border-border/40 bg-card/40 p-4 sm:p-5"
                     >
-                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                        <Activity className="w-3.5 h-3.5" />
                         Volume Calculations
                       </p>
 

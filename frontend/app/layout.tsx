@@ -2,6 +2,21 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
+const DEFAULT_SITE_URL = "https://vetrix.up.railway.app";
+
+function resolveMetadataBase(): URL {
+  const rawUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    DEFAULT_SITE_URL;
+
+  try {
+    return new URL(rawUrl);
+  } catch {
+    return new URL(DEFAULT_SITE_URL);
+  }
+}
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -13,6 +28,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: resolveMetadataBase(),
   title: {
     default: "Vetrix — Smart Veterinary Platform",
     template: "%s | Vetrix",
@@ -29,10 +45,11 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Vetrix Health Technologies" }],
   creator: "Vetrix Health Technologies",
+  alternates: {
+    canonical: "/",
+  },
   icons: {
-    icon: [
-      { url: "/logo.png", type: "image/png" },
-    ],
+    icon: [{ url: "/logo.png", type: "image/png" }],
     apple: "/logo.png",
     shortcut: "/logo.png",
   },
@@ -40,6 +57,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     siteName: "Vetrix",
+    url: "/",
     title: "Vetrix — Smart Veterinary Platform",
     description:
       "Next-generation veterinary clinic management — AI-assisted, real-time, and built for speed.",
@@ -51,7 +69,7 @@ export const metadata: Metadata = {
     description: "Next-generation veterinary clinic management.",
     images: ["/logo.png"],
   },
-  robots: { index: false, follow: false },
+  robots: { index: true, follow: true },
 };
 
 import { Providers } from "./Providers";

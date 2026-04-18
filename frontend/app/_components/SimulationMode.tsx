@@ -644,6 +644,32 @@ export default function SimulationMode({ role }: Props) {
     );
   };
 
+  const handleSaveWeight = (activePet?: Pet) => {
+    const w = parseFloat(newWeightInput);
+
+    if (!activePet) {
+      toast.error("No active patient selected.");
+      return;
+    }
+
+    if (Number.isNaN(w) || w <= 0) {
+      toast.error("Enter a valid weight greater than 0.");
+      return;
+    }
+
+    updatePet.mutate(
+      { id: activePet.pet_id, data: { weight: w } },
+      {
+        onSuccess: () => {
+          toast.success(`Weight updated to ${w} kg`);
+          setShowUpdateWeight(false);
+        },
+        onError: (err: unknown) =>
+          toast.error(getErrorDetail(err, "Failed to update weight.")),
+      },
+    );
+  };
+
   const toggleDrug = (drugId: string) => {
     setSelectedDrugIds((prev) =>
       prev.includes(drugId)
@@ -890,7 +916,9 @@ export default function SimulationMode({ role }: Props) {
 
               {/* Doctor action buttons */}
               {(() => {
-                const activePet = allPets.find((p) => p.pet_id === myActiveCase.petId);
+                const activePet = allPets.find(
+                  (p) => p.pet_id === myActiveCase.petId,
+                );
                 return (
                   <div className="flex items-center gap-2.5 flex-wrap pt-1">
                     {/* Update Weight */}
@@ -975,7 +1003,9 @@ export default function SimulationMode({ role }: Props) {
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.97 }}
-                      onClick={() => handleComplete(myActiveCase.appointment_id)}
+                      onClick={() =>
+                        handleComplete(myActiveCase.appointment_id)
+                      }
                       disabled={updateAppointment.isPending}
                       className="flex items-center gap-2 bg-emerald/90 hover:bg-emerald text-primary-foreground px-4 py-2.5 rounded-xl text-sm font-bold disabled:opacity-50"
                     >
@@ -1834,9 +1864,14 @@ export default function SimulationMode({ role }: Props) {
       />
 
       {/* ═══════════════════ UPDATE WEIGHT MODAL ════════════════════════════════ */}
-      <Modal open={showUpdateWeight} onBgClick={() => setShowUpdateWeight(false)}>
+      <Modal
+        open={showUpdateWeight}
+        onBgClick={() => setShowUpdateWeight(false)}
+      >
         {(() => {
-          const activePet = allPets.find((p) => p.pet_id === myActiveCase?.petId);
+          const activePet = allPets.find(
+            (p) => p.pet_id === myActiveCase?.petId,
+          );
           return (
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 12 }}
@@ -1854,7 +1889,8 @@ export default function SimulationMode({ role }: Props) {
                   <div>
                     <h3 className="text-sm font-bold">Update Weight</h3>
                     <p className="text-[10px] text-muted-foreground">
-                      {activePet?.name ?? "Current patient"} — current: {activePet?.weight ?? "—"} kg
+                      {activePet?.name ?? "Current patient"} — current:{" "}
+                      {activePet?.weight ?? "—"} kg
                     </p>
                   </div>
                 </div>
@@ -1879,19 +1915,7 @@ export default function SimulationMode({ role }: Props) {
                   onChange={(e) => setNewWeightInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
-                      const w = parseFloat(newWeightInput);
-                      if (!isNaN(w) && w > 0 && activePet) {
-                        updatePet.mutate(
-                          { id: activePet.pet_id, data: { weight: w } },
-                          {
-                            onSuccess: () => {
-                              toast.success(`Weight updated to ${w} kg`);
-                              setShowUpdateWeight(false);
-                            },
-                            onError: () => toast.error("Failed to update weight"),
-                          },
-                        );
-                      }
+                      handleSaveWeight(activePet);
                     }
                   }}
                   placeholder="e.g. 25.5"
@@ -1911,22 +1935,13 @@ export default function SimulationMode({ role }: Props) {
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.97 }}
-                  disabled={updatePet.isPending || !newWeightInput}
-                  onClick={() => {
-                    const w = parseFloat(newWeightInput);
-                    if (!isNaN(w) && w > 0 && activePet) {
-                      updatePet.mutate(
-                        { id: activePet.pet_id, data: { weight: w } },
-                        {
-                          onSuccess: () => {
-                            toast.success(`Weight updated to ${w} kg`);
-                            setShowUpdateWeight(false);
-                          },
-                          onError: () => toast.error("Failed to update weight"),
-                        },
-                      );
-                    }
-                  }}
+                  disabled={
+                    updatePet.isPending ||
+                    !newWeightInput ||
+                    Number.isNaN(parseFloat(newWeightInput)) ||
+                    parseFloat(newWeightInput) <= 0
+                  }
+                  onClick={() => handleSaveWeight(activePet)}
                   className="flex-1 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-sm font-bold border border-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {updatePet.isPending ? "Saving…" : "Save Weight"}

@@ -131,9 +131,11 @@ class PetService:
 
         - ADMIN can update any pet
         - OWNER/STAFF can update pets in their clinic
+        - DOCTOR can update only pet weight in their clinic
         - CLIENT can update only their own pets
         """
         pet = await self.crud.get(pet_id)
+        payload = request.model_dump(exclude_none=True)
 
         if not current_user.is_superuser:
             if current_user.role == UserRole.CLIENT:
@@ -151,7 +153,15 @@ class PetService:
                         detail="Access denied",
                     )
 
-        return await self.crud.update(pet_id, request)
+                if current_user.role == UserRole.DOCTOR:
+                    disallowed_fields = [field for field in payload if field != "weight"]
+                    if disallowed_fields:
+                        raise HTTPException(
+                            status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Doctors can only update pet weight.",
+                        )
+
+        return await self.crud.update(pet_id, PetUpdate(**payload))
 
     async def delete_pet(self, pet_id: str, current_user: TokenData) -> None:
         """
