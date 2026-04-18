@@ -80,7 +80,7 @@ export default function DashboardLayoutClient({
             )}
 
             <div
-              className={`h-full w-full overflow-y-auto overflow-x-hidden custom-scrollbar ${isNavigating ? "route-fade-in" : ""}`}
+              className={`h-full w-full overflow-y-auto overflow-x-hidden custom-scrollbar pb-8 ${isNavigating ? "route-fade-in" : ""}`}
             >
               {children}
             </div>

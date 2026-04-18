@@ -30,13 +30,15 @@ import {
   FlaskConical,
   Eye,
   BookOpen,
+  Droplets,
+  Scale,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
   useAppointments,
   useUpdateAppointment,
 } from "@/app/_hooks/queries/use-appointments";
-import { usePets } from "@/app/_hooks/queries/use-pets";
+import { usePets, useUpdatePet } from "@/app/_hooks/queries/use-pets";
 import { useUsers } from "@/app/_hooks/queries/use-users";
 import {
   useVisits,
@@ -54,6 +56,7 @@ import { useDrugs } from "@/app/_hooks/queries/use-drugs";
 import { useWebSocket } from "@/app/_hooks/useWebSocket";
 import { useAuth } from "@/app/_hooks/useAuth";
 import { CaseHistoryModal } from "@/app/dashboard/_components/CaseHistoryModal";
+import { FluidTherapyModal } from "@/app/dashboard/_components/FluidTherapyModal";
 import { useLang } from "@/app/_hooks/useLanguage";
 import type {
   Appointment,
@@ -259,6 +262,13 @@ export default function SimulationMode({ role }: Props) {
   // ── Case history modal ────────────────────────────────────────────────
   const [showCaseHistory, setShowCaseHistory] = useState(false);
 
+  // ── Fluid therapy modal ───────────────────────────────────────────────
+  const [showFluidTherapy, setShowFluidTherapy] = useState(false);
+
+  // ── Update weight modal ───────────────────────────────────────────────
+  const [showUpdateWeight, setShowUpdateWeight] = useState(false);
+  const [newWeightInput, setNewWeightInput] = useState("");
+
   // ── Prescription modal ───────────────────────────────────────────────────
   const [showPressModal, setShowPressModal] = useState(false);
   const [activePressApptId, setActivePressApptId] = useState("");
@@ -283,6 +293,7 @@ export default function SimulationMode({ role }: Props) {
   const { data: visitsData } = useVisits();
 
   const updateAppointment = useUpdateAppointment();
+  const updatePet = useUpdatePet();
   const createVisit = useCreateVisit();
   const updateVisit = useUpdateVisit();
   const deleteVisit = useDeleteVisit();
@@ -878,63 +889,102 @@ export default function SimulationMode({ role }: Props) {
               })()}
 
               {/* Doctor action buttons */}
-              <div className="flex items-center gap-2.5 flex-wrap pt-1">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() =>
-                    openCreateVisit(
-                      myActiveCase.appointment_id,
-                      myActiveCase.petId,
-                      myActiveCase.clientId,
-                    )
-                  }
-                  className="flex items-center gap-2 gradient-cyan-blue text-primary-foreground px-4 py-2.5 rounded-xl text-sm font-bold glow-cyan"
-                >
-                  <Plus className="w-4 h-4" />
-                  {t("create_visit")}
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() =>
-                    openCreatePrescription(myActiveCase.appointment_id)
-                  }
-                  className="flex items-center gap-2 gradient-emerald-cyan text-primary-foreground px-4 py-2.5 rounded-xl text-sm font-bold glow-emerald"
-                >
-                  <Plus className="w-4 h-4" />
-                  {t("prescribe")}
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => setShowPreviousVisits(true)}
-                  disabled={previousCaseVisits.length === 0}
-                  className="flex items-center gap-2 bg-tint/10 hover:bg-tint/15 text-foreground px-4 py-2.5 rounded-xl text-sm font-bold border border-tint/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <ClipboardList className="w-4 h-4" />
-                  Previous Visits ({previousCaseVisits.length})
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => setShowCaseHistory(true)}
-                  className="flex items-center gap-2 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 px-4 py-2.5 rounded-xl text-sm font-bold border border-violet-500/20 transition-colors"
-                >
-                  <BookOpen className="w-4 h-4" />
-                  {t("case_history") || "Case History"}
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => handleComplete(myActiveCase.appointment_id)}
-                  disabled={updateAppointment.isPending}
-                  className="flex items-center gap-2 bg-emerald/90 hover:bg-emerald text-primary-foreground px-4 py-2.5 rounded-xl text-sm font-bold disabled:opacity-50"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  {t("complete")}
-                </motion.button>
-              </div>
+              {(() => {
+                const activePet = allPets.find((p) => p.pet_id === myActiveCase.petId);
+                return (
+                  <div className="flex items-center gap-2.5 flex-wrap pt-1">
+                    {/* Update Weight */}
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => {
+                        setNewWeightInput(String(activePet?.weight ?? ""));
+                        setShowUpdateWeight(true);
+                      }}
+                      className="flex items-center gap-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 px-4 py-2.5 rounded-xl text-sm font-bold border border-amber-500/20 transition-colors"
+                    >
+                      <Scale className="w-4 h-4" />
+                      Update Weight
+                    </motion.button>
+
+                    {/* Create Visit */}
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() =>
+                        openCreateVisit(
+                          myActiveCase.appointment_id,
+                          myActiveCase.petId,
+                          myActiveCase.clientId,
+                        )
+                      }
+                      className="flex items-center gap-2 gradient-cyan-blue text-primary-foreground px-4 py-2.5 rounded-xl text-sm font-bold glow-cyan"
+                    >
+                      <Plus className="w-4 h-4" />
+                      {t("create_visit")}
+                    </motion.button>
+
+                    {/* Prescribe */}
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() =>
+                        openCreatePrescription(myActiveCase.appointment_id)
+                      }
+                      className="flex items-center gap-2 gradient-emerald-cyan text-primary-foreground px-4 py-2.5 rounded-xl text-sm font-bold glow-emerald"
+                    >
+                      <Plus className="w-4 h-4" />
+                      {t("prescribe")}
+                    </motion.button>
+
+                    {/* Fluid Therapy */}
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => setShowFluidTherapy(true)}
+                      className="flex items-center gap-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 px-4 py-2.5 rounded-xl text-sm font-bold border border-blue-500/20 transition-colors"
+                    >
+                      <Droplets className="w-4 h-4" />
+                      Fluid Therapy
+                    </motion.button>
+
+                    {/* Previous Visits */}
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => setShowPreviousVisits(true)}
+                      disabled={previousCaseVisits.length === 0}
+                      className="flex items-center gap-2 bg-tint/10 hover:bg-tint/15 text-foreground px-4 py-2.5 rounded-xl text-sm font-bold border border-tint/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ClipboardList className="w-4 h-4" />
+                      Previous Visits ({previousCaseVisits.length})
+                    </motion.button>
+
+                    {/* Case History */}
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => setShowCaseHistory(true)}
+                      className="flex items-center gap-2 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 px-4 py-2.5 rounded-xl text-sm font-bold border border-violet-500/20 transition-colors"
+                    >
+                      <BookOpen className="w-4 h-4" />
+                      {t("case_history") || "Case History"}
+                    </motion.button>
+
+                    {/* Complete */}
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => handleComplete(myActiveCase.appointment_id)}
+                      disabled={updateAppointment.isPending}
+                      className="flex items-center gap-2 bg-emerald/90 hover:bg-emerald text-primary-foreground px-4 py-2.5 rounded-xl text-sm font-bold disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      {t("complete")}
+                    </motion.button>
+                  </div>
+                );
+              })()}
             </motion.div>
           )}
 
@@ -1782,6 +1832,128 @@ export default function SimulationMode({ role }: Props) {
             : null
         }
       />
+
+      {/* ═══════════════════ UPDATE WEIGHT MODAL ════════════════════════════════ */}
+      <Modal open={showUpdateWeight} onBgClick={() => setShowUpdateWeight(false)}>
+        {(() => {
+          const activePet = allPets.find((p) => p.pet_id === myActiveCase?.petId);
+          return (
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 12 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-5"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/20 flex items-center justify-center">
+                    <Scale className="w-4 h-4 text-amber-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold">Update Weight</h3>
+                    <p className="text-[10px] text-muted-foreground">
+                      {activePet?.name ?? "Current patient"} — current: {activePet?.weight ?? "—"} kg
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowUpdateWeight(false)}
+                  className="p-1.5 hover:bg-muted rounded-xl transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Input */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground">
+                  New Weight (kg)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={newWeightInput}
+                  onChange={(e) => setNewWeightInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const w = parseFloat(newWeightInput);
+                      if (!isNaN(w) && w > 0 && activePet) {
+                        updatePet.mutate(
+                          { id: activePet.pet_id, data: { weight: w } },
+                          {
+                            onSuccess: () => {
+                              toast.success(`Weight updated to ${w} kg`);
+                              setShowUpdateWeight(false);
+                            },
+                            onError: () => toast.error("Failed to update weight"),
+                          },
+                        );
+                      }
+                    }
+                  }}
+                  placeholder="e.g. 25.5"
+                  autoFocus
+                  className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border/50 text-lg font-bold outline-none focus:border-amber-400/50 transition-colors text-center tabular-nums"
+                />
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowUpdateWeight(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 text-sm font-bold transition-colors"
+                >
+                  Cancel
+                </button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  disabled={updatePet.isPending || !newWeightInput}
+                  onClick={() => {
+                    const w = parseFloat(newWeightInput);
+                    if (!isNaN(w) && w > 0 && activePet) {
+                      updatePet.mutate(
+                        { id: activePet.pet_id, data: { weight: w } },
+                        {
+                          onSuccess: () => {
+                            toast.success(`Weight updated to ${w} kg`);
+                            setShowUpdateWeight(false);
+                          },
+                          onError: () => toast.error("Failed to update weight"),
+                        },
+                      );
+                    }
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-sm font-bold border border-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {updatePet.isPending ? "Saving…" : "Save Weight"}
+                </motion.button>
+              </div>
+            </motion.div>
+          );
+        })()}
+      </Modal>
+
+      {/* ═══════════════════ FLUID THERAPY MODAL ════════════════════════════════ */}
+      {(() => {
+        const activePet = allPets.find((p) => p.pet_id === myActiveCase?.petId);
+        return (
+          <FluidTherapyModal
+            open={showFluidTherapy}
+            onClose={() => setShowFluidTherapy(false)}
+            initialWeight={activePet?.weight}
+            initialSpecies={
+              activePet?.type === "dog" || activePet?.type === "cat"
+                ? activePet.type
+                : "dog"
+            }
+            petName={myActiveCase?.petName}
+          />
+        );
+      })()}
     </div>
   );
 }

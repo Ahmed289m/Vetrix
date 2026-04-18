@@ -2,202 +2,281 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, AlertCircle, ArrowRight } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  AlertCircle,
+  ArrowRight,
+  Mail,
+  Lock,
+  Loader2,
+} from "lucide-react";
 import { useFormik } from "formik";
 import { useAuth } from "@/app/_hooks/useAuth";
 import Image from "next/image";
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
   const { login, isLoggingIn, loginError } = useAuth();
 
   const formik = useFormik({
-    initialValues: {
-      email: "",
-      password: "",
-      rememberMe: false,
-    },
-    validate: (values: {
-      email: string;
-      password: string;
-      rememberMe: boolean;
-    }) => {
+    initialValues: { email: "", password: "", rememberMe: false },
+    validate: (values) => {
       const errors: { email?: string; password?: string } = {};
       if (!values.email.trim()) {
         errors.email = "Email is required";
-      } else if (
-        !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(values.email)
-      ) {
+      } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(values.email)) {
         errors.email = "Invalid email address";
       }
-      if (!values.password.trim()) {
-        errors.password = "Password is required";
-      }
+      if (!values.password.trim()) errors.password = "Password is required";
       return errors;
     },
-    onSubmit: (values) => {
-      login({ email: values.email, password: values.password });
-    },
+    onSubmit: (values) => login({ email: values.email, password: values.password }),
   });
+
+  const fieldHasError = (name: "email" | "password") =>
+    !!(formik.touched[name] && formik.errors[name]);
 
   return (
     <div className="flex-1 flex flex-col relative z-10">
-      {/* Mobile logo */}
-      <div className="lg:hidden flex items-center justify-between p-4 sm:p-5 border-b border-border/30 bg-card/20 backdrop-blur-sm">
+      {/* Mobile header bar */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="lg:hidden flex items-center justify-between p-4 sm:p-5 border-b border-border/20 bg-background/60 backdrop-blur-xl"
+      >
         <div className="flex items-center gap-3">
-          <div className="relative w-11 h-11 rounded-2xl bg-tint/5 border border-tint/10 flex items-center justify-center overflow-hidden shadow-lg shadow-emerald/10">
-            <div className="absolute -inset-6 bg-radial from-emerald/25 to-transparent opacity-80" />
+          <div className="relative w-10 h-10 rounded-2xl bg-tint/5 border border-tint/10 flex items-center justify-center overflow-hidden shadow-lg shadow-emerald/10">
+            <div className="absolute -inset-4 bg-radial from-emerald/20 to-transparent" />
             <Image
               src="/logo.png"
-              alt="Vetrix logo"
-              width={42}
-              height={42}
-              className="relative w-9 h-9 object-contain"
+              alt="Vetrix"
+              width={36}
+              height={36}
+              className="relative w-8 h-8 object-contain"
               priority
             />
           </div>
           <div>
-            <p className="text-base font-black tracking-[0.08em]">VETRIX</p>
-            <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70 font-bold">
+            <p className="text-sm font-black tracking-[0.1em]">VETRIX</p>
+            <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/60 font-bold">
               Smart Vet Platform
             </p>
           </div>
         </div>
-      </div>
+      </motion.div>
 
+      {/* Centered form area */}
       <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.2, 0, 0, 1] }}
+          transition={{ duration: 0.55, ease: [0.2, 0, 0, 1] }}
           className="w-full max-w-sm"
         >
-          <div className="mb-8">
-            <h2 className="text-2xl font-extrabold tracking-tight">
-              Welcome back
-            </h2>
-            <p className="text-sm text-muted-foreground mt-2">
-              Sign in to your clinic account
-            </p>
-          </div>
-
-          {/* Error */}
-          <AnimatePresence>
-            {loginError && (
+          {/* Card */}
+          <div className="bg-card/60 backdrop-blur-xl border border-border/40 rounded-3xl p-7 sm:p-8 shadow-2xl shadow-black/10 space-y-6">
+            {/* Header */}
+            <div className="space-y-1.5 text-center">
               <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
+                initial={{ scale: 0.85, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.1, duration: 0.4, type: "spring", damping: 20 }}
+                className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-emerald/20 to-cyan/10 border border-emerald/20 flex items-center justify-center mb-4 shadow-lg shadow-emerald/10"
               >
-                <div className="flex items-center gap-2 mb-4 px-3.5 py-3 rounded-xl bg-coral/10 border border-coral/20">
-                  <AlertCircle className="w-4 h-4 text-coral shrink-0" />
-                  <span className="text-xs text-coral font-medium">
-                    {loginError}
-                  </span>
-                </div>
+                <div className="w-7 h-7 rounded-full gradient-emerald-cyan opacity-90" />
               </motion.div>
-            )}
-          </AnimatePresence>
-
-          <form onSubmit={formik.handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2 text-muted-foreground">
-                Email
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formik.values.email}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-                placeholder="john.doe@example.com"
-                className={`w-full px-4 py-3.5 rounded-xl bg-card/50 border text-sm outline-none focus:ring-2 transition-all backdrop-blur-sm ${
-                  formik.touched.email && formik.errors.email
-                    ? "border-coral/50 focus:ring-coral/20 focus:border-coral"
-                    : "border-border/50 focus:ring-emerald/20 focus:border-emerald/30 placeholder:text-muted-foreground/30"
-                }`}
-              />
-              {formik.touched.email && formik.errors.email && (
-                <p className="text-xs text-coral mt-1.5 ml-1">
-                  {formik.errors.email}
-                </p>
-              )}
+              <h2 className="text-2xl font-extrabold tracking-tight">
+                Welcome back
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Sign in to your clinic account
+              </p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2 text-muted-foreground">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={formik.values.password}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  placeholder="••••••••"
-                  className={`w-full px-4 py-3.5 rounded-xl bg-card/50 border text-sm outline-none focus:ring-2 transition-all pr-12 backdrop-blur-sm ${
-                    formik.touched.password && formik.errors.password
-                      ? "border-coral/50 focus:ring-coral/20 focus:border-coral"
-                      : "border-border/50 focus:ring-emerald/20 focus:border-emerald/30 placeholder:text-muted-foreground/30"
-                  }`}
-                />
+            {/* Error banner */}
+            <AnimatePresence>
+              {loginError && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-xl bg-red-500/8 border border-red-500/20">
+                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                    <span className="text-xs text-red-400 font-medium leading-relaxed">
+                      {loginError}
+                    </span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Form */}
+            <form onSubmit={formik.handleSubmit} className="space-y-4">
+              {/* Email */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider ml-0.5">
+                  Email
+                </label>
+                <div className="relative group">
+                  <Mail
+                    className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors duration-200 ${
+                      fieldHasError("email")
+                        ? "text-red-400"
+                        : focusedField === "email"
+                          ? "text-emerald"
+                          : "text-muted-foreground/40"
+                    }`}
+                  />
+                  <input
+                    type="email"
+                    name="email"
+                    value={formik.values.email}
+                    onChange={formik.handleChange}
+                    onBlur={(e) => { formik.handleBlur(e); setFocusedField(null); }}
+                    onFocus={() => setFocusedField("email")}
+                    placeholder="doctor@clinic.com"
+                    className={`w-full pl-10 pr-4 py-3 rounded-xl bg-tint/5 border text-sm outline-none transition-all duration-200 ${
+                      fieldHasError("email")
+                        ? "border-red-500/40 bg-red-500/5 focus:ring-2 focus:ring-red-500/15"
+                        : focusedField === "email"
+                          ? "border-emerald/40 ring-2 ring-emerald/10"
+                          : "border-tint/10 hover:border-tint/20"
+                    } placeholder:text-muted-foreground/30`}
+                  />
+                </div>
+                <AnimatePresence>
+                  {fieldHasError("email") && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      className="text-[11px] text-red-400 ml-1 flex items-center gap-1"
+                    >
+                      <AlertCircle className="w-3 h-3" />
+                      {formik.errors.email}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Password */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider ml-0.5">
+                  Password
+                </label>
+                <div className="relative group">
+                  <Lock
+                    className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors duration-200 ${
+                      fieldHasError("password")
+                        ? "text-red-400"
+                        : focusedField === "password"
+                          ? "text-emerald"
+                          : "text-muted-foreground/40"
+                    }`}
+                  />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    value={formik.values.password}
+                    onChange={formik.handleChange}
+                    onBlur={(e) => { formik.handleBlur(e); setFocusedField(null); }}
+                    onFocus={() => setFocusedField("password")}
+                    placeholder="••••••••"
+                    className={`w-full pl-10 pr-12 py-3 rounded-xl bg-tint/5 border text-sm outline-none transition-all duration-200 ${
+                      fieldHasError("password")
+                        ? "border-red-500/40 bg-red-500/5 focus:ring-2 focus:ring-red-500/15"
+                        : focusedField === "password"
+                          ? "border-emerald/40 ring-2 ring-emerald/10"
+                          : "border-tint/10 hover:border-tint/20"
+                    } placeholder:text-muted-foreground/30`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((p) => !p)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground/30 hover:text-muted-foreground transition-colors rounded-lg"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                <AnimatePresence>
+                  {fieldHasError("password") && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      className="text-[11px] text-red-400 ml-1 flex items-center gap-1"
+                    >
+                      <AlertCircle className="w-3 h-3" />
+                      {formik.errors.password}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Remember me + forgot */}
+              <div className="flex items-center justify-between pt-0.5">
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      name="rememberMe"
+                      checked={formik.values.rememberMe}
+                      onChange={formik.handleChange}
+                      className="w-4 h-4 rounded border-border accent-emerald cursor-pointer"
+                    />
+                  </div>
+                  <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+                    Remember me
+                  </span>
+                </label>
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground/40 hover:text-foreground transition-colors"
+                  className="text-xs text-emerald hover:text-emerald/80 font-semibold transition-colors hover:underline"
                 >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
+                  Forgot password?
                 </button>
               </div>
-              {formik.touched.password && formik.errors.password && (
-                <p className="text-xs text-coral mt-1.5 ml-1">
-                  {formik.errors.password}
-                </p>
-              )}
-            </div>
 
-            <div className="flex items-center justify-between text-sm pt-1">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="rememberMe"
-                  checked={formik.values.rememberMe}
-                  onChange={formik.handleChange}
-                  className="w-4 h-4 rounded border-border accent-emerald"
-                />
-                <span className="text-muted-foreground text-xs">
-                  Remember me
-                </span>
-              </label>
-              <button
-                type="button"
-                className="text-emerald hover:underline text-xs font-medium"
+              {/* Submit */}
+              <motion.button
+                type="submit"
+                disabled={isLoggingIn}
+                whileHover={isLoggingIn ? {} : { scale: 1.01, y: -1 }}
+                whileTap={isLoggingIn ? {} : { scale: 0.98 }}
+                className={`w-full py-3.5 rounded-xl gradient-emerald-cyan text-primary-foreground text-sm font-bold flex items-center justify-center gap-2 glow-emerald transition-all duration-300 mt-2 ${
+                  isLoggingIn
+                    ? "opacity-70 cursor-not-allowed"
+                    : "hover:shadow-xl hover:shadow-emerald/20"
+                }`}
               >
-                Forgot password?
-              </button>
-            </div>
+                {isLoggingIn ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Signing in…
+                  </>
+                ) : (
+                  <>
+                    Sign in
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </motion.button>
+            </form>
 
-            <motion.button
-              type="submit"
-              disabled={isLoggingIn}
-              whileHover={isLoggingIn ? {} : { y: -1 }}
-              whileTap={isLoggingIn ? {} : { scale: 0.98 }}
-              className={`w-full py-3.5 rounded-xl gradient-emerald-cyan text-primary-foreground text-sm font-bold transition-all glow-emerald flex items-center justify-center gap-2 ${
-                isLoggingIn
-                  ? "opacity-70 cursor-not-allowed"
-                  : "hover:shadow-lg"
-              }`}
-            >
-              {isLoggingIn ? "Signing in..." : "Sign in"}
-              <ArrowRight className="w-4 h-4" />
-            </motion.button>
-          </form>
+            {/* Footer note */}
+            <p className="text-center text-[11px] text-muted-foreground/40 leading-relaxed">
+              Protected access · Vetrix Health Technologies
+            </p>
+          </div>
         </motion.div>
       </div>
     </div>

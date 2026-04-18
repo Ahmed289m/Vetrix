@@ -1,146 +1,126 @@
 "use client";
 
 import * as React from "react";
-import {
-  Calculator,
-  Pill,
-  Droplet,
-  ChevronRight,
-  Activity,
-  Zap,
-  Beaker,
-} from "lucide-react";
-import { Button } from "@/app/_components/ui/button";
-import { cn } from "@/app/_lib/utils";
+import { motion } from "framer-motion";
+import { Droplets, Calculator } from "lucide-react";
 import { useLang } from "@/app/_hooks/useLanguage";
-
-const calculatorTools = [
-  {
-    name: "Drug Dosage",
-    description:
-      "Calculate precise medication doses based on weight and concentration.",
-    icon: Pill,
-    color: "from-emerald/20 to-emerald/5",
-    iconColor: "text-emerald",
-  },
-  {
-    name: "Fluid Therapy",
-    description:
-      "Determine hydration deficit, maintenance, and ongoing loss requirements.",
-    icon: Droplet,
-    color: "from-blue-500/20 to-blue-500/5",
-    iconColor: "text-blue-400",
-  },
-  {
-    name: "CRI Calculator",
-    description:
-      "Constant Rate Infusion for analgesia and anesthesia management.",
-    icon: Activity,
-    color: "from-purple-500/20 to-purple-500/5",
-    iconColor: "text-purple-400",
-  },
-  {
-    name: "Energy (RER/DER)",
-    description:
-      "Calculate Resting Energy Requirements and Daily Energy Needs.",
-    icon: Zap,
-    color: "from-orange-500/20 to-orange-500/5",
-    iconColor: "text-orange-400",
-  },
-  {
-    name: "Transfusion",
-    description:
-      "Blood volume and component requirements for emergency therapy.",
-    icon: Droplet,
-    color: "from-red-500/20 to-red-500/5",
-    iconColor: "text-red-400",
-  },
-  {
-    name: "Conversion Tools",
-    description:
-      "Quick units conversion for temperature, weight, and clinical values.",
-    icon: Beaker,
-    color: "from-cyan-500/20 to-cyan-500/5",
-    iconColor: "text-cyan-400",
-  },
-];
+import { FluidTherapyModal } from "@/app/dashboard/_components/FluidTherapyModal";
+import { fadeUp } from "@/app/_lib/utils/shared-animations";
 
 export default function CalculatorsPage() {
   const { t } = useLang();
+  const [isFluidOpen, setIsFluidOpen] = React.useState(false);
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto w-full space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-2 mb-2">
-          <Calculator className="w-5 h-5 text-emerald" />
-          <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald">
-            {t("clinical_decision_support")}
-          </span>
-        </div>
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground">
-          {t("medical_calculators_title")}
-        </h1>
-        <p className="text-muted-foreground font-medium max-w-2xl">
-          {t("calculators_description")}
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {calculatorTools.map((tool, index) => (
-          <div
-            key={index}
-            className="group relative bg-muted/40 backdrop-blur-md rounded-3xl sm:rounded-[2.5rem] border border-border/10 p-5 sm:p-6 lg:p-8 transition-all duration-500 hover:scale-[1.02] hover:bg-muted/50"
-          >
-            <div className="absolute top-6 right-8 opacity-0 group-hover:opacity-100 transition-opacity">
-              <ChevronRight className="w-6 h-6 text-emerald" />
-            </div>
-
-            <div
-              className={cn(
-                "w-16 h-16 rounded-3xl bg-linear-to-br flex items-center justify-center mb-6 shadow-inner",
-                tool.color,
-              )}
-            >
-              <tool.icon className={cn("w-8 h-8", tool.iconColor)} />
-            </div>
-
-            <h3 className="text-xl font-black text-foreground mb-3 group-hover:text-emerald transition-colors">
-              {tool.name}
-            </h3>
-            <p className="text-sm font-medium text-muted-foreground/80 leading-relaxed mb-8">
-              {tool.description}
-            </p>
-
-            <Button
-              variant="ghost"
-              className="w-full h-14 rounded-2xl bg-muted/40 hover:bg-emerald/10 hover:text-emerald font-black text-xs uppercase tracking-widest transition-all"
-            >
-              {t("open_calculator")}
-            </Button>
-          </div>
-        ))}
-      </div>
-
-      {/* Featured Tool (Quick Access) */}
-      <div className="relative overflow-hidden bg-emerald/10 backdrop-blur-xl border border-emerald/20 rounded-3xl sm:rounded-[3rem] p-6 sm:p-8 lg:p-10 mt-10 sm:mt-12 group">
-        <div className="absolute -top-24 -right-24 w-64 h-64 bg-emerald/20 rounded-full blur-[100px] group-hover:bg-emerald/30 transition-all duration-1000" />
-        <div className="relative flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="space-y-4 text-center md:text-left">
-            <span className="text-[10px] font-black uppercase tracking-widest text-emerald bg-emerald/10 px-3 py-1 rounded-full">
-              Coming Soon
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto w-full space-y-8"
+      >
+        {/* Page Header */}
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 mb-2">
+            <Calculator className="w-5 h-5 text-emerald" />
+            <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald">
+              {t("clinical_decision_support")}
             </span>
-            <h2 className="text-3xl font-black text-foreground">
-              AI Clinical Advisor
-            </h2>
-            <p className="text-muted-foreground font-medium max-w-md">
-              Predictive diagnostics and personalized treatment suggestions
-              powered by Vetrix AI.
-            </p>
           </div>
-          <Button className="h-14 px-10 bg-emerald text-white font-black rounded-2xl shadow-2xl shadow-emerald/20 hover:scale-105 transition-transform">
-            Get Early Access
-          </Button>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground">
+            {t("medical_calculators_title")}
+          </h1>
+          <p className="text-muted-foreground font-medium max-w-xl">
+            {t("calculators_description")}
+          </p>
         </div>
-      </div>
-    </div>
+
+        {/* Fluid Therapy Card */}
+        <motion.button
+          variants={fadeUp}
+          whileHover={{ scale: 1.015 }}
+          whileTap={{ scale: 0.985 }}
+          onClick={() => setIsFluidOpen(true)}
+          className="group w-full text-left relative bg-gradient-to-br from-blue-500/10 to-transparent backdrop-blur-md rounded-3xl border border-blue-500/20 p-7 sm:p-10 transition-all duration-500 hover:border-blue-400/40 hover:shadow-[0_0_50px_-15px_rgba(59,130,246,0.3)]"
+        >
+          {/* Glow blob */}
+          <div className="absolute -top-10 -right-10 w-48 h-48 bg-blue-500/15 rounded-full blur-[80px] opacity-0 group-hover:opacity-100 transition-all duration-700 pointer-events-none" />
+
+          <div className="relative flex flex-col sm:flex-row sm:items-center gap-6">
+            {/* Icon */}
+            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-500/30 to-blue-500/10 flex items-center justify-center shadow-inner shrink-0">
+              <Droplets className="w-10 h-10 text-blue-400" />
+            </div>
+
+            {/* Text */}
+            <div className="flex-1 space-y-2">
+              <h2 className="text-2xl font-black text-foreground group-hover:text-blue-400 transition-colors">
+                Fluid Therapy Calculator
+              </h2>
+              <p className="text-sm font-medium text-muted-foreground/80 leading-relaxed max-w-md">
+                Calculate maintenance volume (allometric formula), fluid deficit,
+                ongoing losses from vomiting and diarrhea, infusion rates, and
+                smart 2-phase correction plans for clinical fluid management.
+              </p>
+
+              {/* Feature pills */}
+              <div className="flex flex-wrap gap-2 pt-1">
+                {[
+                  "Allometric Maintenance",
+                  "Fluid Deficit",
+                  "Ongoing Losses",
+                  "Infusion Rates",
+                  "2-Phase Plan",
+                  "Dilution (C₁V₁=C₂V₂)",
+                ].map((tag) => (
+                  <span
+                    key={tag}
+                    className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* CTA */}
+            <div className="shrink-0">
+              <div className="h-12 px-6 rounded-2xl bg-blue-500/15 border border-blue-500/25 group-hover:bg-blue-500/25 flex items-center gap-2 font-black text-sm text-blue-400 transition-all">
+                <Droplets className="w-4 h-4" />
+                Open Calculator
+              </div>
+            </div>
+          </div>
+        </motion.button>
+
+        {/* AI Clinical Advisor — Coming Soon */}
+        <div className="relative overflow-hidden bg-emerald/10 backdrop-blur-xl border border-emerald/20 rounded-3xl p-6 sm:p-8 group">
+          <div className="absolute -top-24 -right-24 w-64 h-64 bg-emerald/20 rounded-full blur-[100px] group-hover:bg-emerald/30 transition-all duration-1000 pointer-events-none" />
+          <div className="relative flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="space-y-3 text-center md:text-left">
+              <span className="text-[10px] font-black uppercase tracking-widest text-emerald bg-emerald/10 px-3 py-1 rounded-full">
+                Coming Soon
+              </span>
+              <h2 className="text-2xl font-black text-foreground">
+                AI Clinical Advisor
+              </h2>
+              <p className="text-muted-foreground font-medium max-w-md text-sm">
+                Predictive diagnostics and personalized treatment suggestions powered by
+                Vetrix AI.
+              </p>
+            </div>
+            <div className="h-12 px-8 rounded-2xl bg-emerald/20 border border-emerald/30 flex items-center font-black text-sm text-emerald cursor-not-allowed opacity-70">
+              Get Early Access
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Modal (rendered at root level) */}
+      <FluidTherapyModal
+        open={isFluidOpen}
+        onClose={() => setIsFluidOpen(false)}
+      />
+    </>
   );
 }
