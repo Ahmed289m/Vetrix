@@ -180,14 +180,14 @@ export default function ClinicsPage() {
             placeholder={t("search_clinics")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-12 h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
+            className="pl-12 h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
+          <SelectTrigger className="h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
             <SelectValue placeholder={t("status")} />
           </SelectTrigger>
-          <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5">
+          <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5">
             <SelectItem value="all">{t("all_statuses")}</SelectItem>
             <SelectItem value="active">{t("active")}</SelectItem>
             <SelectItem value="pending">{t("pending")}</SelectItem>
@@ -197,10 +197,10 @@ export default function ClinicsPage() {
 
       <div className="relative group">
         <div className="absolute -inset-0.5 bg-linear-to-br from-emerald/10 to-transparent rounded-3xl sm:rounded-4xl blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
-        <div className="relative bg-white/5 backdrop-blur-md rounded-3xl sm:rounded-4xl border border-white/5 overflow-x-auto shadow-2xl">
+        <div className="relative bg-tint/5 backdrop-blur-md rounded-3xl sm:rounded-4xl border border-tint/5 overflow-x-auto shadow-2xl">
           <Table>
-            <TableHeader className="bg-white/5">
-              <TableRow className="border-b border-white/5 hover:bg-transparent">
+            <TableHeader className="bg-tint/5">
+              <TableRow className="border-b border-tint/5 hover:bg-transparent">
                 <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
                   {t("clinic_info")}
                 </TableHead>
@@ -239,11 +239,11 @@ export default function ClinicsPage() {
                 filteredClinics.map((clinic) => (
                   <TableRow
                     key={clinic.clinic_id}
-                    className="border-b border-white/5 hover:bg-white/5 transition-colors group/row"
+                    className="border-b border-tint/5 hover:bg-tint/5 transition-colors group/row"
                   >
                     <TableCell className="py-6 px-8">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-emerald font-black text-lg shadow-inner group-hover/row:bg-emerald/10 transition-colors">
+                        <div className="w-12 h-12 rounded-2xl bg-tint/5 flex items-center justify-center text-emerald font-black text-lg shadow-inner group-hover/row:bg-emerald/10 transition-colors">
                           <Building2 className="w-6 h-6" />
                         </div>
                         <div className="flex flex-col gap-0.5">
@@ -290,14 +290,14 @@ export default function ClinicsPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="group-hover/row:bg-white/10 rounded-xl h-10 w-10"
+                            className="group-hover/row:bg-tint/10 rounded-xl h-10 w-10"
                           >
                             <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
                           align="end"
-                          className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2 w-56 shadow-2xl"
+                          className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl p-2 w-56 shadow-2xl"
                         >
                           <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
                             {t("clinic_settings")}
@@ -309,7 +309,7 @@ export default function ClinicsPage() {
                             <MoreHorizontal className="w-4 h-4" />
                             {t("configure_details")}
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator className="bg-white/5 mx-2" />
+                          <DropdownMenuSeparator className="bg-tint/5 mx-2" />
                           {(user?.role === "admin" ||
                             user?.role === "owner") && (
                             <DropdownMenuItem
@@ -365,7 +365,7 @@ export default function ClinicsPage() {
                 value={formik.values.clinicName}
                 onChange={formik.handleChange}
                 placeholder={t("central_vet")}
-                className="pl-12 h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
+                className="pl-12 h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
               />
             </div>
           </div>
@@ -381,7 +381,7 @@ export default function ClinicsPage() {
                 value={formik.values.address}
                 onChange={formik.handleChange}
                 placeholder={t("city_country")}
-                className="pl-12 h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
+                className="pl-12 h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
               />
             </div>
           </div>
@@ -396,7 +396,7 @@ export default function ClinicsPage() {
                 value={formik.values.phone}
                 onChange={formik.handleChange}
                 placeholder="+123456789"
-                className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
+                className="h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
               />
             </div>
             <div className="space-y-3">
@@ -409,10 +409,10 @@ export default function ClinicsPage() {
                   formik.setFieldValue("subscriptionStatus", val)
                 }
               >
-                <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold text-left">
+                <SelectTrigger className="h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold text-left">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
+                <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl">
                   <SelectItem value="active" className="rounded-xl font-bold">
                     {t("active")}
                   </SelectItem>

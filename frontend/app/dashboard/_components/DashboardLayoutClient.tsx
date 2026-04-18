@@ -82,9 +82,7 @@ export default function DashboardLayoutClient({
             <div
               className={`h-full overflow-y-auto custom-scrollbar ${isNavigating ? "route-fade-in" : ""}`}
             >
-              <div className="p-3 sm:p-5 lg:p-7">
-                {children}
-              </div>
+              {children}
             </div>
           </main>
         </SidebarInset>

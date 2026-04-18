@@ -310,10 +310,10 @@ export default function VisitsPage() {
 
   // ── Skeletons ──────────────────────────────────────────────────────────────
   const CardSkeleton = () => (
-    <div className="h-48 rounded-2xl bg-white/5 border border-white/5 animate-pulse" />
+    <div className="h-48 rounded-2xl bg-tint/5 border border-tint/5 animate-pulse" />
   );
   const RowSkeleton = () => (
-    <div className="h-28 rounded-2xl bg-white/5 border border-white/5 animate-pulse" />
+    <div className="h-28 rounded-2xl bg-tint/5 border border-tint/5 animate-pulse" />
   );
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -369,10 +369,10 @@ export default function VisitsPage() {
           value={dateFilter}
           onValueChange={(v) => setDateFilter(v as DateRangeFilter)}
         >
-          <SelectTrigger className="h-11 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold col-span-2 sm:col-span-1">
+          <SelectTrigger className="h-11 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold col-span-2 sm:col-span-1">
             <SelectValue placeholder="Date" />
           </SelectTrigger>
-          <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5">
+          <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5">
             <SelectItem value="today">{t("today_filter")}</SelectItem>
             <SelectItem value="month">{t("this_month")}</SelectItem>
             <SelectItem value="year">{t("this_year")}</SelectItem>
@@ -388,7 +388,7 @@ export default function VisitsPage() {
           placeholder={t("day_number") || "Day"}
           value={dayFilter}
           onChange={(e) => setDayFilter(e.target.value)}
-          className="h-11 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-semibold"
+          className="h-11 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-semibold"
         />
 
         <Input
@@ -399,7 +399,7 @@ export default function VisitsPage() {
           placeholder={t("month_number") || "Month"}
           value={monthFilter}
           onChange={(e) => setMonthFilter(e.target.value)}
-          className="h-11 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-semibold"
+          className="h-11 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-semibold"
         />
 
         <Input
@@ -410,7 +410,7 @@ export default function VisitsPage() {
           placeholder={t("year_number") || "Year"}
           value={yearFilter}
           onChange={(e) => setYearFilter(e.target.value)}
-          className="h-11 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-semibold"
+          className="h-11 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-semibold"
         />
       </motion.div>
 
@@ -495,7 +495,7 @@ export default function VisitsPage() {
                         icon={Calendar}
                         label="Date"
                         value={fmtDateTime(visit.date)}
-                        className="bg-white/5 border-white/5"
+                        className="bg-tint/5 border-tint/5"
                       />
                       <InfoTile
                         icon={User}
@@ -508,7 +508,7 @@ export default function VisitsPage() {
 
                     {/* Visit notes snippet */}
                     {visitReason && (
-                      <p className="text-xs text-muted-foreground line-clamp-2 italic bg-white/5 px-3 py-2 rounded-xl border border-white/5">
+                      <p className="text-xs text-muted-foreground line-clamp-2 italic bg-tint/5 px-3 py-2 rounded-xl border border-tint/5">
                         {visitReason}
                       </p>
                     )}
@@ -633,7 +633,7 @@ export default function VisitsPage() {
                       icon={Clock}
                       label="Date"
                       value={fmtDateTime(visit.date)}
-                      className="bg-white/5 border-white/5 col-span-2 sm:col-span-1"
+                      className="bg-tint/5 border-tint/5 col-span-2 sm:col-span-1"
                     />
                     <InfoTile
                       icon={User}
@@ -646,13 +646,13 @@ export default function VisitsPage() {
                       icon={User}
                       label="Owner"
                       value={owner?.fullname || "Unknown"}
-                      className="bg-white/5 border-white/5"
+                      className="bg-tint/5 border-tint/5"
                     />
                     <InfoTile
                       icon={FileText}
                       label="Reason"
                       value={visitReason}
-                      className="bg-white/5 border-white/5"
+                      className="bg-tint/5 border-tint/5"
                     />
                   </div>
 
@@ -759,7 +759,7 @@ export default function VisitsPage() {
               >
                 <SelectTrigger
                   className={cn(
-                    "h-14 bg-white/5 border-white/5 rounded-2xl font-bold",
+                    "h-14 bg-tint/5 border-tint/5 rounded-2xl font-bold",
                     formik.errors.client_id &&
                       formik.touched.client_id &&
                       "border-red-500/50",
@@ -767,7 +767,7 @@ export default function VisitsPage() {
                 >
                   <SelectValue placeholder={t("select_client")} />
                 </SelectTrigger>
-                <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
+                <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl">
                   {clients.map((c) => (
                     <SelectItem
                       key={c.user_id}
@@ -793,7 +793,7 @@ export default function VisitsPage() {
               >
                 <SelectTrigger
                   className={cn(
-                    "h-14 bg-white/5 border-white/5 rounded-2xl font-bold",
+                    "h-14 bg-tint/5 border-tint/5 rounded-2xl font-bold",
                     formik.errors.pet_id &&
                       formik.touched.pet_id &&
                       "border-red-500/50",
@@ -801,7 +801,7 @@ export default function VisitsPage() {
                 >
                   <SelectValue placeholder={t("select_pet_label")} />
                 </SelectTrigger>
-                <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
+                <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl">
                   {formClientPets.map((p) => (
                     <SelectItem
                       key={p.pet_id}
@@ -826,7 +826,7 @@ export default function VisitsPage() {
               >
                 <SelectTrigger
                   className={cn(
-                    "h-14 bg-white/5 border-white/5 rounded-2xl font-bold",
+                    "h-14 bg-tint/5 border-tint/5 rounded-2xl font-bold",
                     formik.errors.doctor_id &&
                       formik.touched.doctor_id &&
                       "border-red-500/50",
@@ -834,7 +834,7 @@ export default function VisitsPage() {
                 >
                   <SelectValue placeholder={t("select_doctor_optional")} />
                 </SelectTrigger>
-                <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
+                <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl">
                   {doctors.map((d) => (
                     <SelectItem
                       key={d.user_id}
@@ -858,7 +858,7 @@ export default function VisitsPage() {
                 name="date"
                 value={formik.values.date}
                 onChange={formik.handleChange}
-                className="h-14 bg-white/5 border-white/5 rounded-2xl font-bold"
+                className="h-14 bg-tint/5 border-tint/5 rounded-2xl font-bold"
               />
             </div>
 
@@ -875,13 +875,13 @@ export default function VisitsPage() {
                   t("clinical_notes_placeholder") ||
                   "Symptoms, diagnosis, treatment notes…"
                 }
-                className="h-14 bg-white/5 border-white/5 rounded-2xl font-bold"
+                className="h-14 bg-tint/5 border-tint/5 rounded-2xl font-bold"
               />
             </div>
 
             {/* Optional Prescription */}
             {clientPrescriptions.length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-white/5">
+              <div className="space-y-2 pt-2 border-t border-tint/5">
                 <Label className="text-xs font-black uppercase tracking-widest text-emerald ml-1 flex items-center gap-1.5">
                   <Pill className="w-3.5 h-3.5" />{" "}
                   {t("link_prescription") || "Link Prescription"} (optional)
@@ -892,7 +892,7 @@ export default function VisitsPage() {
                     formik.setFieldValue("prescription_id", val)
                   }
                 >
-                  <SelectTrigger className="h-14 bg-white/5 border-white/5 rounded-2xl font-bold">
+                  <SelectTrigger className="h-14 bg-tint/5 border-tint/5 rounded-2xl font-bold">
                     <SelectValue
                       placeholder={
                         t("select_prescription") ||
@@ -900,7 +900,7 @@ export default function VisitsPage() {
                       }
                     />
                   </SelectTrigger>
-                  <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
+                  <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl">
                     {clientPrescriptions.map((rx) => {
                       const itemIds =
                         rx.prescriptionItem_ids &&

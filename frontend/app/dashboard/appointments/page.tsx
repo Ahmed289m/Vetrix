@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { motion } from "framer-motion";
 import {
   Plus,
   MoreHorizontal,
@@ -9,6 +10,8 @@ import {
   CheckCircle,
   Clock,
   FileText,
+  Dog,
+  User,
 } from "lucide-react";
 import { useFormik } from "formik";
 import { toast } from "sonner";
@@ -243,8 +246,21 @@ export default function AppointmentsPage() {
     ? petsList
     : petsList.filter((p) => p.client_id === formik.values.client_id);
 
+  const statusColor = (status: string) => {
+    const s = status.toLowerCase();
+    if (s === "confirmed") return { bg: "bg-emerald/10", text: "text-emerald", border: "border-emerald/20" };
+    if (s === "pending") return { bg: "bg-sky-500/10", text: "text-sky-400", border: "border-sky-500/20" };
+    if (s === "completed") return { bg: "bg-purple-500/10", text: "text-purple-300", border: "border-purple-500/20" };
+    return { bg: "bg-red-500/10", text: "text-red-400", border: "border-red-500/20" };
+  };
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 max-w-6xl mx-auto"
+    >
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2 mb-2">
@@ -270,21 +286,21 @@ export default function AppointmentsPage() {
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div className="relative group md:col-span-2">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-emerald transition-colors" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="relative group sm:col-span-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-emerald transition-colors" />
           <Input
             placeholder={t("search_appointments")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-12 h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
+            className="pl-10 h-11 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
+          <SelectTrigger className="h-11 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
-          <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5">
+          <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5">
             <SelectItem value="all">{t("all_statuses_filter")}</SelectItem>
             <SelectItem value="confirmed">{t("confirmed")}</SelectItem>
             <SelectItem value="pending">{t("pending")}</SelectItem>
@@ -294,10 +310,10 @@ export default function AppointmentsPage() {
           value={dateFilter}
           onValueChange={(v) => setDateFilter(v as DateRangeFilter)}
         >
-          <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
+          <SelectTrigger className="h-11 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
             <SelectValue placeholder="Date" />
           </SelectTrigger>
-          <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5">
+          <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5">
             <SelectItem value="today">{t("today_filter")}</SelectItem>
             <SelectItem value="week">{t("this_week")}</SelectItem>
             <SelectItem value="month">{t("this_month")}</SelectItem>
@@ -306,43 +322,116 @@ export default function AppointmentsPage() {
         </Select>
       </div>
 
-      {/* Table */}
-      <div className="relative group">
-        <div className="absolute -inset-0.5 bg-linear-to-br from-emerald/10 to-transparent rounded-3xl sm:rounded-4xl blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
-        <div className="relative bg-white/5 backdrop-blur-md rounded-3xl sm:rounded-4xl border border-white/5 overflow-x-auto shadow-2xl">
+      {/* ── Mobile card list (< md) ── */}
+      <div className="md:hidden space-y-3">
+        {appLoading ? (
+          <div className="space-y-3">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-28 rounded-2xl bg-tint/5 border border-tint/5 animate-pulse" />
+            ))}
+          </div>
+        ) : filteredAppointments.length === 0 ? (
+          <div className="py-12 text-center text-muted-foreground font-medium">
+            {t("no_appointments_found")}
+          </div>
+        ) : (
+          filteredAppointments.map((app, i) => {
+            const normalizedStatus = (app.status || "").toLowerCase();
+            const sc = statusColor(normalizedStatus);
+            const canCheckIn = isStaff && normalizedStatus === "pending";
+            const canCancel = normalizedStatus === "pending" || normalizedStatus === "confirmed";
+            return (
+              <motion.div
+                key={app.appointment_id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.04 }}
+                className="glass-card p-4 space-y-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-bold text-sm truncate flex items-center gap-2">
+                      <Dog className="w-4 h-4 text-emerald shrink-0" />
+                      {getPetName(app.pet_id)}
+                    </p>
+                    {!isClient && (
+                      <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                        <User className="w-3 h-3" /> {getClientName(app.client_id)}
+                      </p>
+                    )}
+                  </div>
+                  <span className={`text-[10px] px-2.5 py-1 rounded-lg font-bold uppercase border shrink-0 ${sc.bg} ${sc.text} ${sc.border}`}>
+                    {app.status}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    {app.appointment_date
+                      ? new Date(app.appointment_date).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                      : "—"}
+                  </span>
+                  {(canCheckIn || canCancel) && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl bg-tint/5">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl p-2 w-52 shadow-2xl">
+                        <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">{t("operations")}</DropdownMenuLabel>
+                        {canCheckIn && (
+                          <DropdownMenuItem onClick={() => handleCheckIn(app.appointment_id)} className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4" /> {t("check_in_patient")}
+                          </DropdownMenuItem>
+                        )}
+                        {canCheckIn && canCancel && <DropdownMenuSeparator className="bg-tint/5 mx-2" />}
+                        {canCancel && (
+                          <DropdownMenuItem onClick={() => handleDelete(app.appointment_id)} className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold">
+                            {t("cancel_appointment")}
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })
+        )}
+      </div>
+
+      {/* ── Desktop table (>= md) ── */}
+      <div className="hidden md:block relative group">
+        <div className="absolute -inset-0.5 bg-linear-to-br from-emerald/10 to-transparent rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
+        <div className="relative bg-tint/5 backdrop-blur-md rounded-3xl border border-tint/5 overflow-x-auto shadow-2xl">
           <Table>
-            <TableHeader className="bg-white/5">
-              <TableRow className="border-b border-white/5 hover:bg-transparent">
-                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
+            <TableHeader className="bg-tint/5">
+              <TableRow className="border-b border-tint/5 hover:bg-transparent">
+                <TableHead className="py-4 px-6 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
                   {t("schedule_id_pet")}
                 </TableHead>
                 {!isClient && (
-                  <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
+                  <TableHead className="py-4 px-6 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
                     {t("owner")}
                   </TableHead>
                 )}
-                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
+                <TableHead className="py-4 px-6 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
                   Status
                 </TableHead>
-                <TableHead className="py-6 px-8 text-right" />
+                <TableHead className="py-4 px-6 text-right" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {appLoading ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={isClient ? 3 : 4}
-                    className="text-center py-8 text-muted-foreground"
-                  >
+                  <TableCell colSpan={isClient ? 3 : 4} className="text-center py-8 text-muted-foreground">
                     {t("loading_appointments")}
                   </TableCell>
                 </TableRow>
               ) : filteredAppointments.length === 0 ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={isClient ? 3 : 4}
-                    className="text-center py-8 text-muted-foreground"
-                  >
+                  <TableCell colSpan={isClient ? 3 : 4} className="text-center py-8 text-muted-foreground">
                     {t("no_appointments_found")}
                   </TableCell>
                 </TableRow>
@@ -350,107 +439,65 @@ export default function AppointmentsPage() {
                 filteredAppointments.map((app) => {
                   const normalizedStatus = (app.status || "").toLowerCase();
                   const canCheckIn = isStaff && normalizedStatus === "pending";
-                  const canCancel =
-                    normalizedStatus === "pending" ||
-                    normalizedStatus === "confirmed";
+                  const canCancel = normalizedStatus === "pending" || normalizedStatus === "confirmed";
                   return (
-                    <TableRow
-                      key={app.appointment_id}
-                      className="border-b border-white/5 hover:bg-white/5 transition-colors group/row"
-                    >
-                      <TableCell className="py-6 px-8">
-                        <div className="flex items-center gap-4">
-                          <div className="flex flex-col gap-1">
-                            <span className="font-black text-foreground group-hover/row:text-emerald transition-colors tracking-tight">
-                              {getPetName(app.pet_id)}
-                            </span>
-                            <span className="text-xs text-muted-foreground font-semibold flex items-center gap-1">
-                              <Calendar className="w-3.5 h-3.5" />
-                              {app.appointment_date
-                                ? new Date(app.appointment_date).toLocaleString(
-                                    "en-GB",
-                                    {
-                                      day: "2-digit",
-                                      month: "2-digit",
-                                      year: "numeric",
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    },
-                                  )
-                                : "—"}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground font-black tracking-widest uppercase opacity-50">
-                              {app.appointment_id.slice(0, 8)}…
-                            </span>
-                          </div>
+                    <TableRow key={app.appointment_id} className="border-b border-tint/5 hover:bg-tint/5 transition-colors group/row">
+                      <TableCell className="py-4 px-6">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-black text-foreground group-hover/row:text-emerald transition-colors tracking-tight">
+                            {getPetName(app.pet_id)}
+                          </span>
+                          <span className="text-xs text-muted-foreground font-semibold flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5" />
+                            {app.appointment_date
+                              ? new Date(app.appointment_date).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                              : "—"}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground font-black tracking-widest uppercase opacity-50">
+                            {app.appointment_id.slice(0, 8)}…
+                          </span>
                         </div>
                       </TableCell>
                       {!isClient && (
-                        <TableCell className="py-6 px-8">
+                        <TableCell className="py-4 px-6">
                           <span className="text-sm font-bold text-muted-foreground/80">
                             {getClientName(app.client_id)}
                           </span>
                         </TableCell>
                       )}
-                      <TableCell className="py-6 px-8">
+                      <TableCell className="py-4 px-6">
                         <Badge
                           className={cn(
-                            "rounded-full px-4 py-1 text-[10px] font-black uppercase tracking-widest border-none",
-                            normalizedStatus === "confirmed"
-                              ? "bg-emerald/10 text-emerald"
-                              : normalizedStatus === "pending"
-                                ? "bg-sky-500/10 text-sky-400"
-                                : normalizedStatus === "completed"
-                                  ? "bg-purple-500/10 text-purple-300"
-                                  : "bg-red-500/10 text-red-400",
+                            "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest border-none",
+                            normalizedStatus === "confirmed" ? "bg-emerald/10 text-emerald"
+                              : normalizedStatus === "pending" ? "bg-sky-500/10 text-sky-400"
+                              : normalizedStatus === "completed" ? "bg-purple-500/10 text-purple-300"
+                              : "bg-red-500/10 text-red-400",
                           )}
                         >
                           {app.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="py-6 px-8 text-right">
+                      <TableCell className="py-4 px-6 text-right">
                         {(canCheckIn || canCancel) && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="group-hover/row:bg-white/10 rounded-xl h-10 w-10"
-                              >
+                              <Button variant="ghost" size="icon" className="group-hover/row:bg-tint/10 rounded-xl h-10 w-10">
                                 <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                              align="end"
-                              className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2 w-56 shadow-2xl"
-                            >
+                            <DropdownMenuContent align="end" className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl p-2 w-56 shadow-2xl">
                               <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
                                 {t("operations")}
                               </DropdownMenuLabel>
-
                               {canCheckIn && (
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handleCheckIn(app.appointment_id)
-                                  }
-                                  className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2"
-                                >
-                                  <CheckCircle className="w-4 h-4" />
-                                  {t("check_in_patient")}
+                                <DropdownMenuItem onClick={() => handleCheckIn(app.appointment_id)} className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold flex items-center gap-2">
+                                  <CheckCircle className="w-4 h-4" /> {t("check_in_patient")}
                                 </DropdownMenuItem>
                               )}
-
-                              {canCheckIn && canCancel && (
-                                <DropdownMenuSeparator className="bg-white/5 mx-2" />
-                              )}
-
+                              {canCheckIn && canCancel && <DropdownMenuSeparator className="bg-tint/5 mx-2" />}
                               {canCancel && (
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handleDelete(app.appointment_id)
-                                  }
-                                  className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
-                                >
+                                <DropdownMenuItem onClick={() => handleDelete(app.appointment_id)} className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold">
                                   {t("cancel_appointment")}
                                 </DropdownMenuItem>
                               )}
@@ -495,7 +542,7 @@ export default function AppointmentsPage() {
               >
                 <SelectTrigger
                   className={cn(
-                    "h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold",
+                    "h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold",
                     formik.errors.client_id &&
                       formik.touched.client_id &&
                       "border-red-500/50",
@@ -503,7 +550,7 @@ export default function AppointmentsPage() {
                 >
                   <SelectValue placeholder={t("select_client")} />
                 </SelectTrigger>
-                <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
+                <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl">
                   {clientsList.length === 0 ? (
                     <div className="px-4 py-3 text-sm text-muted-foreground">
                       {t("no_clients_found")}
@@ -541,7 +588,7 @@ export default function AppointmentsPage() {
             >
               <SelectTrigger
                 className={cn(
-                  "h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold",
+                  "h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold",
                   formik.errors.pet_id &&
                     formik.touched.pet_id &&
                     "border-red-500/50",
@@ -557,7 +604,7 @@ export default function AppointmentsPage() {
                   }
                 />
               </SelectTrigger>
-              <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
+              <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl">
                 {clientPets.length === 0 ? (
                   <div className="px-4 py-3 text-sm text-muted-foreground">
                     {isClient
@@ -595,7 +642,7 @@ export default function AppointmentsPage() {
               name="appointment_date"
               value={formik.values.appointment_date}
               onChange={formik.handleChange}
-              className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
+              className="h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
             />
           </div>
 
@@ -610,11 +657,11 @@ export default function AppointmentsPage() {
               value={formik.values.reason}
               onChange={formik.handleChange}
               placeholder={t("reason_placeholder")}
-              className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
+              className="h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
             />
           </div>
         </div>
       </DashboardForm>
-    </div>
+    </motion.div>
   );
 }

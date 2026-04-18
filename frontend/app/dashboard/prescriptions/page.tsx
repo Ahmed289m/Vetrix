@@ -338,17 +338,17 @@ export default function PrescriptionsPage() {
                 placeholder={t("search_prescriptions")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
+                className="pl-12 h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
               />
             </div>
             <Select
               value={dateFilter}
               onValueChange={(v) => setDateFilter(v as DateRangeFilter)}
             >
-              <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
+              <SelectTrigger className="h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
                 <SelectValue placeholder="Date" />
               </SelectTrigger>
-              <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5">
+              <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5">
                 <SelectItem value="today">{t("today_filter")}</SelectItem>
                 <SelectItem value="week">{t("this_week")}</SelectItem>
                 <SelectItem value="month">{t("this_month")}</SelectItem>
@@ -359,10 +359,10 @@ export default function PrescriptionsPage() {
 
           <div className="relative group">
             <div className="absolute -inset-0.5 bg-linear-to-br from-emerald/10 to-transparent rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
-            <div className="relative bg-white/5 backdrop-blur-md rounded-3xl border border-white/5 overflow-x-auto shadow-2xl">
+            <div className="relative bg-tint/5 backdrop-blur-md rounded-3xl border border-tint/5 overflow-x-auto shadow-2xl">
               <Table>
-                <TableHeader className="bg-white/5">
-                  <TableRow className="border-b border-white/5 hover:bg-transparent">
+                <TableHeader className="bg-tint/5">
+                  <TableRow className="border-b border-tint/5 hover:bg-transparent">
                     <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
                       {t("rx_id_patient")}
                     </TableHead>
@@ -406,7 +406,7 @@ export default function PrescriptionsPage() {
                       return (
                         <TableRow
                           key={rx.prescription_id}
-                          className="border-b border-white/5 hover:bg-white/5 transition-colors group/row cursor-pointer"
+                          className="border-b border-tint/5 hover:bg-tint/5 transition-colors group/row cursor-pointer"
                           onClick={() => {
                             setSelectedRx(rx);
                           }}
@@ -472,14 +472,14 @@ export default function PrescriptionsPage() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="group-hover/row:bg-white/10 rounded-xl h-10 w-10"
+                                  className="group-hover/row:bg-tint/10 rounded-xl h-10 w-10"
                                 >
                                   <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent
                                 align="end"
-                                className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2 w-44 shadow-2xl"
+                                className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl p-2 w-44 shadow-2xl"
                               >
                                 <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
                                   {t("pharmacy_actions")}
@@ -493,7 +493,7 @@ export default function PrescriptionsPage() {
                                 </DropdownMenuItem>
                                 {user?.role !== "staff" && (
                                   <>
-                                    <DropdownMenuSeparator className="bg-white/5 mx-2" />
+                                    <DropdownMenuSeparator className="bg-tint/5 mx-2" />
                                     <DropdownMenuItem
                                       onClick={() =>
                                         handleDelete(rx.prescription_id)
@@ -556,7 +556,7 @@ export default function PrescriptionsPage() {
                   onClick={() => {
                     setSelectedRx(null);
                   }}
-                  className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                  className="p-2 rounded-full hover:bg-tint/10 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -567,7 +567,7 @@ export default function PrescriptionsPage() {
                 const rxDrugs = getDrugsForRx(selectedRx);
                 if (rxDrugs.length === 0) {
                   return (
-                    <div className="p-4 rounded-2xl bg-white/5 border border-white/5 text-sm text-muted-foreground">
+                    <div className="p-4 rounded-2xl bg-tint/5 border border-tint/5 text-sm text-muted-foreground">
                       Drug details not found for this prescription.
                     </div>
                   );
@@ -602,7 +602,7 @@ export default function PrescriptionsPage() {
                         </div>
 
                         {/* Dosage */}
-                        <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-2">
+                        <div className="p-4 rounded-2xl bg-tint/5 border border-tint/5 space-y-2">
                           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
                             <Activity className="w-3.5 h-3.5" /> Dosage for{" "}
                             {getPet(selectedRx.pet_id)?.type || "case"}
@@ -614,7 +614,7 @@ export default function PrescriptionsPage() {
 
                         {/* Indications */}
                         {drug.indications?.length > 0 && (
-                          <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-2">
+                          <div className="p-4 rounded-2xl bg-tint/5 border border-tint/5 space-y-2">
                             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
                               <Info className="w-3.5 h-3.5" /> Indications
                             </p>
@@ -692,7 +692,7 @@ export default function PrescriptionsPage() {
               >
                 <SelectTrigger
                   className={cn(
-                    "h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold",
+                    "h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold",
                     formik.errors.client_id &&
                       formik.touched.client_id &&
                       "border-red-500/50",
@@ -700,7 +700,7 @@ export default function PrescriptionsPage() {
                 >
                   <SelectValue placeholder={t("select_client")} />
                 </SelectTrigger>
-                <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
+                <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl">
                   {clients.map((c) => (
                     <SelectItem
                       key={c.user_id}
@@ -726,7 +726,7 @@ export default function PrescriptionsPage() {
               >
                 <SelectTrigger
                   className={cn(
-                    "h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold",
+                    "h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold",
                     formik.errors.pet_id &&
                       formik.touched.pet_id &&
                       "border-red-500/50",
@@ -734,7 +734,7 @@ export default function PrescriptionsPage() {
                 >
                   <SelectValue placeholder={t("select_pet_label")} />
                 </SelectTrigger>
-                <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
+                <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl">
                   {clientPets.map((p) => (
                     <SelectItem
                       key={p.pet_id}
@@ -749,7 +749,7 @@ export default function PrescriptionsPage() {
             </div>
 
             {/* Drug — no manual dose entry */}
-            <div className="space-y-2 pt-2 border-t border-white/5">
+            <div className="space-y-2 pt-2 border-t border-tint/5">
               <Label className="text-xs font-black uppercase tracking-widest text-emerald ml-1 flex items-center gap-1.5">
                 <Pill className="w-3.5 h-3.5" />{" "}
                 {t("select_drug") || "Select Drug"} *
@@ -762,7 +762,7 @@ export default function PrescriptionsPage() {
               >
                 <SelectTrigger
                   className={cn(
-                    "h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold",
+                    "h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold",
                     formik.errors.drug_ids && "border-red-500/50",
                   )}
                 >
@@ -772,7 +772,7 @@ export default function PrescriptionsPage() {
                     }
                   />
                 </SelectTrigger>
-                <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
+                <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl">
                   {drugs.map((d) => (
                     <SelectItem
                       key={d.drug_id}

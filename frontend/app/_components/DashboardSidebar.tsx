@@ -117,7 +117,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
       collapsible="icon"
       className="border-r border-border/5 bg-sidebar/80 backdrop-blur-3xl shadow-[4px_0_24px_-12px_rgba(0,0,0,0.5)]"
     >
-      <SidebarHeader className="relative pt-8 pb-4 z-10 border-b border-white/[0.04] bg-gradient-to-b from-emerald/5 to-transparent">
+      <SidebarHeader className="relative pt-8 pb-4 z-10 border-b border-tint/[0.04] bg-gradient-to-b from-emerald/5 to-transparent">
         {/* Subtle top decoration */}
         <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-emerald/30 to-transparent" />
 
@@ -129,7 +129,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
             className="relative group/sidebar-logo"
           >
             <div className="absolute -inset-1 from-emerald to-cyan rounded-2xl blur-lg opacity-20 group-hover/sidebar-logo:opacity-50 transition duration-500" />
-            <div className="relative p-2 rounded-2xl bg-white/[0.02] border border-white/[0.05] shadow-inner backdrop-blur-md">
+            <div className="relative p-2 rounded-2xl bg-tint/[0.02] border border-tint/[0.05] shadow-inner backdrop-blur-md">
               <Image
                 src="/logo.svg"
                 alt="Vetrix logo"
@@ -183,7 +183,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
                     className={`relative flex items-center gap-3.5 px-4 py-3 rounded-2xl text-[13px] font-semibold transition-all duration-200 group/nav-item overflow-hidden ${
                       isActive
                         ? "bg-gradient-to-r from-emerald/10 to-transparent text-emerald border-l-[3px] border-emerald shadow-[inset_1px_0_0_rgba(16,185,129,0.2)]"
-                        : "text-muted-foreground/70 hover:bg-white/[0.04] hover:text-foreground border-l-[3px] border-transparent"
+                        : "text-muted-foreground/70 hover:bg-tint/[0.04] hover:text-foreground border-l-[3px] border-transparent"
                     }`}
                   >
                     <Link
@@ -206,7 +206,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
                         className={`relative flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-200 ${
                           isActive
                             ? "bg-emerald/[0.15] text-emerald shadow-[0_0_15px_rgba(16,185,129,0.2)]"
-                            : "bg-white/[0.03] group-hover/nav-item:bg-white/[0.08] group-hover/nav-item:text-foreground group-hover/nav-item:scale-110"
+                            : "bg-tint/[0.03] group-hover/nav-item:bg-tint/[0.08] group-hover/nav-item:text-foreground group-hover/nav-item:scale-110"
                         }`}
                       >
                         <item.icon className="w-[18px] h-[18px] shrink-0" />
@@ -230,8 +230,8 @@ export function DashboardSidebar({ role }: { role: Role }) {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-3 border-t border-white/[0.04] bg-background/20 backdrop-blur-xl relative z-10">
-        <div className="group/sidebar-user relative flex items-center gap-3 px-3 py-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] hover:border-emerald/30 transition-all duration-300 overflow-hidden">
+      <SidebarFooter className="p-3 border-t border-tint/[0.04] bg-background/20 backdrop-blur-xl relative z-10">
+        <div className="group/sidebar-user relative flex items-center gap-3 px-3 py-3 rounded-2xl bg-tint/[0.03] border border-tint/[0.06] hover:bg-tint/[0.05] hover:border-emerald/30 transition-all duration-300 overflow-hidden">
           {/* Subtle animated border gradient on hover */}
           <div className="absolute inset-0 bg-gradient-to-r from-emerald/0 via-emerald/10 to-cyan/0 translate-x-[-100%] group-hover/sidebar-user:translate-x-[100%] transition-transform duration-1000 ease-in-out" />
 

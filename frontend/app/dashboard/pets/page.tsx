@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { motion } from "framer-motion";
 import {
   Plus,
   MoreHorizontal,
@@ -173,7 +174,12 @@ export default function PetsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 max-w-6xl mx-auto"
+    >
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-1.5">
@@ -202,21 +208,21 @@ export default function PetsPage() {
       </div>
 
       {/* Filters & Search */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="relative group md:col-span-2">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-emerald transition-colors" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="relative group sm:col-span-2">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-emerald transition-colors" />
           <Input
             placeholder={t("search_patients")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-12 h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
+            className="pl-10 h-11 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
           />
         </div>
         <Select value={speciesFilter} onValueChange={setSpeciesFilter}>
-          <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
+          <SelectTrigger className="h-11 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-bold">
             <SelectValue placeholder={t("species")} />
           </SelectTrigger>
-          <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5">
+          <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5">
             <SelectItem value="all">{t("all_species")}</SelectItem>
             <SelectItem value="dog">{t("dogs")}</SelectItem>
             <SelectItem value="cat">{t("cats")}</SelectItem>
@@ -225,43 +231,99 @@ export default function PetsPage() {
         </Select>
       </div>
 
-      {/* Table Container */}
-      <div className="relative group">
-        <div className="absolute -inset-0.5 bg-linear-to-br from-emerald/10 to-transparent rounded-3xl sm:rounded-4xl blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
-        <div className="relative bg-white/5 backdrop-blur-md rounded-3xl sm:rounded-4xl border border-white/5 overflow-x-auto shadow-2xl">
+      {/* ── Mobile card list (< md) ── */}
+      <div className="md:hidden space-y-3">
+        {isPetsLoading ? (
+          <div className="space-y-3">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-20 rounded-2xl bg-tint/5 border border-tint/5 animate-pulse" />
+            ))}
+          </div>
+        ) : filteredPets.length === 0 ? (
+          <div className="py-12 text-center text-muted-foreground font-medium">
+            {t("no_patients_found")}
+          </div>
+        ) : (
+          filteredPets.map((pet, i) => {
+            const client = getClientDetails(pet.client_id);
+            const Icon = pet.type.toLowerCase() === "cat" ? Cat : Dog;
+            return (
+              <motion.div
+                key={pet.pet_id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.04 }}
+                className="glass-card p-4"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald/10 flex items-center justify-center shrink-0">
+                    <Icon className="w-5 h-5 text-emerald" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm truncate">{pet.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {pet.type} · {pet.weight}kg · <span className="capitalize">{client.name}</span>
+                    </p>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl bg-tint/5 shrink-0">
+                        <MoreHorizontal className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl p-2 w-44 shadow-2xl">
+                      <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">{t("patient_actions")}</DropdownMenuLabel>
+                      <DropdownMenuItem onClick={() => handleOpenForm(pet)} className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold">
+                        {t("edit_profile")}
+                      </DropdownMenuItem>
+                      {user?.role !== "doctor" && (
+                        <>
+                          <DropdownMenuSeparator className="bg-tint/5 mx-2" />
+                          <DropdownMenuItem onClick={() => handleDelete(pet.pet_id)} className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold">
+                            {t("delete_record")}
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </motion.div>
+            );
+          })
+        )}
+      </div>
+
+      {/* ── Desktop table (>= md) ── */}
+      <div className="hidden md:block relative group">
+        <div className="absolute -inset-0.5 bg-linear-to-br from-emerald/10 to-transparent rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition duration-1000" />
+        <div className="relative bg-tint/5 backdrop-blur-md rounded-3xl border border-tint/5 overflow-x-auto shadow-2xl">
           <Table>
-            <TableHeader className="bg-white/5">
-              <TableRow className="border-b border-white/5 hover:bg-transparent">
-                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
+            <TableHeader className="bg-tint/5">
+              <TableRow className="border-b border-tint/5 hover:bg-transparent">
+                <TableHead className="py-4 px-6 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
                   {t("patient_and_owner")}
                 </TableHead>
-                <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
+                <TableHead className="py-4 px-6 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
                   {t("species")}
                 </TableHead>
                 {!isClient && (
-                  <TableHead className="py-6 px-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
+                  <TableHead className="py-4 px-6 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
                     {t("contact_info")}
                   </TableHead>
                 )}
-                <TableHead className="py-6 px-8 text-right"></TableHead>
+                <TableHead className="py-4 px-6 text-right"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isPetsLoading ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={isClient ? 3 : 4}
-                    className="text-center py-8 text-muted-foreground"
-                  >
+                  <TableCell colSpan={isClient ? 3 : 4} className="text-center py-8 text-muted-foreground">
                     {t("loading_patients")}
                   </TableCell>
                 </TableRow>
               ) : filteredPets.length === 0 ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={isClient ? 3 : 4}
-                    className="text-center py-8 text-muted-foreground"
-                  >
+                  <TableCell colSpan={isClient ? 3 : 4} className="text-center py-8 text-muted-foreground">
                     {t("no_patients_found")}
                   </TableCell>
                 </TableRow>
@@ -269,17 +331,14 @@ export default function PetsPage() {
                 filteredPets.map((pet) => {
                   const client = getClientDetails(pet.client_id);
                   return (
-                    <TableRow
-                      key={pet.pet_id}
-                      className="border-b border-white/5 hover:bg-white/5 transition-colors group/row"
-                    >
-                      <TableCell className="py-6 px-8">
+                    <TableRow key={pet.pet_id} className="border-b border-tint/5 hover:bg-tint/5 transition-colors group/row">
+                      <TableCell className="py-4 px-6">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-2xl bg-linear-to-br from-emerald/20 to-cyan/20 flex items-center justify-center text-emerald font-black text-lg shadow-inner group-hover/row:scale-105 transition-transform duration-300">
+                          <div className="w-10 h-10 rounded-xl bg-emerald/10 flex items-center justify-center text-emerald shadow-inner group-hover/row:scale-105 transition-transform duration-300">
                             {pet.type.toLowerCase() === "cat" ? (
-                              <Cat className="w-6 h-6" />
+                              <Cat className="w-5 h-5" />
                             ) : (
-                              <Dog className="w-6 h-6" />
+                              <Dog className="w-5 h-5" />
                             )}
                           </div>
                           <div className="flex flex-col gap-0.5">
@@ -293,18 +352,18 @@ export default function PetsPage() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="py-6 px-8">
+                      <TableCell className="py-4 px-6">
                         <div className="flex flex-col gap-1">
                           <span className="text-sm font-black uppercase tracking-tight text-foreground/80">
                             {pet.type}
                           </span>
-                          <span className="text-[10px] text-muted-foreground font-bold tracking-widest bg-white/5 w-fit px-2 py-0.5 rounded-md">
+                          <span className="text-[10px] text-muted-foreground font-bold tracking-widest bg-tint/5 w-fit px-2 py-0.5 rounded-md">
                             {t("weight")}: {pet.weight}kg
                           </span>
                         </div>
                       </TableCell>
                       {!isClient && (
-                        <TableCell className="py-6 px-8">
+                        <TableCell className="py-4 px-6">
                           <div className="flex items-center gap-2">
                             <Phone className="w-4 h-4 text-muted-foreground/60" />
                             <span className="text-sm font-bold text-muted-foreground/80">
@@ -313,36 +372,23 @@ export default function PetsPage() {
                           </div>
                         </TableCell>
                       )}
-                      <TableCell className="py-6 px-8 text-right">
+                      <TableCell className="py-4 px-6 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="group-hover/row:bg-white/10 rounded-xl h-10 w-10"
-                            >
+                            <Button variant="ghost" size="icon" className="group-hover/row:bg-tint/10 rounded-xl h-10 w-10">
                               <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="end"
-                            className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2 w-48 shadow-2xl"
-                          >
+                          <DropdownMenuContent align="end" className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl p-2 w-48 shadow-2xl">
                             <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
                               {t("patient_actions")}
                             </DropdownMenuLabel>
-                            <DropdownMenuItem
-                              onClick={() => handleOpenForm(pet)}
-                              className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold"
-                            >
+                            <DropdownMenuItem onClick={() => handleOpenForm(pet)} className="rounded-xl py-3 focus:bg-emerald/10 focus:text-emerald cursor-pointer font-bold">
                               {t("edit_profile")}
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-white/5 mx-2" />
+                            <DropdownMenuSeparator className="bg-tint/5 mx-2" />
                             {user?.role !== "doctor" && (
-                              <DropdownMenuItem
-                                onClick={() => handleDelete(pet.pet_id)}
-                                className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold"
-                              >
+                              <DropdownMenuItem onClick={() => handleDelete(pet.pet_id)} className="rounded-xl py-3 focus:bg-red-500/10 focus:text-red-400 cursor-pointer font-bold">
                                 {t("delete_record")}
                               </DropdownMenuItem>
                             )}
@@ -395,10 +441,10 @@ export default function PetsPage() {
                 value={formik.values.client_id}
                 onValueChange={(val) => formik.setFieldValue("client_id", val)}
               >
-                <SelectTrigger className="h-16 bg-white/10 border-white/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-black text-xl text-left px-5">
+                <SelectTrigger className="h-16 bg-tint/10 border-tint/10 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-black text-xl text-left px-5">
                   <SelectValue placeholder={t("search_or_select_client")} />
                 </SelectTrigger>
-                <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2 max-h-75">
+                <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl p-2 max-h-75">
                   {clients.map((client) => (
                     <SelectItem
                       key={client.user_id}
@@ -423,7 +469,7 @@ export default function PetsPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-3 relative">
               <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 ml-1">
                 {t("patient_identity")}
@@ -435,7 +481,7 @@ export default function PetsPage() {
                   placeholder={t("patient_name_placeholder")}
                   value={formik.values.name}
                   onChange={formik.handleChange}
-                  className="pl-12 h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-black text-lg"
+                  className="pl-12 h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-black text-lg"
                 />
               </div>
             </div>
@@ -448,10 +494,10 @@ export default function PetsPage() {
                 value={formik.values.type}
                 onValueChange={(val) => formik.setFieldValue("type", val)}
               >
-                <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-black uppercase tracking-widest text-xs text-left px-5">
+                <SelectTrigger className="h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-black uppercase tracking-widest text-xs text-left px-5">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
+                <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl">
                   <SelectItem value="dog" className="rounded-xl font-bold">
                     {t("dog")}
                   </SelectItem>
@@ -466,7 +512,7 @@ export default function PetsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-3">
               <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 ml-1">
                 {t("weight_kg")}
@@ -478,13 +524,13 @@ export default function PetsPage() {
                 value={formik.values.weight}
                 onChange={formik.handleChange}
                 placeholder={t("weight_example")}
-                className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-black text-lg"
+                className="h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-black text-lg"
               />
             </div>
             {/* Kept an empty right col for future extensions instead of breed, to preserve layout balance */}
           </div>
         </div>
       </DashboardForm>
-    </div>
+    </motion.div>
   );
 }

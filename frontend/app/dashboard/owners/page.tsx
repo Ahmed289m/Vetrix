@@ -31,8 +31,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/app/_components/ui/select";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "@/app/_components/fast-motion";
 import { toast } from "sonner";
+import { fadeUp, stagger } from "@/app/_lib/utils/shared-animations";
 import { useAuth } from "@/app/_hooks/useAuth";
 import { useLang } from "@/app/_hooks/useLanguage";
 
@@ -45,14 +46,6 @@ import {
 import { usePets, useCreatePet } from "@/app/_hooks/queries/use-pets";
 import type { UserRole, PetType, UserCreated } from "@/app/_lib/types/models";
 
-const fadeUp = {
-  initial: { opacity: 0, y: 16 },
-  animate: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.4, ease: "easeOut" as const },
-  },
-};
 
 export default function OwnersPage() {
   const [search, setSearch] = useState("");
@@ -197,7 +190,7 @@ export default function OwnersPage() {
 
   return (
     <motion.div
-      variants={{ animate: { transition: { staggerChildren: 0.06 } } }}
+      variants={stagger}
       initial="initial"
       animate="animate"
       className="space-y-6 max-w-6xl mx-auto p-4 sm:p-6 lg:p-8"
@@ -263,7 +256,7 @@ export default function OwnersPage() {
               name="fullname"
               value={formikOwner.values.fullname}
               onChange={formikOwner.handleChange}
-              className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
+              className="h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
             />
           </div>
 
@@ -275,7 +268,7 @@ export default function OwnersPage() {
               name="phone"
               value={formikOwner.values.phone}
               onChange={formikOwner.handleChange}
-              className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
+              className="h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
             />
           </div>
         </div>
@@ -302,7 +295,7 @@ export default function OwnersPage() {
               name="name"
               value={formikPet.values.name}
               onChange={formikPet.handleChange}
-              className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
+              className="h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -314,10 +307,10 @@ export default function OwnersPage() {
                 value={formikPet.values.type}
                 onValueChange={(val) => formikPet.setFieldValue("type", val)}
               >
-                <SelectTrigger className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-black uppercase tracking-tight">
+                <SelectTrigger className="h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-black uppercase tracking-tight">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
+                <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl">
                   <SelectItem value="dog" className="rounded-xl font-bold">
                     {t("dog")}
                   </SelectItem>
@@ -338,7 +331,7 @@ export default function OwnersPage() {
                 value={formikPet.values.weight}
                 onChange={formikPet.handleChange}
                 placeholder="0.0"
-                className="h-14 bg-white/5 border-white/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
+                className="h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold"
               />
             </div>
           </div>
@@ -506,7 +499,7 @@ export default function OwnersPage() {
       {/* Password Display Modal - Shows after user creation */}
       {createdUser && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-sidebar/95 backdrop-blur-xl border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl space-y-6 animate-in slide-in-from-bottom-4">
+          <div className="bg-popover/95 backdrop-blur-xl border border-tint/10 rounded-2xl p-8 max-w-md w-full shadow-2xl space-y-6 animate-in slide-in-from-bottom-4">
             <div className="space-y-2">
               <h2 className="text-2xl font-black text-foreground">
                 {t("client_created_title")}
@@ -521,7 +514,7 @@ export default function OwnersPage() {
               <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">
                 {t("generated_email")}
               </Label>
-              <div className="flex items-center gap-2 bg-white/5 border border-white/5 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-2 bg-tint/5 border border-tint/5 rounded-xl px-4 py-3">
                 <span className="flex-1 text-sm font-mono font-bold text-emerald break-all">
                   {createdUser.email}
                 </span>
@@ -548,7 +541,7 @@ export default function OwnersPage() {
               <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">
                 {t("generated_password")}
               </Label>
-              <div className="flex items-center gap-2 bg-white/5 border border-white/5 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-2 bg-tint/5 border border-tint/5 rounded-xl px-4 py-3">
                 <span className="flex-1 text-sm font-mono font-bold text-amber break-all">
                   {showPassword ? createdUser.password : "••••••••••••••••"}
                 </span>
@@ -578,7 +571,7 @@ export default function OwnersPage() {
             </div>
 
             {/* User Info Summary */}
-            <div className="space-y-3 border-t border-white/5 pt-4">
+            <div className="space-y-3 border-t border-tint/5 pt-4">
               <div className="flex justify-between">
                 <span className="text-xs text-muted-foreground font-semibold">
                   {t("name_label")}
@@ -606,7 +599,7 @@ export default function OwnersPage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 border-t border-white/5 pt-6">
+            <div className="flex gap-3 border-t border-tint/5 pt-6">
               <Button
                 onClick={() => setCreatedUser(null)}
                 className="flex-1 bg-emerald hover:bg-emerald/90 text-white font-bold h-11 rounded-xl"
@@ -621,7 +614,7 @@ export default function OwnersPage() {
       {/* Show Client Password Modal */}
       {resettedClient && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-sidebar/95 backdrop-blur-xl border border-white/10 rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-6 animate-in slide-in-from-bottom-4">
+          <div className="bg-popover/95 backdrop-blur-xl border border-tint/10 rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-6 animate-in slide-in-from-bottom-4">
             <div className="space-y-2">
               <h2 className="text-2xl font-black text-foreground">
                 {t("current_password_title")}
@@ -636,7 +629,7 @@ export default function OwnersPage() {
               <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">
                 {t("password")}
               </Label>
-              <div className="flex items-center gap-2 bg-white/5 border border-white/5 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-2 bg-tint/5 border border-tint/5 rounded-xl px-4 py-3">
                 <span className="flex-1 text-sm font-mono font-bold text-blue-400 break-all">
                   {showResettedPassword
                     ? resettedClient.password
@@ -672,7 +665,7 @@ export default function OwnersPage() {
             </div>
 
             {/* User Info */}
-            <div className="space-y-3 border-t border-white/5 pt-4">
+            <div className="space-y-3 border-t border-tint/5 pt-4">
               <div className="flex justify-between">
                 <span className="text-xs text-muted-foreground font-semibold">
                   {t("name_label")}
@@ -692,7 +685,7 @@ export default function OwnersPage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 border-t border-white/5 pt-6">
+            <div className="flex gap-3 border-t border-tint/5 pt-6">
               <Button
                 onClick={() => setResettedClient(null)}
                 className="flex-1 bg-emerald hover:bg-emerald/90 text-white font-bold h-11 rounded-xl"

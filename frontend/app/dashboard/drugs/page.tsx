@@ -154,7 +154,7 @@ function DrugSkeleton() {
       {[...Array(5)].map((_, i) => (
         <div
           key={i}
-          className="h-20 rounded-2xl bg-white/5 border border-white/5"
+          className="h-20 rounded-2xl bg-tint/5 border border-tint/5"
         />
       ))}
     </div>
@@ -203,7 +203,7 @@ function DrugRow({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.035, duration: 0.32, ease: "easeOut" }}
       onClick={onSelect}
-      className="group relative bg-white/5 backdrop-blur-md border border-white/5 hover:border-emerald/20 rounded-2xl px-5 py-4 cursor-pointer transition-all duration-300 hover:bg-white/8 hover:shadow-[0_0_28px_-8px_rgba(16,185,129,0.12)]"
+      className="group relative bg-tint/5 backdrop-blur-md border border-tint/5 hover:border-emerald/20 rounded-2xl px-5 py-4 cursor-pointer transition-all duration-300 hover:bg-tint/8 hover:shadow-[0_0_28px_-8px_rgba(16,185,129,0.12)]"
     >
       <div className="flex items-center gap-4">
         {/* Icon */}
@@ -217,7 +217,7 @@ function DrugRow({
             <span className="font-black text-foreground tracking-tight group-hover:text-emerald transition-colors">
               {drug.name}
             </span>
-            <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wide bg-white/5 text-muted-foreground">
+            <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wide bg-tint/5 text-muted-foreground">
               {drug.drugClass}
             </span>
             <ScopeBadge drug={drug} clinicName={clinicName} />
@@ -324,7 +324,7 @@ function DrugDetailPanel({
         exit={{ scale: 0.95, opacity: 0, y: 10 }}
         transition={{ type: "spring", damping: 26, stiffness: 320 }}
         onClick={(e: React.MouseEvent) => e.stopPropagation()}
-        className="w-[calc(100vw-2rem)] max-w-2xl max-h-[85vh] overflow-y-auto custom-scrollbar bg-sidebar/80 backdrop-blur-3xl border border-white/10 rounded-3xl shadow-[0_0_60px_-15px_rgba(16,185,129,0.2)] p-4 sm:p-6 space-y-5"
+        className="w-[calc(100vw-2rem)] max-w-2xl max-h-[85vh] overflow-y-auto custom-scrollbar bg-sidebar/80 backdrop-blur-3xl border border-tint/10 rounded-3xl shadow-[0_0_60px_-15px_rgba(16,185,129,0.2)] p-4 sm:p-6 space-y-5"
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
@@ -337,7 +337,7 @@ function DrugDetailPanel({
                 {drug.name}
               </h3>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-white/5 border border-white/5 text-muted-foreground">
+                <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-tint/5 border border-tint/5 text-muted-foreground">
                   {drug.drugClass}
                 </span>
                 <ScopeBadge drug={drug} clinicName={clinicName} />
@@ -351,7 +351,7 @@ function DrugDetailPanel({
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl hover:bg-white/10 transition-colors text-muted-foreground"
+            className="p-2 rounded-xl hover:bg-tint/10 transition-colors text-muted-foreground"
           >
             <X className="w-5 h-5" />
           </button>
@@ -381,7 +381,7 @@ function DrugDetailPanel({
           />
 
           {drug.dosage && Object.keys(drug.dosage).length > 0 && (
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-3">
+            <div className="p-4 rounded-2xl bg-tint/5 border border-tint/5 space-y-3">
               <div className="flex items-center gap-2 mb-1">
                 <FlaskConical className="w-4 h-4 text-cyan-400" />
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -480,7 +480,7 @@ function DrugDetailPanel({
 
         {/* Actions */}
         {manageable ? (
-          <div className="flex gap-3 pt-2 border-t border-white/5">
+          <div className="flex gap-3 pt-2 border-t border-tint/5">
             <Button
               onClick={onEdit}
               className="flex-1 bg-emerald hover:bg-emerald/90 text-white font-black h-12 rounded-xl shadow-lg shadow-emerald/20 gap-2"
@@ -496,7 +496,7 @@ function DrugDetailPanel({
             </Button>
           </div>
         ) : (
-          <div className="flex items-center gap-2 pt-2 border-t border-white/5 text-xs text-muted-foreground/50 font-semibold">
+          <div className="flex items-center gap-2 pt-2 border-t border-tint/5 text-xs text-muted-foreground/50 font-semibold">
             <Lock className="w-3.5 h-3.5" />
             {drug.clinic_id
               ? t("read_only_other_clinic")
@@ -519,7 +519,7 @@ function DetailSection({
 }) {
   if (!items?.length) return null;
   return (
-    <div className="p-4 rounded-2xl bg-white/5 dark:bg-white/5 border border-border/30 dark:border-white/5">
+    <div className="p-4 rounded-2xl bg-tint/5 border border-border/30">
       <div className="flex items-center gap-2 mb-2">
         {icon}
         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -530,7 +530,7 @@ function DetailSection({
         {items.map((item, i) => (
           <span
             key={i}
-            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-muted/40 dark:bg-white/5 border border-border/30 dark:border-white/5 text-foreground/90"
+            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-tint/5 border border-tint/5 text-foreground/90"
           >
             {item}
           </span>
@@ -740,7 +740,7 @@ function DrugCrudForm({
               value={formik.values.name}
               onChange={formik.handleChange}
               placeholder="e.g. Amoxicillin"
-              className="h-12 bg-white/5 border-white/5 focus:border-emerald/30 rounded-xl font-semibold"
+              className="h-12 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-xl font-semibold"
             />
           </Field>
           <Field label="Drug Class" required>
@@ -749,7 +749,7 @@ function DrugCrudForm({
               value={formik.values.drugClass}
               onChange={formik.handleChange}
               placeholder="e.g. Antibiotic"
-              className="h-12 bg-white/5 border-white/5 focus:border-emerald/30 rounded-xl font-semibold"
+              className="h-12 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-xl font-semibold"
             />
           </Field>
         </div>
@@ -772,10 +772,10 @@ function DrugCrudForm({
                 )
               }
             >
-              <SelectTrigger className="h-12 bg-white/5 border-white/5 focus:border-blue-400/30 rounded-xl font-semibold">
+              <SelectTrigger className="h-12 bg-tint/5 border-tint/5 focus:border-blue-400/30 rounded-xl font-semibold">
                 <SelectValue placeholder={t("global_no_clinic")} />
               </SelectTrigger>
-              <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2">
+              <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl p-2">
                 <SelectItem
                   value="__global__"
                   className="rounded-xl font-bold py-3 cursor-pointer focus:bg-blue-500/10 focus:text-blue-400"
@@ -819,10 +819,10 @@ function DrugCrudForm({
                 value={formik.values.clinic_id}
                 onValueChange={(val) => formik.setFieldValue("clinic_id", val)}
               >
-                <SelectTrigger className="h-12 bg-white/5 border-white/5 focus:border-blue-400/30 rounded-xl font-semibold">
+                <SelectTrigger className="h-12 bg-tint/5 border-tint/5 focus:border-blue-400/30 rounded-xl font-semibold">
                   <SelectValue placeholder={t("clinic")} />
                 </SelectTrigger>
-                <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2">
+                <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl p-2">
                   {ownerClinicOptions.map((c) => (
                     <SelectItem
                       key={c.clinic_id}
@@ -876,7 +876,7 @@ function DrugCrudForm({
             value={formik.values.indications}
             onChange={formik.handleChange}
             placeholder="e.g. Bacterial infections, Respiratory tract"
-            className="h-12 bg-white/5 border-white/5 focus:border-emerald/30 rounded-xl"
+            className="h-12 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-xl"
           />
         </Field>
         <Field label={t("side_effects")}>
@@ -885,7 +885,7 @@ function DrugCrudForm({
             value={formik.values.sideEffects}
             onChange={formik.handleChange}
             placeholder="e.g. Nausea, Vomiting, Diarrhea"
-            className="h-12 bg-white/5 border-white/5 focus:border-amber-400/30 rounded-xl"
+            className="h-12 bg-tint/5 border-tint/5 focus:border-amber-400/30 rounded-xl"
           />
         </Field>
         <Field label={t("contraindications_label")}>
@@ -894,7 +894,7 @@ function DrugCrudForm({
             value={formik.values.contraindications}
             onChange={formik.handleChange}
             placeholder="e.g. Penicillin allergy, Renal failure"
-            className="h-12 bg-white/5 border-white/5 focus:border-red-400/30 rounded-xl"
+            className="h-12 bg-tint/5 border-tint/5 focus:border-red-400/30 rounded-xl"
           />
         </Field>
         <Field label={t("drug_interactions_label")}>
@@ -903,7 +903,7 @@ function DrugCrudForm({
             value={formik.values.drugInteractions}
             onChange={formik.handleChange}
             placeholder="e.g. Warfarin, Methotrexate"
-            className="h-12 bg-white/5 border-white/5 focus:border-cyan-400/30 rounded-xl"
+            className="h-12 bg-tint/5 border-tint/5 focus:border-cyan-400/30 rounded-xl"
           />
         </Field>
         {/* Specific Destructured Dosage */}
@@ -914,7 +914,7 @@ function DrugCrudForm({
               value={formik.values.dosageDog}
               onChange={formik.handleChange}
               placeholder="e.g. 10mg/kg q8-12h"
-              className="h-12 bg-white/5 border-white/5 focus:border-emerald/30 rounded-xl"
+              className="h-12 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-xl"
             />
           </Field>
           <Field label={t("dosage_cat")}>
@@ -923,7 +923,7 @@ function DrugCrudForm({
               value={formik.values.dosageCat}
               onChange={formik.handleChange}
               placeholder="e.g. 5mg/kg q8-12h"
-              className="h-12 bg-white/5 border-white/5 focus:border-emerald/30 rounded-xl"
+              className="h-12 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-xl"
             />
           </Field>
         </div>
@@ -936,7 +936,7 @@ function DrugCrudForm({
               value={formik.values.toxicityDog}
               onChange={formik.handleChange}
               placeholder="e.g. 500mg/kg"
-              className="h-12 bg-muted/40 dark:bg-white/5 border-border dark:border-white/5 focus:border-red-400/30 rounded-xl"
+              className="h-12 bg-muted/40 border-border focus:border-red-400/30 rounded-xl"
             />
           </Field>
           <Field label={t("toxicity_cat")}>
@@ -945,7 +945,7 @@ function DrugCrudForm({
               value={formik.values.toxicityCat}
               onChange={formik.handleChange}
               placeholder="e.g. 300mg/kg"
-              className="h-12 bg-muted/40 dark:bg-white/5 border-border dark:border-white/5 focus:border-red-400/30 rounded-xl"
+              className="h-12 bg-muted/40 border-border focus:border-red-400/30 rounded-xl"
             />
           </Field>
         </div>
@@ -957,10 +957,10 @@ function DrugCrudForm({
                 formik.setFieldValue("toxicitySeverityDog", val)
               }
             >
-              <SelectTrigger className="h-12 bg-muted/40 dark:bg-white/5 border-border dark:border-white/5 focus:border-red-400/30 rounded-xl font-semibold">
+              <SelectTrigger className="h-12 bg-muted/40 border-border focus:border-red-400/30 rounded-xl font-semibold">
                 <SelectValue placeholder={t("select_severity")} />
               </SelectTrigger>
-              <SelectContent className="bg-background/95 dark:bg-sidebar/95 backdrop-blur-xl border-border dark:border-white/5 rounded-2xl p-2">
+              <SelectContent className="bg-popover/95 backdrop-blur-xl border-border rounded-2xl p-2">
                 <SelectItem
                   value="High"
                   className="rounded-xl font-bold py-3 cursor-pointer focus:bg-red-500/20 focus:text-red-400"
@@ -995,10 +995,10 @@ function DrugCrudForm({
                 formik.setFieldValue("toxicitySeverityCat", val)
               }
             >
-              <SelectTrigger className="h-12 bg-muted/40 dark:bg-white/5 border-border dark:border-white/5 focus:border-red-400/30 rounded-xl font-semibold">
+              <SelectTrigger className="h-12 bg-muted/40 border-border focus:border-red-400/30 rounded-xl font-semibold">
                 <SelectValue placeholder={t("select_severity")} />
               </SelectTrigger>
-              <SelectContent className="bg-background/95 dark:bg-sidebar/95 backdrop-blur-xl border-border dark:border-white/5 rounded-2xl p-2">
+              <SelectContent className="bg-popover/95 backdrop-blur-xl border-border rounded-2xl p-2">
                 <SelectItem
                   value="High"
                   className="rounded-xl font-bold py-3 cursor-pointer focus:bg-red-500/20 focus:text-red-400"
@@ -1176,7 +1176,7 @@ function ImportJsonModal({
             value={jsonText}
             onChange={(e) => setJsonText(e.target.value)}
             rows={10}
-            className="p-4 bg-white/5 border-white/5 focus:border-emerald/30 rounded-2xl font-mono text-xs resize-none shadow-inner"
+            className="p-4 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-2xl font-mono text-xs resize-none shadow-inner"
             placeholder="[ { ... }, { ... } ]"
           />
         </div>
@@ -1297,7 +1297,7 @@ export default function DrugsPage() {
             <Button
               onClick={() => setIsImportOpen(true)}
               variant="outline"
-              className="bg-transparent hover:bg-white/5 border-white/10 text-foreground font-bold px-5 h-12 rounded-xl transition-all w-full sm:w-auto"
+              className="bg-transparent hover:bg-tint/5 border-tint/10 text-foreground font-bold px-5 h-12 rounded-xl transition-all w-full sm:w-auto"
             >
               <Upload className="w-4 h-4 mr-2" />
               {t("bulk_import_json")}
@@ -1320,7 +1320,7 @@ export default function DrugsPage() {
             label: t("total_stat_label"),
             value: allDrugs.length,
             color: "text-foreground",
-            bg: "bg-white/5",
+            bg: "bg-tint/5",
           },
           {
             label: t("scope_global"),
@@ -1339,7 +1339,7 @@ export default function DrugsPage() {
         ].map((s) => (
           <div
             key={s.label}
-            className={`${s.bg} border border-white/5 rounded-2xl px-5 py-4`}
+            className={`${s.bg} border border-tint/5 rounded-2xl px-5 py-4`}
           >
             <div className="flex items-center gap-2 mb-1">
               {s.icon}
@@ -1366,7 +1366,7 @@ export default function DrugsPage() {
         </div>
       )}
       {level === "readonly" && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/5 border border-white/5 text-xs font-semibold text-muted-foreground">
+        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-tint/5 border border-tint/5 text-xs font-semibold text-muted-foreground">
           <Lock className="w-4 h-4 shrink-0" />
           {t("read_only_formulary_as")}{" "}
           <span className="capitalize font-black text-foreground/70">
@@ -1384,7 +1384,7 @@ export default function DrugsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("search_drugs")}
-            className="pl-11 h-12 bg-white/5 border-white/5 focus:border-emerald/30 rounded-xl font-medium"
+            className="pl-11 h-12 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-xl font-medium"
           />
         </div>
         <div className="flex gap-2">
@@ -1395,7 +1395,7 @@ export default function DrugsPage() {
               className={`px-4 h-12 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
                 scopeFilter === f
                   ? "bg-emerald text-white shadow-lg shadow-emerald/20"
-                  : "bg-white/5 border border-white/5 text-muted-foreground hover:border-emerald/20 hover:text-emerald"
+                  : "bg-tint/5 border border-tint/5 text-muted-foreground hover:border-emerald/20 hover:text-emerald"
               }`}
             >
               {f === "all"
@@ -1411,10 +1411,10 @@ export default function DrugsPage() {
             value={ownerClinicFilter}
             onValueChange={setOwnerClinicFilter}
           >
-            <SelectTrigger className="h-12 bg-white/5 border-white/5 focus:border-emerald/30 rounded-xl font-bold min-w-52">
+            <SelectTrigger className="h-12 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-xl font-bold min-w-52">
               <SelectValue placeholder="Clinic filter" />
             </SelectTrigger>
-            <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl p-2">
+            <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl p-2">
               <SelectItem value="all" className="rounded-xl font-bold py-3">
                 All Clinics
               </SelectItem>

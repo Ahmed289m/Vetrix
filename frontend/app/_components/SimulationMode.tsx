@@ -29,6 +29,7 @@ import {
   ShieldAlert,
   FlaskConical,
   Eye,
+  BookOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -253,6 +254,9 @@ export default function SimulationMode({ role }: Props) {
   const [showVisitDetail, setShowVisitDetail] = useState(false);
   const [detailVisit, setDetailVisit] = useState<Visit | null>(null);
   const [showPreviousVisits, setShowPreviousVisits] = useState(false);
+
+  // ── Case history modal ────────────────────────────────────────────────
+  const [showCaseHistory, setShowCaseHistory] = useState(false);
 
   // ── Prescription modal ───────────────────────────────────────────────────
   const [showPressModal, setShowPressModal] = useState(false);
@@ -905,10 +909,19 @@ export default function SimulationMode({ role }: Props) {
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setShowPreviousVisits(true)}
                   disabled={previousCaseVisits.length === 0}
-                  className="flex items-center gap-2 bg-white/10 hover:bg-white/15 text-foreground px-4 py-2.5 rounded-xl text-sm font-bold border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 bg-tint/10 hover:bg-tint/15 text-foreground px-4 py-2.5 rounded-xl text-sm font-bold border border-tint/10 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ClipboardList className="w-4 h-4" />
                   Previous Visits ({previousCaseVisits.length})
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setShowCaseHistory(true)}
+                  className="flex items-center gap-2 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 px-4 py-2.5 rounded-xl text-sm font-bold border border-violet-500/20 transition-colors"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  {t("case_history") || "Case History"}
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
@@ -1045,7 +1058,7 @@ export default function SimulationMode({ role }: Props) {
           </div>
 
           {visitMode === "create" && visitAppt && (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-tint/5 border border-tint/5">
               <div className="w-9 h-9 rounded-lg bg-muted/40 flex items-center justify-center shrink-0">
                 {visitAppt.species === "dog" ? (
                   <Dog className="w-5 h-5" />
@@ -1082,7 +1095,7 @@ export default function SimulationMode({ role }: Props) {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white/5 border border-white/5 text-xs">
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-tint/5 border border-tint/5 text-xs">
                 <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                 <div>
                   <p className="text-[10px] text-muted-foreground font-bold uppercase">
@@ -1233,7 +1246,7 @@ export default function SimulationMode({ role }: Props) {
                       setDetailVisit(visit);
                       setShowVisitDetail(true);
                     }}
-                    className="w-full text-left p-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-cyan/25 transition-colors"
+                    className="w-full text-left p-3 rounded-xl border border-tint/10 bg-tint/5 hover:bg-tint/10 hover:border-cyan/25 transition-colors"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div>
@@ -1314,7 +1327,7 @@ export default function SimulationMode({ role }: Props) {
                 </div>
 
                 {/* Pet + owner */}
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-tint/5 border border-tint/5">
                   <div className="w-10 h-10 rounded-xl bg-muted/40 flex items-center justify-center shrink-0">
                     {pet?.type === "dog" ? (
                       <Dog className="w-5 h-5" />
@@ -1346,7 +1359,7 @@ export default function SimulationMode({ role }: Props) {
                       Dr. {doctorName}
                     </p>
                   </div>
-                  <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+                  <div className="p-3 rounded-xl bg-tint/5 border border-tint/5">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
                       Visit Date
                     </p>
@@ -1358,7 +1371,7 @@ export default function SimulationMode({ role }: Props) {
 
                 {/* Notes */}
                 {detailVisit.notes && (
-                  <div className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-1">
+                  <div className="p-3 rounded-xl bg-tint/5 border border-tint/5 space-y-1">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1">
                       <FileText className="w-3 h-3" /> Clinical Notes
                     </p>
@@ -1497,7 +1510,7 @@ export default function SimulationMode({ role }: Props) {
 
           {/* Patient strip */}
           {pressAppt && (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-tint/5 border border-tint/5">
               <div className="w-9 h-9 rounded-lg bg-muted/40 flex items-center justify-center shrink-0">
                 {pressAppt.species === "dog" ? (
                   <Dog className="w-5 h-5" />
@@ -1617,7 +1630,7 @@ export default function SimulationMode({ role }: Props) {
                           className={`w-full text-left flex items-start gap-3 p-3 rounded-xl border transition-all text-xs ${
                             isSelected
                               ? "bg-emerald/10 border-emerald/30 shadow-sm"
-                              : "bg-white/3 border-white/5 hover:bg-white/5 hover:border-white/10"
+                              : "bg-tint/3 border-tint/5 hover:bg-tint/5 hover:border-tint/10"
                           }`}
                         >
                           <div
@@ -1684,7 +1697,7 @@ export default function SimulationMode({ role }: Props) {
                 return (
                   <div
                     key={drug.drug_id}
-                    className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2"
+                    className="p-3 rounded-xl bg-tint/5 border border-tint/5 space-y-2"
                   >
                     <div className="flex items-center justify-between">
                       <p className="font-bold text-sm text-emerald">
@@ -1750,6 +1763,91 @@ export default function SimulationMode({ role }: Props) {
                   : `Prescribe ${selectedDrugIds.length} Drug${selectedDrugIds.length > 1 ? "s" : ""}`}
             </motion.button>
           </div>
+        </motion.div>
+      </Modal>
+
+      {/* ═══════════════════ CASE HISTORY MODAL ═══════════════════════════════ */}
+      <Modal open={showCaseHistory} onBgClick={() => setShowCaseHistory(false)}>
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0, y: 16 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.95, opacity: 0, y: 16 }}
+          className="bg-card border border-border rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
+          onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-violet-500/15 border border-violet-500/20 flex items-center justify-center">
+                <BookOpen className="w-5 h-5 text-violet-400" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold">
+                  {t("case_history") || "Case History"}
+                </h3>
+                <p className="text-[10px] text-muted-foreground">
+                  {t("case_summary_description") || "Full summary of the current case"}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowCaseHistory(false)}
+              className="p-2 hover:bg-muted rounded-xl transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Patient info strip */}
+          {myActiveCase && (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-tint/5 border border-tint/5">
+              <div className="w-10 h-10 rounded-xl bg-muted/40 flex items-center justify-center shrink-0">
+                {myActiveCase.species === "dog" ? (
+                  <Dog className="w-5 h-5" />
+                ) : myActiveCase.species === "cat" ? (
+                  <Cat className="w-5 h-5" />
+                ) : (
+                  <FlaskConical className="w-5 h-5" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold truncate">
+                  {myActiveCase.petName}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {myActiveCase.breed} · {myActiveCase.ownerName}
+                </p>
+              </div>
+              <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+                {myActiveCase.caseNumber}
+              </span>
+            </div>
+          )}
+
+          {/* Empty state — placeholder for future case summary */}
+          <div className="p-8 rounded-xl border-2 border-dashed border-violet-500/20 bg-violet-500/5 text-center space-y-3">
+            <div className="w-14 h-14 rounded-2xl bg-violet-500/10 border border-violet-500/15 flex items-center justify-center mx-auto">
+              <FileText className="w-7 h-7 text-violet-400/50" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-bold text-foreground">
+                {t("case_summary_coming") || "Case Summary"}
+              </p>
+              <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+                {t("case_summary_coming_hint") || "A detailed summary of the diagnosis, treatment plan, and clinical timeline will appear here."}
+              </p>
+            </div>
+          </div>
+
+          {/* Close button */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => setShowCaseHistory(false)}
+            className="w-full px-4 py-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 text-sm font-bold transition-colors"
+          >
+            {t("close") || "Close"}
+          </motion.button>
         </motion.div>
       </Modal>
     </div>

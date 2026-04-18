@@ -45,7 +45,7 @@ export function LoginForm() {
       {/* Mobile logo */}
       <div className="lg:hidden flex items-center justify-between p-4 sm:p-5 border-b border-border/30 bg-card/20 backdrop-blur-sm">
         <div className="flex items-center gap-3">
-          <div className="relative w-11 h-11 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden shadow-lg shadow-emerald/10">
+          <div className="relative w-11 h-11 rounded-2xl bg-tint/5 border border-tint/10 flex items-center justify-center overflow-hidden shadow-lg shadow-emerald/10">
             <div className="absolute -inset-6 bg-radial from-emerald/25 to-transparent opacity-80" />
             <Image
               src="/logo.png"

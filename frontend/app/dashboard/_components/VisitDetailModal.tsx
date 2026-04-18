@@ -201,7 +201,7 @@ export function VisitDetailModal({
               </h3>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
                 {pet?.type && (
-                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase bg-white/5 border border-white/5 text-muted-foreground">
+                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase bg-tint/5 border border-tint/5 text-muted-foreground">
                     {pet.type}
                   </span>
                 )}
@@ -221,7 +221,7 @@ export function VisitDetailModal({
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl hover:bg-white/10 transition-colors text-muted-foreground shrink-0"
+            className="p-2 rounded-xl hover:bg-tint/10 transition-colors text-muted-foreground shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
@@ -230,7 +230,7 @@ export function VisitDetailModal({
         {/* ── Info grid ── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {/* Date */}
-          <div className="p-3 rounded-2xl bg-white/5 border border-white/5 space-y-1">
+          <div className="p-3 rounded-2xl bg-tint/5 border border-tint/5 space-y-1">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1">
               <Calendar className="w-3 h-3" /> Date
             </p>
@@ -255,7 +255,7 @@ export function VisitDetailModal({
 
           {/* Owner — hidden for client (they are the owner) */}
           {!isClient && owner && (
-            <div className="p-3 rounded-2xl bg-white/5 border border-white/5 space-y-1 col-span-2 sm:col-span-4">
+            <div className="p-3 rounded-2xl bg-tint/5 border border-tint/5 space-y-1 col-span-2 sm:col-span-4">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1">
                 <User className="w-3 h-3" /> Owner
               </p>
@@ -272,7 +272,7 @@ export function VisitDetailModal({
               Clinical Notes
             </span>
           </div>
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
+          <div className="p-4 rounded-2xl bg-tint/5 border border-tint/5">
             <p className="text-sm text-foreground/85 leading-relaxed whitespace-pre-wrap">
               {visit.notes || "No clinical notes recorded for this visit."}
             </p>
@@ -446,7 +446,7 @@ export function VisitDetailModal({
         )}
 
         {/* ── Footer ── */}
-        <div className="pt-2 border-t border-white/5">
+        <div className="pt-2 border-t border-tint/5">
           <button
             onClick={onClose}
             className="w-full py-3 rounded-2xl bg-muted/30 hover:bg-muted/50 text-sm font-bold transition-colors"

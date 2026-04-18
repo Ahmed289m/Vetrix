@@ -7,8 +7,8 @@ function RoleDashboardLoading() {
   return (
     <div className="route-fade-in p-4 sm:p-6 lg:p-8">
       <div className="w-10 h-10 rounded-full border-2 border-emerald/25 border-t-emerald animate-spin" />
-      <div className="mt-4 h-3 w-56 rounded bg-white/5 border border-white/10 animate-pulse" />
-      <div className="mt-2 h-3 w-80 rounded bg-white/5 border border-white/10 animate-pulse" />
+      <div className="mt-4 h-3 w-56 rounded bg-tint/5 border border-tint/10 animate-pulse" />
+      <div className="mt-2 h-3 w-80 rounded bg-tint/5 border border-tint/10 animate-pulse" />
     </div>
   );
 }

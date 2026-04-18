@@ -14,7 +14,7 @@ export function AgencyModeToggle({ mode, onChange, compact = false }: AgencyMode
   const base = compact ? "px-2.5 py-1.5 text-[10px]" : "px-3 py-1.5 text-[11px]";
 
   return (
-    <div className="inline-flex items-center rounded-full border border-white/10 bg-white/5 p-1 backdrop-blur-sm">
+    <div className="inline-flex items-center rounded-full border border-tint/10 bg-tint/5 p-1 backdrop-blur-sm">
       <button
         type="button"
         onClick={() => onChange("agency")}
@@ -33,7 +33,7 @@ export function AgencyModeToggle({ mode, onChange, compact = false }: AgencyMode
         onClick={() => onChange("normal")}
         className={`relative inline-flex items-center gap-1.5 rounded-full font-black uppercase tracking-wider transition-colors ${base} ${
           mode === "normal"
-            ? "bg-white/10 text-foreground border border-white/10"
+            ? "bg-tint/10 text-foreground border border-tint/10"
             : "text-muted-foreground hover:text-foreground"
         }`}
       >

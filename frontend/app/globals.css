@@ -3,6 +3,7 @@
 @theme {
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
+  --color-tint: hsl(var(--tint));
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
   --color-popover: hsl(var(--popover));
@@ -142,7 +143,8 @@
     --ring: 160 84% 39%;
     --radius: 0.75rem;
     --surface: 217 33% 17%;
-    --surface-raised: 217 33% 19%; /* Brand palette */
+    --surface-raised: 217 33% 19%;
+    --tint: 0 0% 100%; /* white — used for subtle bg/border tinting in dark mode */
     --emerald: 160 84% 39%;
     --emerald-50: 160 60% 12%;
     --emerald-100: 160 50% 18%;
@@ -223,7 +225,8 @@
     --input: 210 18% 92%;
     --ring: 160 84% 32%;
     --surface: 0 0% 100%;
-    --surface-raised: 0 0% 100%; /* Chat mode specific */
+    --surface-raised: 0 0% 100%;
+    --tint: 0 0% 0%; /* black — used for subtle bg/border tinting in light mode */
     --chat-bg: 210 40% 98%;
     --chat-surface: 210 40% 96%;
     --chat-user: 160 84% 39%;

@@ -197,10 +197,10 @@ export function OwnerDashboard() {
         </div>
         {clinics.length > 1 && (
           <Select value={selectedClinicId} onValueChange={setSelectedClinicId}>
-            <SelectTrigger className="h-11 w-full sm:w-64 bg-white/5 border-white/10 rounded-xl font-bold">
+            <SelectTrigger className="h-11 w-full sm:w-64 bg-tint/5 border-tint/10 rounded-xl font-bold">
               <SelectValue placeholder={t("clinic")} />
             </SelectTrigger>
-            <SelectContent className="bg-sidebar/95 backdrop-blur-xl border-white/5 rounded-2xl">
+            <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl">
               <SelectItem value="all">All Clinics</SelectItem>
               {clinics.map((clinic) => (
                 <SelectItem
