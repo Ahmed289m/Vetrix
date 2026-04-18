@@ -134,10 +134,7 @@ export default function AppointmentsPage() {
       if (app.doctor_id !== undefined && app.doctor_id !== null) {
         normalizedAppointment.doctor_id = asString(app.doctor_id);
       }
-      if (
-        app.appointment_date !== undefined &&
-        app.appointment_date !== null
-      ) {
+      if (app.appointment_date !== undefined && app.appointment_date !== null) {
         normalizedAppointment.appointment_date = asString(app.appointment_date);
       }
       if (app.reason !== undefined && app.reason !== null) {
