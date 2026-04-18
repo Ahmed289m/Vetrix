@@ -42,7 +42,8 @@ def run_crew(pet_id: str) -> dict:
     visits = []
 
     if isinstance(result, dict):
-        visits = result.get("visits", [])
+        visits = result
+
 
     return {
         "success": True,
