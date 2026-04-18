@@ -278,7 +278,7 @@ export function FluidTherapyModal({
                           </span>
                         )}
                         <span
-                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase border ${colors.bg} ${colors.border} ${colors.text}`}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase border ${colors.badge}`}
                         >
                           {severity}
                         </span>
