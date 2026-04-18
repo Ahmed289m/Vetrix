@@ -1,29 +1,46 @@
+# =========================
 # Core
+# =========================
 fastapi>=0.110.0
 uvicorn[standard]>=0.29.0
 
+# =========================
 # Database (MongoDB async)
+# =========================
 motor>=3.4.0
 pymongo>=4.6.0
 
+# =========================
 # Data validation & settings
+# =========================
 pydantic>=2.6.0
 pydantic-settings>=2.2.0
 
+# =========================
 # Auth & Security
+# =========================
 python-jose[cryptography]>=3.3.0
-passlib[bcrypt]>=1.7.5
+passlib[bcrypt]==1.7.4
+bcrypt==3.2.2
 
+# =========================
 # Forms & uploads
+# =========================
 python-multipart>=0.0.9
 
+# =========================
 # Environment variables
+# =========================
 python-dotenv>=1.0.1
 
+# =========================
 # Utilities
+# =========================
 email-validator>=2.1.0
 
-# AI Agent
-crewai==1.14.2
+# =========================
+# AI Agent (stable version)
+# =========================
+crewai==0.28.8
 groq>=0.30.0,<1.0.0
 langchain-groq==0.3.8
