@@ -92,7 +92,9 @@ function InfoTile({
   valueClassName?: string;
 }) {
   return (
-    <div className={cn("p-2.5 rounded-xl border space-y-0.5", className)}>
+    <div
+      className={cn("min-w-0 p-2.5 rounded-xl border space-y-0.5", className)}
+    >
       <p className="text-[10px] font-bold uppercase text-muted-foreground/60 flex items-center gap-1">
         <Icon className="w-3 h-3 shrink-0" />
         {label}
@@ -322,7 +324,7 @@ export default function VisitsPage() {
       variants={{ animate: { transition: { staggerChildren: 0.06 } } }}
       initial="initial"
       animate="animate"
-      className="space-y-6 max-w-6xl mx-auto"
+      className="w-full max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 overflow-x-hidden"
     >
       {/* Header */}
       <motion.div

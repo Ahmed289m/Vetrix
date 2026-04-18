@@ -17,7 +17,7 @@ export default function CalculatorsPage() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
-        className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto w-full space-y-8"
+        className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto w-full space-y-8 overflow-x-hidden"
       >
         {/* Page Header */}
         <div className="space-y-1.5">
@@ -41,14 +41,14 @@ export default function CalculatorsPage() {
           whileHover={{ scale: 1.015 }}
           whileTap={{ scale: 0.985 }}
           onClick={() => setIsFluidOpen(true)}
-          className="group w-full text-left relative bg-gradient-to-br from-blue-500/10 to-transparent backdrop-blur-md rounded-3xl border border-blue-500/20 p-7 sm:p-10 transition-all duration-500 hover:border-blue-400/40 hover:shadow-[0_0_50px_-15px_rgba(59,130,246,0.3)]"
+          className="group w-full text-left relative bg-linear-to-br from-blue-500/10 to-transparent backdrop-blur-md rounded-3xl border border-blue-500/20 p-7 sm:p-10 transition-all duration-500 hover:border-blue-400/40 hover:shadow-[0_0_50px_-15px_rgba(59,130,246,0.3)]"
         >
           {/* Glow blob */}
           <div className="absolute -top-10 -right-10 w-48 h-48 bg-blue-500/15 rounded-full blur-[80px] opacity-0 group-hover:opacity-100 transition-all duration-700 pointer-events-none" />
 
           <div className="relative flex flex-col sm:flex-row sm:items-center gap-6">
             {/* Icon */}
-            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-500/30 to-blue-500/10 flex items-center justify-center shadow-inner shrink-0">
+            <div className="w-20 h-20 rounded-3xl bg-linear-to-br from-blue-500/30 to-blue-500/10 flex items-center justify-center shadow-inner shrink-0">
               <Droplets className="w-10 h-10 text-blue-400" />
             </div>
 
@@ -58,9 +58,10 @@ export default function CalculatorsPage() {
                 Fluid Therapy Calculator
               </h2>
               <p className="text-sm font-medium text-muted-foreground/80 leading-relaxed max-w-md">
-                Calculate maintenance volume (allometric formula), fluid deficit,
-                ongoing losses from vomiting and diarrhea, infusion rates, and
-                smart 2-phase correction plans for clinical fluid management.
+                Calculate maintenance volume (allometric formula), fluid
+                deficit, ongoing losses from vomiting and diarrhea, infusion
+                rates, and smart 2-phase correction plans for clinical fluid
+                management.
               </p>
 
               {/* Feature pills */}
@@ -105,8 +106,8 @@ export default function CalculatorsPage() {
                 AI Clinical Advisor
               </h2>
               <p className="text-muted-foreground font-medium max-w-md text-sm">
-                Predictive diagnostics and personalized treatment suggestions powered by
-                Vetrix AI.
+                Predictive diagnostics and personalized treatment suggestions
+                powered by Vetrix AI.
               </p>
             </div>
             <div className="h-12 px-8 rounded-2xl bg-emerald/20 border border-emerald/30 flex items-center font-black text-sm text-emerald cursor-not-allowed opacity-70">

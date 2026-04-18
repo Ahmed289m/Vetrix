@@ -211,11 +211,11 @@ export function FluidTherapyModal({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
             onClick={onClose}
-            className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm"
+            className="fixed inset-0 z-100 bg-background/80 backdrop-blur-sm"
           />
 
           {/* Modal */}
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 pointer-events-none">
+          <div className="fixed inset-0 z-100 flex items-center justify-center p-4 pointer-events-none">
             <motion.div
               key="fluid-modal"
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
@@ -573,7 +573,7 @@ export function FluidTherapyModal({
                                     width: `${(phase1Hours / 24) * 100}%`,
                                   }}
                                   transition={{ duration: 1, delay: 0.1 }}
-                                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan/30 to-emerald/30 border-r-2 border-emerald/50 flex items-center justify-center text-[10px] font-bold text-emerald"
+                                  className="absolute inset-y-0 left-0 bg-linear-to-r from-cyan/30 to-emerald/30 border-r-2 border-emerald/50 flex items-center justify-center text-[10px] font-bold text-emerald"
                                 >
                                   Phase 1
                                 </motion.div>
@@ -607,72 +607,74 @@ export function FluidTherapyModal({
                                     tag: "text-cyan",
                                     num: "2",
                                   },
-                                ].map(({ ph, plan, col, rateCol, tag, num }) => (
-                                  <div
-                                    key={num}
-                                    className={`p-3.5 rounded-xl border ${col} space-y-2.5`}
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-2">
-                                        <div
-                                          className={`w-5 h-5 rounded-full ${rateCol} flex items-center justify-center text-[10px] font-extrabold text-primary-foreground`}
-                                        >
-                                          {num}
+                                ].map(
+                                  ({ ph, plan, col, rateCol, tag, num }) => (
+                                    <div
+                                      key={num}
+                                      className={`p-3.5 rounded-xl border ${col} space-y-2.5`}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          <div
+                                            className={`w-5 h-5 rounded-full ${rateCol} flex items-center justify-center text-[10px] font-extrabold text-primary-foreground`}
+                                          >
+                                            {num}
+                                          </div>
+                                          <span className="text-xs font-bold uppercase">
+                                            {plan.label}
+                                          </span>
                                         </div>
-                                        <span className="text-xs font-bold uppercase">
-                                          {plan.label}
+                                        <span
+                                          className={`text-[10px] font-mono ${tag}`}
+                                        >
+                                          {plan.hours[0]}–{plan.hours[1]}h
                                         </span>
                                       </div>
-                                      <span
-                                        className={`text-[10px] font-mono ${tag}`}
+                                      <div className="space-y-1 text-xs">
+                                        {[
+                                          {
+                                            l: "Deficit",
+                                            v: ph.deficit.toFixed(0),
+                                          },
+                                          {
+                                            l: "Maintenance",
+                                            v: ph.maintenance.toFixed(0),
+                                          },
+                                          ...(ph.losses > 0
+                                            ? [
+                                                {
+                                                  l: "Losses",
+                                                  v: ph.losses.toFixed(0),
+                                                },
+                                              ]
+                                            : []),
+                                        ].map(({ l, v }) => (
+                                          <div
+                                            key={l}
+                                            className="flex justify-between"
+                                          >
+                                            <span className="text-muted-foreground">
+                                              {l}
+                                            </span>
+                                            <span className="font-bold tabular-nums">
+                                              {v} mL
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                      <div
+                                        className={`p-2 rounded-lg ${rateCol} text-center`}
                                       >
-                                        {plan.hours[0]}–{plan.hours[1]}h
-                                      </span>
+                                        <p className="text-[10px] font-bold text-primary-foreground/70">
+                                          Rate
+                                        </p>
+                                        <p className="text-base font-extrabold text-primary-foreground tabular-nums">
+                                          {ph.ratePerHour.toFixed(1)} mL/hr
+                                        </p>
+                                      </div>
                                     </div>
-                                    <div className="space-y-1 text-xs">
-                                      {[
-                                        {
-                                          l: "Deficit",
-                                          v: ph.deficit.toFixed(0),
-                                        },
-                                        {
-                                          l: "Maintenance",
-                                          v: ph.maintenance.toFixed(0),
-                                        },
-                                        ...(ph.losses > 0
-                                          ? [
-                                              {
-                                                l: "Losses",
-                                                v: ph.losses.toFixed(0),
-                                              },
-                                            ]
-                                          : []),
-                                      ].map(({ l, v }) => (
-                                        <div
-                                          key={l}
-                                          className="flex justify-between"
-                                        >
-                                          <span className="text-muted-foreground">
-                                            {l}
-                                          </span>
-                                          <span className="font-bold tabular-nums">
-                                            {v} mL
-                                          </span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                    <div
-                                      className={`p-2 rounded-lg ${rateCol} text-center`}
-                                    >
-                                      <p className="text-[10px] font-bold text-primary-foreground/70">
-                                        Rate
-                                      </p>
-                                      <p className="text-base font-extrabold text-primary-foreground tabular-nums">
-                                        {ph.ratePerHour.toFixed(1)} mL/hr
-                                      </p>
-                                    </div>
-                                  </div>
-                                ))}
+                                  ),
+                                )}
                               </div>
                             </div>
                           </motion.div>

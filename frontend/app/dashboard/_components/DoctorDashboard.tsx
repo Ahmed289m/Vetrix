@@ -12,7 +12,6 @@ import {
   UserPlus,
   FileText,
   Video,
-  AlertTriangle,
   CheckCircle2,
   Timer,
   Play,
@@ -30,7 +29,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import SimulationMode from "../../_components/SimulationMode";
-import { formatGreeting } from "@/app/_lib/utils/greeting";
 import { useAuth } from "@/app/_hooks/useAuth";
 import { useUsers } from "@/app/_hooks/queries/use-users";
 import { useAppointments } from "@/app/_hooks/queries/use-appointments";
@@ -168,7 +166,7 @@ export function DoctorDashboard() {
       variants={stagger}
       initial="initial"
       animate="animate"
-      className="space-y-5 sm:space-y-6 max-w-7xl mx-auto"
+      className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6 overflow-x-hidden"
     >
       <motion.div
         variants={fadeUp}
@@ -188,20 +186,20 @@ export function DoctorDashboard() {
           <p className="text-sm text-muted-foreground mt-1.5">
             <span className="font-semibold text-foreground">
               {todayAppointments.length}
-            </span>
-            {" "}{t("appointments_scheduled_today")}
+            </span>{" "}
+            {t("appointments_scheduled_today")}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowSim(!showSim)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${showSim ? "bg-coral/10 border border-coral/30 text-coral" : "gradient-emerald-cyan text-primary-foreground glow-emerald"}`}
+            className={`w-full sm:w-auto justify-center flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${showSim ? "bg-coral/10 border border-coral/30 text-coral" : "gradient-emerald-cyan text-primary-foreground glow-emerald"}`}
           >
             <Play className="w-3.5 h-3.5" />{" "}
             {showSim ? t("exit_simulation") : t("simulation_label")}
           </motion.button>
-          <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald/10 border border-emerald/20">
+          <div className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald/10 border border-emerald/20">
             <div className="w-2 h-2 rounded-full bg-emerald animate-pulse" />
             <span className="text-xs font-bold text-emerald uppercase tracking-wider">
               {t("on_duty_status")}
@@ -271,12 +269,11 @@ export function DoctorDashboard() {
                 </h3>
               </div>
               <span className="text-xs font-bold text-emerald tabular-nums">
-                {todayAppointments.length}{" "}
-                {t("scheduled")}
+                {todayAppointments.length} {t("scheduled")}
               </span>
             </div>
             <div className="relative space-y-0">
-              <div className="absolute left-[50px] sm:left-[67px] top-0 bottom-0 w-px bg-border/50" />
+              <div className="absolute left-12.5 sm:left-16.75 top-0 bottom-0 w-px bg-border/50" />
               {todayAppointments.length > 0 ? (
                 todayAppointments.map((apt: any, i: number) => (
                   <motion.div
