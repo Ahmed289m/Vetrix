@@ -53,6 +53,7 @@ import { usePrescriptionItems } from "@/app/_hooks/queries/use-prescription-item
 import { useDrugs } from "@/app/_hooks/queries/use-drugs";
 import { useWebSocket } from "@/app/_hooks/useWebSocket";
 import { useAuth } from "@/app/_hooks/useAuth";
+import { CaseHistoryModal } from "@/app/dashboard/_components/CaseHistoryModal";
 import { useLang } from "@/app/_hooks/useLanguage";
 import type {
   Appointment,
@@ -1765,91 +1766,22 @@ export default function SimulationMode({ role }: Props) {
           </div>
         </motion.div>
       </Modal>
-
       {/* ═══════════════════ CASE HISTORY MODAL ═══════════════════════════════ */}
-      <Modal open={showCaseHistory} onBgClick={() => setShowCaseHistory(false)}>
-        <motion.div
-          initial={{ scale: 0.95, opacity: 0, y: 16 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.95, opacity: 0, y: 16 }}
-          className="bg-card border border-border rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
-          onClick={(e: React.MouseEvent) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-violet-500/15 border border-violet-500/20 flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-violet-400" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold">
-                  {t("case_history") || "Case History"}
-                </h3>
-                <p className="text-[10px] text-muted-foreground">
-                  {t("case_summary_description") || "Full summary of the current case"}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowCaseHistory(false)}
-              className="p-2 hover:bg-muted rounded-xl transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Patient info strip */}
-          {myActiveCase && (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-tint/5 border border-tint/5">
-              <div className="w-10 h-10 rounded-xl bg-muted/40 flex items-center justify-center shrink-0">
-                {myActiveCase.species === "dog" ? (
-                  <Dog className="w-5 h-5" />
-                ) : myActiveCase.species === "cat" ? (
-                  <Cat className="w-5 h-5" />
-                ) : (
-                  <FlaskConical className="w-5 h-5" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold truncate">
-                  {myActiveCase.petName}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {myActiveCase.breed} · {myActiveCase.ownerName}
-                </p>
-              </div>
-              <span className="text-[10px] font-mono text-muted-foreground shrink-0">
-                {myActiveCase.caseNumber}
-              </span>
-            </div>
-          )}
-
-          {/* Empty state — placeholder for future case summary */}
-          <div className="p-8 rounded-xl border-2 border-dashed border-violet-500/20 bg-violet-500/5 text-center space-y-3">
-            <div className="w-14 h-14 rounded-2xl bg-violet-500/10 border border-violet-500/15 flex items-center justify-center mx-auto">
-              <FileText className="w-7 h-7 text-violet-400/50" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm font-bold text-foreground">
-                {t("case_summary_coming") || "Case Summary"}
-              </p>
-              <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-                {t("case_summary_coming_hint") || "A detailed summary of the diagnosis, treatment plan, and clinical timeline will appear here."}
-              </p>
-            </div>
-          </div>
-
-          {/* Close button */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => setShowCaseHistory(false)}
-            className="w-full px-4 py-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 text-sm font-bold transition-colors"
-          >
-            {t("close") || "Close"}
-          </motion.button>
-        </motion.div>
-      </Modal>
+      <CaseHistoryModal
+        open={showCaseHistory}
+        onClose={() => setShowCaseHistory(false)}
+        patient={
+          myActiveCase
+            ? {
+                petName: myActiveCase.petName,
+                species: myActiveCase.species,
+                breed: myActiveCase.breed,
+                ownerName: myActiveCase.ownerName,
+                caseNumber: myActiveCase.caseNumber,
+              }
+            : null
+        }
+      />
     </div>
   );
 }

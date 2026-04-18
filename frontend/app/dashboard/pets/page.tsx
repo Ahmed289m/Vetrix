@@ -11,6 +11,7 @@ import {
   Dog,
   Cat,
   Search,
+  BookOpen,
 } from "lucide-react";
 import { useFormik } from "formik";
 import { Button } from "@/app/_components/ui/button";
@@ -46,6 +47,8 @@ import {
   useUpdatePet,
   useDeletePet,
 } from "@/app/_hooks/queries/use-pets";
+import { useVisits } from "@/app/_hooks/queries/use-visits";
+import { CaseHistoryModal } from "@/app/dashboard/_components/CaseHistoryModal";
 import { useUsers } from "@/app/_hooks/queries/use-users";
 import { useAuth } from "@/app/_hooks/useAuth";
 import { useLang } from "@/app/_hooks/useLanguage";
@@ -59,6 +62,8 @@ export default function PetsPage() {
   const [selectedPet, setSelectedPet] = React.useState<Pet | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [speciesFilter, setSpeciesFilter] = React.useState("all");
+  const [historyPet, setHistoryPet] = React.useState<Pet | null>(null);
+  const [isHistoryOpen, setIsHistoryOpen] = React.useState(false);
   const { user } = useAuth();
   const { t } = useLang();
 
@@ -72,6 +77,8 @@ export default function PetsPage() {
   const createPet = useCreatePet();
   const updatePet = useUpdatePet();
   const deletePet = useDeletePet();
+  const { data: visitsData } = useVisits();
+  const allVisits = visitsData?.data ?? [];
 
   const pets = petsData?.data ?? EMPTY_PETS;
   const allUsers = usersData?.data ?? EMPTY_USERS;
@@ -157,6 +164,15 @@ export default function PetsPage() {
     if (confirm(t("confirm_delete_patient"))) {
       deletePet.mutate(petId);
     }
+  };
+
+  const getVisitCount = (petId: string) => {
+    return allVisits.filter((v: any) => v.pet_id === petId).length;
+  };
+
+  const handleShowHistory = (pet: Pet) => {
+    setHistoryPet(pet);
+    setIsHistoryOpen(true);
   };
 
   const getClientDetails = (clientId: string) => {
@@ -265,7 +281,21 @@ export default function PetsPage() {
                       {pet.type} · {pet.weight}kg · <span className="capitalize">{client.name}</span>
                     </p>
                   </div>
-                  <DropdownMenu>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={getVisitCount(pet.pet_id) === 0}
+                      onClick={() => handleShowHistory(pet)}
+                      className={`h-8 w-8 rounded-xl shrink-0 ${
+                        getVisitCount(pet.pet_id) > 0
+                          ? "text-violet-400 bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20"
+                          : "text-muted-foreground/30 bg-tint/5"
+                      }`}
+                    >
+                      <BookOpen className="w-4 h-4" />
+                    </Button>
+                    <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl bg-tint/5 shrink-0">
                         <MoreHorizontal className="w-4 h-4" />
@@ -286,6 +316,7 @@ export default function PetsPage() {
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  </div>
                 </div>
               </motion.div>
             );
@@ -373,12 +404,27 @@ export default function PetsPage() {
                         </TableCell>
                       )}
                       <TableCell className="py-4 px-6 text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="group-hover/row:bg-tint/10 rounded-xl h-10 w-10">
-                              <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
-                            </Button>
-                          </DropdownMenuTrigger>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={getVisitCount(pet.pet_id) === 0}
+                            onClick={() => handleShowHistory(pet)}
+                            className={`h-9 px-3 rounded-xl flex items-center gap-2 font-bold text-[10px] uppercase tracking-wider transition-all ${
+                              getVisitCount(pet.pet_id) > 0
+                                ? "bg-violet-500/10 border border-violet-500/20 text-violet-400 hover:bg-violet-500/20 shadow-[0_0_15px_-5px_hsl(250,95%,70%,0.3)]"
+                                : "bg-tint/5 text-muted-foreground/30 border-transparent grayscale"
+                            }`}
+                          >
+                            <BookOpen className="w-3.5 h-3.5" />
+                            {t("case_history")}
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="group-hover/row:bg-tint/10 rounded-xl h-9 w-9">
+                                <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
+                              </Button>
+                            </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl p-2 w-48 shadow-2xl">
                             <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 px-3 py-2">
                               {t("patient_actions")}
@@ -394,6 +440,7 @@ export default function PetsPage() {
                             )}
                           </DropdownMenuContent>
                         </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -531,6 +578,21 @@ export default function PetsPage() {
           </div>
         </div>
       </DashboardForm>
+
+      <CaseHistoryModal
+        open={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        patient={
+          historyPet
+            ? {
+                petName: historyPet.name,
+                species: historyPet.type,
+                breed: (historyPet as any).breed || t("mixed"),
+                ownerName: getClientDetails(historyPet.client_id).name,
+              }
+            : null
+        }
+      />
     </motion.div>
   );
 }
