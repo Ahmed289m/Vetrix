@@ -68,7 +68,7 @@ const calculatorTools = [
 export default function CalculatorsPage() {
   const { t } = useLang();
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto w-full space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="space-y-1.5">
         <div className="flex items-center gap-2 mb-2">
           <Calculator className="w-5 h-5 text-emerald" />

@@ -40,7 +40,7 @@ export function DashboardForm({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "w-[calc(100vw-2.5rem)] sm:w-full max-w-xl bg-card/95 backdrop-blur-3xl border border-border p-0 overflow-hidden rounded-3xl sm:rounded-[2.5rem] shadow-[0_0_50px_-12px_rgba(16,185,129,0.15)]",
+          "w-[calc(100%-2rem)] max-w-xl sm:w-full bg-card/95 backdrop-blur-3xl border border-border p-0 overflow-hidden rounded-3xl sm:rounded-[2.5rem] shadow-[0_0_50px_-12px_rgba(16,185,129,0.15)]",
           className,
         )}
       >

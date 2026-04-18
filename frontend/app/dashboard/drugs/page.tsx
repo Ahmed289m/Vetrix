@@ -324,7 +324,7 @@ function DrugDetailPanel({
         exit={{ scale: 0.95, opacity: 0, y: 10 }}
         transition={{ type: "spring", damping: 26, stiffness: 320 }}
         onClick={(e: React.MouseEvent) => e.stopPropagation()}
-        className="w-[calc(100vw-2rem)] max-w-2xl max-h-[85vh] overflow-y-auto custom-scrollbar bg-sidebar/80 backdrop-blur-3xl border border-tint/10 rounded-3xl shadow-[0_0_60px_-15px_rgba(16,185,129,0.2)] p-4 sm:p-6 space-y-5"
+        className="w-full max-w-2xl max-h-[85vh] overflow-y-auto custom-scrollbar bg-sidebar/80 backdrop-blur-3xl border border-tint/10 rounded-3xl shadow-[0_0_60px_-15px_rgba(16,185,129,0.2)] p-4 sm:p-6 space-y-5"
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-4">

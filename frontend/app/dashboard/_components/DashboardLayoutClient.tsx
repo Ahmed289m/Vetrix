@@ -51,7 +51,7 @@ export default function DashboardLayoutClient({
   // Show loading while checking authentication
   if (isLoading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen w-full flex items-center justify-center bg-background">
         <div className="w-12 h-12 rounded-full border-3 border-emerald/25 border-t-emerald animate-spin" />
       </div>
     );
@@ -59,7 +59,7 @@ export default function DashboardLayoutClient({
 
   return (
     <SidebarProvider>
-      <div className="flex h-svh w-full bg-background text-foreground relative overflow-hidden">
+      <div className="flex h-svh w-full bg-background text-foreground relative overflow-x-hidden">
         {/* 🔥 Background Mesh */}
         <div className="absolute inset-0 gradient-mesh opacity-40 pointer-events-none" />
 
@@ -80,7 +80,7 @@ export default function DashboardLayoutClient({
             )}
 
             <div
-              className={`h-full overflow-y-auto custom-scrollbar ${isNavigating ? "route-fade-in" : ""}`}
+              className={`h-full w-full overflow-y-auto overflow-x-hidden custom-scrollbar ${isNavigating ? "route-fade-in" : ""}`}
             >
               {children}
             </div>

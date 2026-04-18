@@ -30,10 +30,30 @@ import { cn } from "@/app/_lib/utils";
 /** Status badge colors for appointment states */
 const statusStyle = (status: string) => {
   switch (status) {
-    case "in-progress":  return { dot: "bg-cyan animate-pulse", badge: "bg-cyan/15 text-cyan border-cyan/25",  label: "In Progress" };
-    case "pending-doctor": return { dot: "bg-orange animate-pulse", badge: "bg-orange/15 text-orange border-orange/25", label: "Awaiting Doctor" };
-    case "confirmed":    return { dot: "bg-emerald",             badge: "bg-emerald/15 text-emerald border-emerald/25", label: "Confirmed" };
-    default:             return { dot: "bg-muted-foreground",    badge: "bg-muted/30 text-muted-foreground border-border/30", label: status };
+    case "in-progress":
+      return {
+        dot: "bg-cyan animate-pulse",
+        badge: "bg-cyan/15 text-cyan border-cyan/25",
+        label: "In Progress",
+      };
+    case "pending-doctor":
+      return {
+        dot: "bg-orange animate-pulse",
+        badge: "bg-orange/15 text-orange border-orange/25",
+        label: "Awaiting Doctor",
+      };
+    case "confirmed":
+      return {
+        dot: "bg-emerald",
+        badge: "bg-emerald/15 text-emerald border-emerald/25",
+        label: "Confirmed",
+      };
+    default:
+      return {
+        dot: "bg-muted-foreground",
+        badge: "bg-muted/30 text-muted-foreground border-border/30",
+        label: status,
+      };
   }
 };
 
@@ -41,7 +61,7 @@ export function ClientDashboard() {
   const { t } = useLang();
   const { user } = useAuth();
   const [showTracker, setShowTracker] = useState(false);
-  const hasAnnounced    = useRef(false);
+  const hasAnnounced = useRef(false);
   const announcedForPos = useRef<string | null>(null);
 
   // ── TTS announcement: fires when client's case becomes in-progress ──
@@ -52,27 +72,38 @@ export function ClientDashboard() {
     const playChime = (): Promise<void> => {
       return new Promise((resolve) => {
         try {
-          const ctx   = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const ctx = new (
+            window.AudioContext || (window as any).webkitAudioContext
+          )();
           const tones = [
-            { freq: 880,  start: 0,    dur: 0.35 },   // A5
-            { freq: 740,  start: 0.3,  dur: 0.35 },   // F#5
-            { freq: 587,  start: 0.58, dur: 0.55 },   // D5 (resolving)
+            { freq: 880, start: 0, dur: 0.35 }, // A5
+            { freq: 740, start: 0.3, dur: 0.35 }, // F#5
+            { freq: 587, start: 0.58, dur: 0.55 }, // D5 (resolving)
           ];
           tones.forEach(({ freq, start, dur }) => {
-            const osc  = ctx.createOscillator();
+            const osc = ctx.createOscillator();
             const gain = ctx.createGain();
-            osc.type      = "sine";
+            osc.type = "sine";
             osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
             gain.gain.setValueAtTime(0, ctx.currentTime + start);
-            gain.gain.linearRampToValueAtTime(0.22, ctx.currentTime + start + 0.02);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+            gain.gain.linearRampToValueAtTime(
+              0.22,
+              ctx.currentTime + start + 0.02,
+            );
+            gain.gain.exponentialRampToValueAtTime(
+              0.001,
+              ctx.currentTime + start + dur,
+            );
             osc.connect(gain);
             gain.connect(ctx.destination);
             osc.start(ctx.currentTime + start);
             osc.stop(ctx.currentTime + start + dur);
           });
           // Resolve after all tones finish + small buffer
-          setTimeout(() => { ctx.close(); resolve(); }, 1300);
+          setTimeout(() => {
+            ctx.close();
+            resolve();
+          }, 1300);
         } catch {
           resolve(); // Web Audio not supported — skip silently
         }
@@ -83,17 +114,22 @@ export function ClientDashboard() {
     synth.cancel();
 
     const EN_TEXT = "Your turn is now. Please proceed to the doctor room.";
-    const AR_TEXT = "\u062d\u0627\u0646 \u062f\u0648\u0631\u0643 \u0627\u0644\u0622\u0646. \u0645\u0646 \u0641\u0636\u0644\u0643 \u062a\u0648\u062c\u0647 \u0625\u0644\u0649 \u063a\u0631\u0641\u0629 \u0627\u0644\u0637\u0628\u064a\u0628.";
+    const AR_TEXT =
+      "\u062d\u0627\u0646 \u062f\u0648\u0631\u0643 \u0627\u0644\u0622\u0646. \u0645\u0646 \u0641\u0636\u0644\u0643 \u062a\u0648\u062c\u0647 \u0625\u0644\u0649 \u063a\u0631\u0641\u0629 \u0627\u0644\u0637\u0628\u064a\u0628.";
 
     const makeUtterance = (text: string, lang: string) => {
       const utt = new SpeechSynthesisUtterance(text);
-      utt.lang   = lang;
-      utt.rate   = 0.88;
-      utt.pitch  = 1.05;
+      utt.lang = lang;
+      utt.rate = 0.88;
+      utt.pitch = 1.05;
       utt.volume = 1;
       const voices = synth.getVoices();
       const female =
-        voices.find((v) => v.lang === lang && /female|zira|samantha|karen|moira|victoria|tessa/i.test(v.name)) ??
+        voices.find(
+          (v) =>
+            v.lang === lang &&
+            /female|zira|samantha|karen|moira|victoria|tessa/i.test(v.name),
+        ) ??
         voices.find((v) => v.lang === lang) ??
         voices.find((v) => v.lang.startsWith(lang.split("-")[0]));
       if (female) utt.voice = female;
@@ -122,12 +158,12 @@ export function ClientDashboard() {
 
   // ── Data (NO useUsers – clients get 403 on /users) ──────────────────────
   const { data: appointmentsData } = useAppointments();
-  const { data: petsData }         = usePets();
-  const { data: prescriptionsData} = usePrescriptions();
+  const { data: petsData } = usePets();
+  const { data: prescriptionsData } = usePrescriptions();
 
-  const appointments   = appointmentsData?.data  ?? [];
-  const pets           = petsData?.data           ?? [];
-  const prescriptions  = prescriptionsData?.data  ?? [];
+  const appointments = appointmentsData?.data ?? [];
+  const pets = petsData?.data ?? [];
+  const prescriptions = prescriptionsData?.data ?? [];
 
   // ── Client-scoped stats ────────────────────────────────────────────────────
   const clientStats = useMemo(() => {
@@ -152,7 +188,12 @@ export function ClientDashboard() {
         apt.client_id === user?.userId && apt.status === "confirmed",
     ).length;
 
-    return { myPets, upcomingAppointments, myPrescriptions, myConfirmedAppointments };
+    return {
+      myPets,
+      upcomingAppointments,
+      myPrescriptions,
+      myConfirmedAppointments,
+    };
   }, [pets, appointments, prescriptions, user?.userId]);
 
   // ── Case queue ─────────────────────────────────────────────────────────────
@@ -162,9 +203,9 @@ export function ClientDashboard() {
 
   const caseQueue = useMemo(() => {
     const statusOrder: Record<string, number> = {
-      "in-progress":   0,
+      "in-progress": 0,
       "pending-doctor": 1,
-      "confirmed":     2,
+      confirmed: 2,
     };
     return appointments
       .filter((apt: Appointment) => ACTIVE_STATUSES.includes(apt.status))
@@ -172,34 +213,41 @@ export function ClientDashboard() {
         const aPriority = statusOrder[a.status] ?? 9;
         const bPriority = statusOrder[b.status] ?? 9;
         if (aPriority !== bPriority) return aPriority - bPriority;
-        const dateA = a.appointment_date ? new Date(a.appointment_date).getTime() : 0;
-        const dateB = b.appointment_date ? new Date(b.appointment_date).getTime() : 0;
+        const dateA = a.appointment_date
+          ? new Date(a.appointment_date).getTime()
+          : 0;
+        const dateB = b.appointment_date
+          ? new Date(b.appointment_date).getTime()
+          : 0;
         return dateA - dateB;
       })
       .map((apt: Appointment, index: number) => {
         const pet = pets.find((p: Pet) => p.pet_id === apt.pet_id);
         return {
-          id:              apt.appointment_id,
-          caseNumber:      `APT-${String(index + 1).padStart(4, "0")}`,
-          petName:         pet?.name  || t("unknown_pet"),
-          species:         (pet?.type || "dog") as "dog" | "cat",
-          breed:           pet?.breed || t("mixed"),
-          complaint:       apt.reason || t("regular_checkup"),
-          status:          apt.status,
-          date:            apt.appointment_date ?? "",
+          id: apt.appointment_id,
+          caseNumber: `APT-${String(index + 1).padStart(4, "0")}`,
+          petName: pet?.name || t("unknown_pet"),
+          species: (pet?.type || "dog") as "dog" | "cat",
+          breed: pet?.breed || t("mixed"),
+          complaint: apt.reason || t("regular_checkup"),
+          status: apt.status,
+          date: apt.appointment_date ?? "",
           isMyAppointment: apt.client_id === user?.userId,
         };
       });
   }, [appointments, pets, user?.userId, t]);
 
   // How many cases are actively waiting AHEAD of the client (not counting in-progress)
-  const myCase         = caseQueue.find((c) => c.isMyAppointment) ?? null;
-  const waitingCases   = caseQueue.filter((c) => c.status !== "in-progress");
-  const myWaitingIdx   = waitingCases.findIndex((c) => c.isMyAppointment);
+  const myCase = caseQueue.find((c) => c.isMyAppointment) ?? null;
+  const waitingCases = caseQueue.filter((c) => c.status !== "in-progress");
+  const myWaitingIdx = waitingCases.findIndex((c) => c.isMyAppointment);
   // Position in the waiting queue: 1-based; null if already in-progress or not found
-  const myQueuePosition = myCase?.status === "in-progress"
-    ? null                                        // being seen right now — not "waiting"
-    : myWaitingIdx >= 0 ? myWaitingIdx + 1 : null;
+  const myQueuePosition =
+    myCase?.status === "in-progress"
+      ? null // being seen right now — not "waiting"
+      : myWaitingIdx >= 0
+        ? myWaitingIdx + 1
+        : null;
 
   // Total waiting (excluding the case currently in-progress)
   const totalWaiting = waitingCases.length;
@@ -207,7 +255,11 @@ export function ClientDashboard() {
   // Auto-trigger announcement when client's case becomes "in-progress" (doctor accepted)
   useEffect(() => {
     const triggerKey = myCase ? `${myCase.id}:in-progress` : null;
-    if (myCase?.status === "in-progress" && showTracker && announcedForPos.current !== triggerKey) {
+    if (
+      myCase?.status === "in-progress" &&
+      showTracker &&
+      announcedForPos.current !== triggerKey
+    ) {
       announcedForPos.current = triggerKey;
       const t = setTimeout(() => playAnnouncement(), 800);
       return () => clearTimeout(t);
@@ -222,10 +274,38 @@ export function ClientDashboard() {
 
   // ── Stat cards ─────────────────────────────────────────────────────────────
   const statCards = [
-    { label: t("my_pets"),          value: clientStats.myPets,                 icon: Cat,      color: "text-emerald", bg: "bg-emerald/10", border: "border-emerald/20" },
-    { label: t("upcoming_appts"),   value: clientStats.upcomingAppointments,   icon: Calendar, color: "text-cyan",    bg: "bg-cyan/10",    border: "border-cyan/20" },
-    { label: t("prescriptions"),    value: clientStats.myPrescriptions,        icon: FileText, color: "text-orange",  bg: "bg-orange/10",  border: "border-orange/20" },
-    { label: t("notifications"),    value: clientStats.myConfirmedAppointments,icon: Bell,     color: "text-coral",   bg: "bg-coral/10",   border: "border-coral/20" },
+    {
+      label: t("my_pets"),
+      value: clientStats.myPets,
+      icon: Cat,
+      color: "text-emerald",
+      bg: "bg-emerald/10",
+      border: "border-emerald/20",
+    },
+    {
+      label: t("upcoming_appts"),
+      value: clientStats.upcomingAppointments,
+      icon: Calendar,
+      color: "text-cyan",
+      bg: "bg-cyan/10",
+      border: "border-cyan/20",
+    },
+    {
+      label: t("prescriptions"),
+      value: clientStats.myPrescriptions,
+      icon: FileText,
+      color: "text-orange",
+      bg: "bg-orange/10",
+      border: "border-orange/20",
+    },
+    {
+      label: t("notifications"),
+      value: clientStats.myConfirmedAppointments,
+      icon: Bell,
+      color: "text-coral",
+      bg: "bg-coral/10",
+      border: "border-coral/20",
+    },
   ];
 
   return (
@@ -233,7 +313,7 @@ export function ClientDashboard() {
       variants={stagger}
       initial="initial"
       animate="animate"
-      className="space-y-6 max-w-7xl mx-auto"
+      className="space-y-6 max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8"
     >
       {/* Header */}
       <motion.div
@@ -263,7 +343,11 @@ export function ClientDashboard() {
               : "gradient-emerald-cyan text-primary-foreground glow-emerald"
           }`}
         >
-          {showTracker ? <X className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+          {showTracker ? (
+            <X className="w-4 h-4" />
+          ) : (
+            <Play className="w-4 h-4" />
+          )}
           {showTracker ? t("exit_sim") : t("case_tracker")}
         </motion.button>
       </motion.div>
@@ -278,13 +362,16 @@ export function ClientDashboard() {
             className="overflow-hidden"
           >
             <div className="rounded-2xl border border-border/40 bg-card/60 backdrop-blur-sm p-6 space-y-5 shadow-[0_0_40px_-15px_rgba(16,185,129,0.1)]">
-
               {/* Tracker header */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <motion.div
                     animate={myCase ? { rotate: 360 } : {}}
-                    transition={{ repeat: myCase ? Infinity : 0, duration: 3, ease: "linear" }}
+                    transition={{
+                      repeat: myCase ? Infinity : 0,
+                      duration: 3,
+                      ease: "linear",
+                    }}
                     className="w-8 h-8 rounded-full gradient-emerald-cyan flex items-center justify-center glow-emerald shrink-0"
                   >
                     <Activity className="w-4 h-4 text-primary-foreground" />
@@ -331,13 +418,13 @@ export function ClientDashboard() {
                 >
                   <CheckCircle2 className="w-10 h-10 text-emerald/60 mx-auto" />
                   <p className="text-sm font-bold text-foreground">
-                    {caseQueue.length === 0 
-                      ? "Simulation Complete" 
+                    {caseQueue.length === 0
+                      ? "Simulation Complete"
                       : t("no_active_appointments")}
                   </p>
                   <p className="text-xs text-muted-foreground/80">
-                    {caseQueue.length === 0 
-                      ? "All clinic cases have been completed." 
+                    {caseQueue.length === 0
+                      ? "All clinic cases have been completed."
                       : t("waiting_for_your_turn")}
                   </p>
                 </motion.div>
@@ -359,18 +446,26 @@ export function ClientDashboard() {
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-xl bg-muted/40 flex items-center justify-center shrink-0">
-                      {myCase.species === "dog" ? <Dog className="w-6 h-6" /> : <Cat className="w-6 h-6" />}
+                      {myCase.species === "dog" ? (
+                        <Dog className="w-6 h-6" />
+                      ) : (
+                        <Cat className="w-6 h-6" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-lg font-extrabold">{myCase.petName}</p>
-                      <p className="text-xs text-muted-foreground">{myCase.breed} · {myCase.caseNumber}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {myCase.breed} · {myCase.caseNumber}
+                      </p>
                     </div>
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-cyan text-primary-foreground shadow-[0_0_20px_-5px_rgba(34,211,238,0.5)]">
                       <span className="w-2 h-2 rounded-full bg-primary-foreground animate-pulse" />
                       In Progress
                     </span>
                   </div>
-                  <p className="text-sm text-foreground/80 relative z-10">{myCase.complaint}</p>
+                  <p className="text-sm text-foreground/80 relative z-10">
+                    {myCase.complaint}
+                  </p>
                 </motion.div>
               )}
 
@@ -384,10 +479,14 @@ export function ClientDashboard() {
                         {t("position_in_queue")}
                       </p>
                       <div className="flex items-baseline gap-1.5 mt-2">
-                        <span className={cn(
-                          "text-3xl font-extrabold tabular-nums",
-                          myQueuePosition === 1 ? "text-cyan animate-pulse" : "text-emerald",
-                        )}>
+                        <span
+                          className={cn(
+                            "text-3xl font-extrabold tabular-nums",
+                            myQueuePosition === 1
+                              ? "text-cyan animate-pulse"
+                              : "text-emerald",
+                          )}
+                        >
                           {myQueuePosition}
                         </span>
                         <span className="text-sm text-muted-foreground">
@@ -435,12 +534,23 @@ export function ClientDashboard() {
 
                         {/* Status row */}
                         <div className="flex items-center gap-2 relative z-10">
-                          <Clock className={cn("w-3.5 h-3.5 shrink-0", isActive ? "text-cyan" : "text-muted-foreground")} />
-                          <span className={cn(
-                            "text-[10px] font-bold uppercase tracking-widest flex-1",
-                            isActive ? "text-cyan animate-pulse" : "text-muted-foreground",
-                          )}>
-                            {isActive ? (t("it_is_your_turn") || "YOUR TURN NOW") : t("your_appointment")}
+                          <Clock
+                            className={cn(
+                              "w-3.5 h-3.5 shrink-0",
+                              isActive ? "text-cyan" : "text-muted-foreground",
+                            )}
+                          />
+                          <span
+                            className={cn(
+                              "text-[10px] font-bold uppercase tracking-widest flex-1",
+                              isActive
+                                ? "text-cyan animate-pulse"
+                                : "text-muted-foreground",
+                            )}
+                          >
+                            {isActive
+                              ? t("it_is_your_turn") || "YOUR TURN NOW"
+                              : t("your_appointment")}
                           </span>
 
                           {/* 🔊 Replay announcement button */}
@@ -461,26 +571,40 @@ export function ClientDashboard() {
                         {/* Pet info */}
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded-xl bg-muted/40 flex items-center justify-center shrink-0">
-                            {myCase.species === "dog"
-                              ? <Dog className="w-6 h-6 text-foreground" />
-                              : <Cat className="w-6 h-6 text-foreground" />}
+                            {myCase.species === "dog" ? (
+                              <Dog className="w-6 h-6 text-foreground" />
+                            ) : (
+                              <Cat className="w-6 h-6 text-foreground" />
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-lg font-extrabold">{myCase.petName}</p>
-                            <p className="text-xs text-muted-foreground">{myCase.breed}</p>
-                            <p className="text-[10px] font-mono text-muted-foreground mt-0.5">{myCase.caseNumber}</p>
+                            <p className="text-lg font-extrabold">
+                              {myCase.petName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {myCase.breed}
+                            </p>
+                            <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                              {myCase.caseNumber}
+                            </p>
                           </div>
                           {/* Live status badge */}
-                          <span className={cn(
-                            "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border shrink-0",
-                            ss.badge,
-                          )}>
-                            <span className={cn("w-2 h-2 rounded-full", ss.dot)} />
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border shrink-0",
+                              ss.badge,
+                            )}
+                          >
+                            <span
+                              className={cn("w-2 h-2 rounded-full", ss.dot)}
+                            />
                             {ss.label}
                           </span>
                         </div>
 
-                        <p className="text-sm text-foreground/80 relative z-10">{myCase.complaint}</p>
+                        <p className="text-sm text-foreground/80 relative z-10">
+                          {myCase.complaint}
+                        </p>
                       </motion.div>
                     );
                   })()}
@@ -496,15 +620,23 @@ export function ClientDashboard() {
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-muted/30 flex items-center justify-center">
-                          {caseQueue[0].species === "dog"
-                            ? <Dog className="w-5 h-5 text-muted-foreground" />
-                            : <Cat className="w-5 h-5 text-muted-foreground" />}
+                          {caseQueue[0].species === "dog" ? (
+                            <Dog className="w-5 h-5 text-muted-foreground" />
+                          ) : (
+                            <Cat className="w-5 h-5 text-muted-foreground" />
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold">{caseQueue[0].petName}</p>
-                          <p className="text-xs text-muted-foreground truncate">{caseQueue[0].complaint}</p>
+                          <p className="text-sm font-bold">
+                            {caseQueue[0].petName}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {caseQueue[0].complaint}
+                          </p>
                         </div>
-                        <span className="text-[10px] font-mono text-muted-foreground">{caseQueue[0].caseNumber}</span>
+                        <span className="text-[10px] font-mono text-muted-foreground">
+                          {caseQueue[0].caseNumber}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -515,25 +647,47 @@ export function ClientDashboard() {
               {!myCase && caseQueue.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1">
-                    <Stethoscope className="w-3 h-3" /> Active cases ({caseQueue.length})
+                    <Stethoscope className="w-3 h-3" /> Active cases (
+                    {caseQueue.length})
                   </p>
                   {caseQueue.slice(0, 4).map((c, i) => {
                     const ss = statusStyle(c.status);
                     return (
-                      <div key={c.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/10 border border-border/20 text-xs">
-                        <span className="font-mono text-muted-foreground w-12 shrink-0">{c.caseNumber}</span>
+                      <div
+                        key={c.id}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-muted/10 border border-border/20 text-xs"
+                      >
+                        <span className="font-mono text-muted-foreground w-12 shrink-0">
+                          {c.caseNumber}
+                        </span>
                         <div className="w-7 h-7 rounded-lg bg-muted/30 flex items-center justify-center shrink-0">
-                          {c.species === "dog" ? <Dog className="w-4 h-4 text-muted-foreground" /> : <Cat className="w-4 h-4 text-muted-foreground" />}
+                          {c.species === "dog" ? (
+                            <Dog className="w-4 h-4 text-muted-foreground" />
+                          ) : (
+                            <Cat className="w-4 h-4 text-muted-foreground" />
+                          )}
                         </div>
-                        <span className="flex-1 font-semibold truncate">{c.petName}</span>
-                        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold border text-[10px]", ss.badge)}>
-                          <span className={cn("w-1.5 h-1.5 rounded-full", ss.dot)} />{ss.label}
+                        <span className="flex-1 font-semibold truncate">
+                          {c.petName}
+                        </span>
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold border text-[10px]",
+                            ss.badge,
+                          )}
+                        >
+                          <span
+                            className={cn("w-1.5 h-1.5 rounded-full", ss.dot)}
+                          />
+                          {ss.label}
                         </span>
                       </div>
                     );
                   })}
                   {caseQueue.length > 4 && (
-                    <p className="text-[10px] text-muted-foreground text-center">+{caseQueue.length - 4} more cases</p>
+                    <p className="text-[10px] text-muted-foreground text-center">
+                      +{caseQueue.length - 4} more cases
+                    </p>
                   )}
                 </div>
               )}
@@ -550,7 +704,9 @@ export function ClientDashboard() {
               key={s.label}
               className={`glass-card p-5 border ${s.border} card-hover cursor-default`}
             >
-              <div className={`w-12 h-12 rounded-xl ${s.bg} flex items-center justify-center`}>
+              <div
+                className={`w-12 h-12 rounded-xl ${s.bg} flex items-center justify-center`}
+              >
                 <s.icon className={`w-6 h-6 ${s.color}`} />
               </div>
               <motion.p
@@ -561,7 +717,9 @@ export function ClientDashboard() {
               >
                 {s.value}
               </motion.p>
-              <p className="text-sm text-muted-foreground mt-1 font-medium">{s.label}</p>
+              <p className="text-sm text-muted-foreground mt-1 font-medium">
+                {s.label}
+              </p>
             </motion.div>
           ))}
         </div>
@@ -573,7 +731,9 @@ export function ClientDashboard() {
         className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-8 text-center mt-8"
       >
         <h3 className="text-lg font-bold">{t("client_module_placeholder")}</h3>
-        <p className="text-muted-foreground mt-2">{t("client_features_coming")}</p>
+        <p className="text-muted-foreground mt-2">
+          {t("client_features_coming")}
+        </p>
       </motion.div>
     </motion.div>
   );

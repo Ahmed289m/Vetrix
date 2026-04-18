@@ -14,7 +14,7 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <div className="h-screen w-screen flex items-center justify-center bg-background p-6">
+    <div className="min-h-screen w-full flex items-center justify-center bg-background p-6">
       <div className="max-w-md w-full rounded-2xl border border-border/30 bg-card/60 p-6 text-center space-y-3">
         <h2 className="text-xl font-bold">Failed to load this page.</h2>
         <p className="text-sm text-muted-foreground">
