@@ -12,6 +12,7 @@ from app.middlewares.auth_middleware import AuthMiddleware
 from app.repositories.user_repository import UserRepository
 from app.routes.auth import router as auth_router
 from app.routes.appointment import router as appointment_router
+from app.routes.crew import router as crew_router
 from app.routes.drug import router as drug_router
 from app.routes.clinic import router as clinic_router
 from app.routes.pet import router as pet_router
@@ -93,6 +94,7 @@ app.add_middleware(AuthMiddleware)
 
 # REST routes
 app.include_router(auth_router)
+app.include_router(crew_router)
 app.include_router(clinic_router)
 app.include_router(user_router)
 app.include_router(drug_router)

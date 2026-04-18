@@ -1,6 +1,7 @@
 export * from "./appointments.api";
 export * from "./auth.api";
 export * from "./clinics.api";
+export * from "./crew.api";
 export * from "./drugs.api";
 export * from "./pets.api";
 export * from "./prescription-items.api";

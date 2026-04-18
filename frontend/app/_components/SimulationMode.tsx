@@ -46,6 +46,7 @@ import {
   useUpdateVisit,
   useDeleteVisit,
 } from "@/app/_hooks/queries/use-visits";
+import { useCaseHistoryCrew } from "@/app/_hooks/queries/use-crew";
 import {
   useCreatePrescription,
   usePrescriptions,
@@ -297,6 +298,7 @@ export default function SimulationMode({ role }: Props) {
   const createVisit = useCreateVisit();
   const updateVisit = useUpdateVisit();
   const deleteVisit = useDeleteVisit();
+  const caseHistoryCrew = useCaseHistoryCrew();
   const createPrescription = useCreatePrescription();
   const deletePrescription = useDeletePrescription();
 
@@ -498,6 +500,20 @@ export default function SimulationMode({ role }: Props) {
         onError: () => toast.error("Failed to complete case"),
       },
     );
+  };
+
+  const openCaseHistory = () => {
+    if (!myActiveCase?.petId) {
+      toast.error("No active patient selected.");
+      return;
+    }
+
+    caseHistoryCrew.reset();
+    setShowCaseHistory(true);
+    caseHistoryCrew.mutate(myActiveCase.petId, {
+      onError: (err: unknown) =>
+        toast.error(getErrorDetail(err, "Failed to load case history.")),
+    });
   };
 
   // ── Visit modal ───────────────────────────────────────────────────────────
@@ -992,7 +1008,7 @@ export default function SimulationMode({ role }: Props) {
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.97 }}
-                      onClick={() => setShowCaseHistory(true)}
+                      onClick={openCaseHistory}
                       className="flex items-center gap-2 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 px-4 py-2.5 rounded-xl text-sm font-bold border border-violet-500/20 transition-colors"
                     >
                       <BookOpen className="w-4 h-4" />
@@ -1849,7 +1865,10 @@ export default function SimulationMode({ role }: Props) {
       {/* ═══════════════════ CASE HISTORY MODAL ═══════════════════════════════ */}
       <CaseHistoryModal
         open={showCaseHistory}
-        onClose={() => setShowCaseHistory(false)}
+        onClose={() => {
+          setShowCaseHistory(false);
+          caseHistoryCrew.reset();
+        }}
         patient={
           myActiveCase
             ? {
@@ -1859,6 +1878,16 @@ export default function SimulationMode({ role }: Props) {
                 ownerName: myActiveCase.ownerName,
                 caseNumber: myActiveCase.caseNumber,
               }
+            : null
+        }
+        visits={caseHistoryCrew.data?.data?.visits ?? []}
+        isLoading={caseHistoryCrew.isPending}
+        errorMessage={
+          caseHistoryCrew.isError
+            ? getErrorDetail(
+                caseHistoryCrew.error,
+                "Failed to load case history.",
+              )
             : null
         }
       />

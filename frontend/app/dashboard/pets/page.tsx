@@ -48,6 +48,7 @@ import {
   useUpdatePet,
   useDeletePet,
 } from "@/app/_hooks/queries/use-pets";
+import { useCaseHistoryCrew } from "@/app/_hooks/queries/use-crew";
 import { useVisits } from "@/app/_hooks/queries/use-visits";
 import { CaseHistoryModal } from "@/app/dashboard/_components/CaseHistoryModal";
 import { useUsers } from "@/app/_hooks/queries/use-users";
@@ -63,6 +64,12 @@ import type {
 
 const EMPTY_PETS: Pet[] = [];
 const EMPTY_USERS: UserModel[] = [];
+
+const getErrorDetail = (error: unknown, fallback: string): string => {
+  if (typeof error !== "object" || error === null) return fallback;
+  const maybeErr = error as { response?: { data?: { detail?: string } } };
+  return maybeErr.response?.data?.detail || fallback;
+};
 
 export default function PetsPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -85,6 +92,7 @@ export default function PetsPage() {
   const createPet = useCreatePet();
   const updatePet = useUpdatePet();
   const deletePet = useDeletePet();
+  const caseHistoryCrew = useCaseHistoryCrew();
   const { data: visitsData } = useVisits();
   const allVisits: Visit[] = visitsData?.data ?? [];
 
@@ -245,7 +253,12 @@ export default function PetsPage() {
 
   const handleShowHistory = (pet: Pet) => {
     setHistoryPet(pet);
+    caseHistoryCrew.reset();
     setIsHistoryOpen(true);
+    caseHistoryCrew.mutate(pet.pet_id, {
+      onError: (err: unknown) =>
+        toast.error(getErrorDetail(err, "Failed to load case history.")),
+    });
   };
 
   const getClientDetails = (clientId: string) => {
@@ -765,7 +778,10 @@ export default function PetsPage() {
 
       <CaseHistoryModal
         open={isHistoryOpen}
-        onClose={() => setIsHistoryOpen(false)}
+        onClose={() => {
+          setIsHistoryOpen(false);
+          caseHistoryCrew.reset();
+        }}
         patient={
           historyPet
             ? {
@@ -775,6 +791,16 @@ export default function PetsPage() {
                   (historyPet as Pet & { breed?: string }).breed || t("mixed"),
                 ownerName: getClientDetails(historyPet.client_id).name,
               }
+            : null
+        }
+        visits={caseHistoryCrew.data?.data?.visits ?? []}
+        isLoading={caseHistoryCrew.isPending}
+        errorMessage={
+          caseHistoryCrew.isError
+            ? getErrorDetail(
+                caseHistoryCrew.error,
+                "Failed to load case history.",
+              )
             : null
         }
       />

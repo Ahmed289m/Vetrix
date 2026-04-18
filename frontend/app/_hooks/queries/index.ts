@@ -1,5 +1,6 @@
 export * from "./use-appointments";
 export * from "./use-clinics";
+export * from "./use-crew";
 export * from "./use-drugs";
 export * from "./use-pets";
 export * from "./use-prescription-items";
