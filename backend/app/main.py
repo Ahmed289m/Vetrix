@@ -77,7 +77,11 @@ async def add_status_to_json_response(request: Request, call_next):
     }
     return JSONResponse(content=payload, status_code=response.status_code, headers=passthrough_headers)
 
+app.add_middleware(AuthMiddleware)
+
 # CORS — allow the Next.js frontend
+# Add this after other middlewares so it stays outermost and
+# applies CORS headers even when inner middlewares short-circuit.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -89,8 +93,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-app.add_middleware(AuthMiddleware)
 
 # REST routes
 app.include_router(auth_router)
