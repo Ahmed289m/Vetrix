@@ -96,16 +96,22 @@ function NumberStepper({
   min?: number;
   max?: number;
 }) {
+  const canDecrement = value > min;
+  const canIncrement = value < max;
+
   return (
     <div className="space-y-1.5">
       <p className="text-xs font-bold text-muted-foreground">{label}</p>
       {sublabel && (
         <p className="text-[10px] text-muted-foreground/70">{sublabel}</p>
       )}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 sm:gap-2.5">
         <button
+          type="button"
           onClick={() => onChange(Math.max(min, value - 1))}
-          className="w-9 h-9 rounded-xl bg-tint/10 hover:bg-tint/20 font-black text-lg flex items-center justify-center transition-colors"
+          disabled={!canDecrement}
+          aria-label={`Decrease ${label}`}
+          className="h-11 w-11 sm:h-9 sm:w-9 rounded-xl border border-border/40 bg-tint/10 hover:bg-tint/20 disabled:opacity-40 disabled:cursor-not-allowed font-black text-xl sm:text-lg flex items-center justify-center transition-colors"
         >
           −
         </button>
@@ -117,11 +123,14 @@ function NumberStepper({
           onChange={(e) =>
             onChange(Math.max(min, Math.min(max, Number(e.target.value) || 0)))
           }
-          className="flex-1 text-center py-2 rounded-xl bg-muted/30 border border-border/50 text-sm font-bold outline-none focus:border-blue-400/50 transition-colors"
+          className="flex-1 min-w-0 text-center py-2.5 sm:py-2 rounded-xl bg-muted/30 border border-border/50 text-base sm:text-sm font-bold outline-none focus:border-blue-400/50 transition-colors"
         />
         <button
+          type="button"
           onClick={() => onChange(Math.min(max, value + 1))}
-          className="w-9 h-9 rounded-xl bg-tint/10 hover:bg-tint/20 font-black text-lg flex items-center justify-center transition-colors"
+          disabled={!canIncrement}
+          aria-label={`Increase ${label}`}
+          className="h-11 w-11 sm:h-9 sm:w-9 rounded-xl border border-border/40 bg-tint/10 hover:bg-tint/20 disabled:opacity-40 disabled:cursor-not-allowed font-black text-xl sm:text-lg flex items-center justify-center transition-colors"
         >
           +
         </button>
@@ -433,7 +442,7 @@ export function FluidTherapyModal({
                   </div>
 
                   {/* Row 3: Ongoing losses */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <NumberStepper
                       label="Vomiting — عدد مرات القيء"
                       sublabel="1 mL/kg per episode"
