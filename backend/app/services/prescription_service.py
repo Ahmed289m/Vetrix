@@ -29,6 +29,13 @@ class PrescriptionService:
         self.drug_repository = drug_repository
         self.prescription_item_repository = prescription_item_repository
 
+    async def get_by_prescription_id(self, prescription_id: str) -> dict | None:
+        """Get a prescription by prescription_id."""
+        prescription = await self.repository.get_by_prescription_id(prescription_id)
+        if not prescription:
+            return None
+        return serialize_mongo_doc(prescription, "prescription_id")
+
     async def create_prescription(self, request: PrescriptionCreate, current_user: TokenData) -> dict:
         """
         Create a prescription with authorization.

@@ -13,6 +13,11 @@ class DrugService:
         self.crud = BaseCrudService(repository, Drug, id_field="drug_id", id_prefix="drug")
         self.repository = repository
 
+    async def list_by_drug_ids(self, drug_ids: list[str]) -> list[dict]:
+        """List drugs by drug_id values."""
+        drugs = await self.repository.list_by_drug_ids(drug_ids)
+        return [serialize_mongo_doc(drug, "drug_id") for drug in drugs]
+
     async def create_drug(self, request: DrugCreate, current_user: TokenData) -> dict:
         """
         Create a drug. Staff/owner auto-assigns their clinic_id. Admin can set or omit clinic_id.

@@ -21,6 +21,11 @@ class PrescriptionItemService:
         self.repository = repository
         self.prescription_repository = prescription_repository
 
+    async def list_by_prescription_item_ids(self, prescription_item_ids: list[str]) -> list[dict]:
+        """List prescription items by prescription_item_id values."""
+        items = await self.repository.list_by_prescription_item_ids(prescription_item_ids)
+        return [serialize_mongo_doc(item, "prescriptionItem_id") for item in items]
+
     @staticmethod
     def _extract_prescription_item_ids(prescription: dict) -> list[str]:
         ids: list[str] = []
