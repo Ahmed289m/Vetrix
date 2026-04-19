@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 class CrewCaseHistoryRequest(BaseModel):
     case_history: dict
+    language: str | None = None
 
 
 @router.get("/case-history/{pet_id}")
@@ -57,7 +58,7 @@ def run_crew_with_case_history(payload: CrewCaseHistoryRequest) -> dict:
     try:
         from app.agents.crew import run_case_history_crew
 
-        result = run_case_history_crew(payload.case_history)
+        result = run_case_history_crew(payload.case_history, payload.language)
 
     except Exception as exc:
         logger.exception("Crew execution failed for provided case history")

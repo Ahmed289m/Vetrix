@@ -80,7 +80,7 @@ export default function PetsPage() {
   const [isHistoryOpen, setIsHistoryOpen] = React.useState(false);
   const [selectedPetIds, setSelectedPetIds] = React.useState<string[]>([]);
   const { user } = useAuth();
-  const { t } = useLang();
+  const { t, lang } = useLang();
 
   const isClient = user?.role === "client";
   const canLoadClients = !isClient && Boolean(user?.clinicId);
@@ -265,7 +265,7 @@ export default function PetsPage() {
     caseHistoryCrew.reset();
     setIsHistoryOpen(true);
     caseHistoryCrew.mutate(
-      { petId: pet.pet_id, petType: pet.type },
+      { petId: pet.pet_id, petType: pet.type, lang },
       {
         onError: (err: unknown) =>
           toast.error(getErrorDetail(err, "Failed to load case history.")),

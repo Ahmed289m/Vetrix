@@ -20,6 +20,7 @@ interface CaseHistoryPayload {
 interface GetVisitsInfoParams {
   petId: string;
   petType?: string;
+  lang?: "en" | "ar";
 }
 
 export const crewApi = {
@@ -34,16 +35,21 @@ export const crewApi = {
       .then((r) => r.data);
   },
 
-  summarizeCaseHistory: (caseHistory: unknown) =>
+  summarizeCaseHistory: (caseHistory: unknown, lang: "en" | "ar" = "en") =>
     api
       .post<ApiResponse<unknown>>(`/agent/crew`, {
         case_history: caseHistory,
+        language: lang,
       })
       .then((r) => r.data),
 
-  getVisitsInfo: async ({ petId, petType }: GetVisitsInfoParams) => {
+  getVisitsInfo: async ({
+    petId,
+    petType,
+    lang = "en",
+  }: GetVisitsInfoParams) => {
     const historyResponse = await crewApi.getVisitInfo({ petId, petType });
     const caseHistory = historyResponse.data?.case_history ?? { visits: [] };
-    return crewApi.summarizeCaseHistory(caseHistory);
+    return crewApi.summarizeCaseHistory(caseHistory, lang);
   },
 };

@@ -14,10 +14,17 @@ def case_history_crew(verbose: bool = False) -> Crew:
 	)
 
 
-def run_case_history_crew(case_history: dict, verbose: bool = False):
+def run_case_history_crew(
+	case_history: dict,
+	output_language: str | None = None,
+	verbose: bool = False,
+):
 	"""Run the case history crew with a case_history input."""
 	visits_info = []
 	clean_case_history = case_history
+	normalized_language = (output_language or "en").strip().lower()
+	if normalized_language not in {"en", "ar"}:
+		normalized_language = "en"
 	if isinstance(case_history, dict):
 		clean_case_history = {
 			key: value
@@ -30,6 +37,7 @@ def run_case_history_crew(case_history: dict, verbose: bool = False):
 		inputs={
 			"case_history": clean_case_history,
 			"visits_info": visits_info,
+			"output_language": normalized_language,
 		}
 	)
 

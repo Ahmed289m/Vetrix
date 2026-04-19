@@ -277,7 +277,7 @@ export default function SimulationMode({ role }: Props) {
   // Drug search in prescription modal
   const [drugSearch, setDrugSearch] = useState("");
 
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { user } = useAuth();
   const isClientRole = user?.role === "client";
   useWebSocket(); // live sync: invalidates React Query caches on backend broadcast
@@ -499,7 +499,7 @@ export default function SimulationMode({ role }: Props) {
     caseHistoryCrew.reset();
     setShowCaseHistory(true);
     caseHistoryCrew.mutate(
-      { petId: myActiveCase.petId, petType: myActiveCase.petType },
+      { petId: myActiveCase.petId, petType: myActiveCase.petType, lang },
       {
         onError: (err: unknown) =>
           toast.error(getErrorDetail(err, "Failed to load case history.")),

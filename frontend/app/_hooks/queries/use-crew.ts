@@ -4,6 +4,7 @@ import { crewApi } from "@/app/_lib/api/crew.api";
 type CaseHistoryParams = {
   petId: string;
   petType?: string;
+  lang?: "en" | "ar";
 };
 
 export function useCaseHistoryCrew() {
