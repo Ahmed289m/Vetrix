@@ -435,7 +435,7 @@ export default function VisitsPage() {
             className="bg-emerald hover:bg-emerald/90 text-white font-black px-5 h-11 shadow-xl shadow-emerald/20 flex items-center gap-2 group shrink-0"
           >
             <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
-            {t("record_visit") || "Record Visit"}
+            {t("add_visit") || "Add Visit"}
           </Button>
         )}
       </motion.div>

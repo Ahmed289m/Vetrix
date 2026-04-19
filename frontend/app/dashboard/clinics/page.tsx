@@ -254,13 +254,15 @@ export default function ClinicsPage() {
             {t("manage_clinic_network")}
           </p>
         </div>
-        <Button
-          onClick={() => handleOpenForm()}
-          className="bg-emerald hover:bg-emerald/90 text-white font-black px-6 h-12 shadow-xl shadow-emerald/20 flex items-center gap-2 group transition-all duration-300"
-        >
-          <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-          {t("add_new_clinic")}
-        </Button>
+        {user?.role === "admin" && (
+          <Button
+            onClick={() => handleOpenForm()}
+            className="bg-emerald hover:bg-emerald/90 text-white font-black px-6 h-12 shadow-xl shadow-emerald/20 flex items-center gap-2 group transition-all duration-300"
+          >
+            <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+            {t("add_new_clinic")}
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
