@@ -13,7 +13,7 @@ from app.services.visit_service import VisitService
 async def get_case_history(pet_id: str):
     db = get_database()
 
-    visit_service = VisitService(VisitRepository(db), UserRepository(db))
+    visit_service = VisitService(VisitRepository(db),  UserRepository(db))
     prescription_service = PrescriptionService(
         PrescriptionRepository(db),
         DrugRepository(db),
@@ -44,15 +44,17 @@ async def get_case_history(pet_id: str):
 
                 items = await prescription_item_service.list_by_prescription_item_ids(item_ids)
 
-                drug_ids = [item.get("drug_id") for item in items if item.get("drug_id")]
+                for item in items:
+                    item_drug_ids = item.get("drug_ids") or []
+                    if not item_drug_ids:
+                        continue
 
-                drugs = await drug_service.list_by_drug_ids(drug_ids)
-
-                for drug in drugs:
-                    medications.append({
-                        "drug_name": drug.get("name"),
-                        "dosage": drug.get("dosage"),
-                    })
+                    drugs = await drug_service.list_by_drug_ids(item_drug_ids)
+                    for drug in drugs:
+                        medications.append({
+                            "drug_name": drug.get("name"),
+                            "dosage": item.get("drugDose") or drug.get("dosage"),
+                        })
 
         result.append({
             "visit_notes": visit.get("notes"),
