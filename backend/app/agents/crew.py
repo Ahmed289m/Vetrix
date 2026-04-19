@@ -17,8 +17,19 @@ def case_history_crew(verbose: bool = False) -> Crew:
 def run_case_history_crew(case_history: dict, verbose: bool = False):
 	"""Run the case history crew with a case_history input."""
 	visits_info = []
+	clean_case_history = case_history
 	if isinstance(case_history, dict):
-		visits_info = case_history.get("visits", []) or []
+		clean_case_history = {
+			key: value
+			for key, value in case_history.items()
+			if key != "pet_type"
+		}
+		visits_info = clean_case_history.get("visits", []) or []
 	crew = case_history_crew(verbose=verbose)
-	return crew.kickoff(inputs={"case_history": case_history, "visits_info": visits_info})
+	return crew.kickoff(
+		inputs={
+			"case_history": clean_case_history,
+			"visits_info": visits_info,
+		}
+	)
 

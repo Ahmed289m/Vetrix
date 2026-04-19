@@ -13,14 +13,26 @@ export interface CaseHistoryResult {
 
 interface CaseHistoryPayload {
   pet_id: string;
+  pet_type?: string;
   case_history: unknown;
 }
 
+interface GetVisitsInfoParams {
+  petId: string;
+  petType?: string;
+}
+
 export const crewApi = {
-  getCaseHistoryData: (petId: string) =>
-    api
-      .get<ApiResponse<CaseHistoryPayload>>(`/agent/case-history/${petId}`)
-      .then((r) => r.data),
+  getVisitInfo: ({ petId, petType }: GetVisitsInfoParams) => {
+    const query = petType?.trim()
+      ? `?pet_type=${encodeURIComponent(petType.trim().toLowerCase())}`
+      : "";
+    return api
+      .get<
+        ApiResponse<CaseHistoryPayload>
+      >(`/agent/case-history/${petId}${query}`)
+      .then((r) => r.data);
+  },
 
   summarizeCaseHistory: (caseHistory: unknown) =>
     api
@@ -29,8 +41,8 @@ export const crewApi = {
       })
       .then((r) => r.data),
 
-  getCaseHistory: async (petId: string) => {
-    const historyResponse = await crewApi.getCaseHistoryData(petId);
+  getVisitsInfo: async ({ petId, petType }: GetVisitsInfoParams) => {
+    const historyResponse = await crewApi.getVisitInfo({ petId, petType });
     const caseHistory = historyResponse.data?.case_history ?? { visits: [] };
     return crewApi.summarizeCaseHistory(caseHistory);
   },

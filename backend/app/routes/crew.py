@@ -13,8 +13,9 @@ class CrewCaseHistoryRequest(BaseModel):
 
 
 @router.get("/case-history/{pet_id}")
-async def get_case_history_data(pet_id: str) -> dict:
+async def get_case_history_data(pet_id: str, pet_type: str | None = None) -> dict:
     normalized_pet_id = (pet_id or "").strip()
+    normalized_pet_type = (pet_type or "").strip().lower()
 
     if not normalized_pet_id:
         raise HTTPException(
@@ -23,9 +24,9 @@ async def get_case_history_data(pet_id: str) -> dict:
         )
 
     try:
-        from app.agents.helpers.getVisitsHelper import get_case_history
+        from app.agents.helpers.getVisitsHelper import getVisitsInfo
 
-        case_history = await get_case_history(normalized_pet_id)
+        case_history = await getVisitsInfo(normalized_pet_id, normalized_pet_type)
 
     except Exception as exc:
         logger.exception("Case history fetch failed for pet_id=%s", normalized_pet_id)
@@ -39,6 +40,7 @@ async def get_case_history_data(pet_id: str) -> dict:
         "message": "Case history loaded successfully.",
         "data": {
             "pet_id": normalized_pet_id,
+            "pet_type": normalized_pet_type,
             "case_history": case_history,
         },
     }

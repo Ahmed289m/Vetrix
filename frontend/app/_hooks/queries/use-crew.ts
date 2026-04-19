@@ -1,8 +1,13 @@
 import { useMutation } from "@tanstack/react-query";
 import { crewApi } from "@/app/_lib/api/crew.api";
 
+type CaseHistoryParams = {
+  petId: string;
+  petType?: string;
+};
+
 export function useCaseHistoryCrew() {
   return useMutation({
-    mutationFn: (petId: string) => crewApi.getCaseHistory(petId),
+    mutationFn: (params: CaseHistoryParams) => crewApi.getVisitsInfo(params),
   });
 }

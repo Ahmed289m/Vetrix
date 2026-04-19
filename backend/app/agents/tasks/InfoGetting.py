@@ -14,6 +14,7 @@ case_history:
 Summarize all visits in a medical shape:
 - Present visits in chronological clinical style.
 - For each visit, include date, key note, and medications.
+- Mention medication doses as provided in the input data.
 - Keep wording concise and medically clear.
 - If no visits exist, return: No case history available.
 

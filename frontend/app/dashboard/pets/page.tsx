@@ -264,10 +264,13 @@ export default function PetsPage() {
     setHistoryPet(pet);
     caseHistoryCrew.reset();
     setIsHistoryOpen(true);
-    caseHistoryCrew.mutate(pet.pet_id, {
-      onError: (err: unknown) =>
-        toast.error(getErrorDetail(err, "Failed to load case history.")),
-    });
+    caseHistoryCrew.mutate(
+      { petId: pet.pet_id, petType: pet.type },
+      {
+        onError: (err: unknown) =>
+          toast.error(getErrorDetail(err, "Failed to load case history.")),
+      },
+    );
   };
 
   const getClientDetails = (clientId: string) => {

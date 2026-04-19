@@ -42,6 +42,26 @@ export function CaseHistoryModal({
 }: CaseHistoryModalProps) {
   const { t } = useLang();
   const hasRawJson = rawJson !== undefined && rawJson !== null;
+  const rawSummaryText = React.useMemo(() => {
+    if (!hasRawJson) return "";
+
+    if (typeof rawJson === "object" && rawJson !== null) {
+      const payload = rawJson as {
+        data?: { raw?: unknown };
+        raw?: unknown;
+      };
+
+      if (typeof payload.data?.raw === "string") {
+        return payload.data.raw;
+      }
+      if (typeof payload.raw === "string") {
+        return payload.raw;
+      }
+    }
+
+    return "";
+  }, [hasRawJson, rawJson]);
+
   const formattedJson = React.useMemo(() => {
     if (!hasRawJson) return "";
     if (typeof rawJson === "string") {
@@ -160,12 +180,25 @@ export function CaseHistoryModal({
                 </div>
               ) : hasRawJson ? (
                 <div className="space-y-2">
-                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-violet-400/90 px-1">
-                    JSON result
-                  </p>
-                  <pre className="p-3 rounded-xl border border-violet-500/15 bg-violet-500/5 text-[11px] leading-relaxed whitespace-pre-wrap wrap-break-word overflow-x-auto font-mono text-violet-100/95">
-                    {formattedJson}
-                  </pre>
+                  {rawSummaryText ? (
+                    <>
+                      <p className="text-[10px] font-black uppercase tracking-[0.15em] text-violet-400/90 px-1">
+                        Medical Summary
+                      </p>
+                      <div className="p-3 rounded-xl border border-violet-500/15 bg-violet-500/5 text-xs leading-relaxed whitespace-pre-wrap text-foreground/95">
+                        {rawSummaryText}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-[10px] font-black uppercase tracking-[0.15em] text-violet-400/90 px-1">
+                        JSON result
+                      </p>
+                      <pre className="p-3 rounded-xl border border-violet-500/15 bg-violet-500/5 text-[11px] leading-relaxed whitespace-pre-wrap wrap-break-word overflow-x-auto font-mono text-violet-100/95">
+                        {formattedJson}
+                      </pre>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="p-8 rounded-xl border-2 border-dashed border-violet-500/20 bg-violet-500/5 text-center space-y-3">

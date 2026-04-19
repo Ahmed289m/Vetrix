@@ -10,8 +10,23 @@ from app.services.prescription_service import PrescriptionService
 from app.services.visit_service import VisitService
 
 
-async def get_case_history(pet_id: str):
+def _normalize_pet_type(pet_type: str | None) -> str:
+    normalized = (pet_type or "").strip().lower()
+    return normalized if normalized in {"dog", "cat"} else ""
+
+
+def _resolve_dosage_for_pet_type(raw_dosage, pet_type: str):
+    if raw_dosage is None:
+        return None
+    if isinstance(raw_dosage, dict) and pet_type:
+        if raw_dosage.get(pet_type) is not None:
+            return raw_dosage.get(pet_type)
+    return raw_dosage
+
+
+async def getVisitsInfo(pet_id: str, pet_type: str | None = None):
     db = get_database()
+    normalized_pet_type = _normalize_pet_type(pet_type)
 
     visit_service = VisitService(VisitRepository(db),  UserRepository(db))
     prescription_service = PrescriptionService(
@@ -51,9 +66,13 @@ async def get_case_history(pet_id: str):
 
                     drugs = await drug_service.list_by_drug_ids(item_drug_ids)
                     for drug in drugs:
+                        dosage_source = item.get("drugDose") or drug.get("dosage")
                         medications.append({
                             "drug_name": drug.get("name"),
-                            "dosage": item.get("drugDose") or drug.get("dosage"),
+                            "dosage": _resolve_dosage_for_pet_type(
+                                dosage_source,
+                                normalized_pet_type,
+                            ),
                         })
 
         result.append({

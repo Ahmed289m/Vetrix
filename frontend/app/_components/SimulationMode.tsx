@@ -258,7 +258,6 @@ export default function SimulationMode({ role }: Props) {
   // ── Visit detail modal ───────────────────────────────────────────────────
   const [showVisitDetail, setShowVisitDetail] = useState(false);
   const [detailVisit, setDetailVisit] = useState<Visit | null>(null);
-  const [showPreviousVisits, setShowPreviousVisits] = useState(false);
 
   // ── Case history modal ────────────────────────────────────────────────
   const [showCaseHistory, setShowCaseHistory] = useState(false);
@@ -365,17 +364,6 @@ export default function SimulationMode({ role }: Props) {
     () => simAppointments.filter((a) => a.simStatus === "pending-doctor"),
     [simAppointments],
   );
-
-  const previousCaseVisits = useMemo(() => {
-    if (!myActiveCase) return [];
-    return allVisits
-      .filter(
-        (v) =>
-          v.pet_id === myActiveCase.petId &&
-          v.client_id === myActiveCase.clientId,
-      )
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [allVisits, myActiveCase]);
 
   // ── Drug helpers ─────────────────────────────────────────────────────────
   const getDrugForRx = (rxId: string): Drug | undefined => {
@@ -510,10 +498,13 @@ export default function SimulationMode({ role }: Props) {
 
     caseHistoryCrew.reset();
     setShowCaseHistory(true);
-    caseHistoryCrew.mutate(myActiveCase.petId, {
-      onError: (err: unknown) =>
-        toast.error(getErrorDetail(err, "Failed to load case history.")),
-    });
+    caseHistoryCrew.mutate(
+      { petId: myActiveCase.petId, petType: myActiveCase.petType },
+      {
+        onError: (err: unknown) =>
+          toast.error(getErrorDetail(err, "Failed to load case history.")),
+      },
+    );
   };
 
   // ── Visit modal ───────────────────────────────────────────────────────────
@@ -992,18 +983,6 @@ export default function SimulationMode({ role }: Props) {
                       Fluid Therapy
                     </motion.button>
 
-                    {/* Previous Visits */}
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => setShowPreviousVisits(true)}
-                      disabled={previousCaseVisits.length === 0}
-                      className="flex items-center gap-2 bg-tint/10 hover:bg-tint/15 text-foreground px-4 py-2.5 rounded-xl text-sm font-bold border border-tint/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <ClipboardList className="w-4 h-4" />
-                      Previous Visits ({previousCaseVisits.length})
-                    </motion.button>
-
                     {/* Case History */}
                     <motion.button
                       whileHover={{ scale: 1.02 }}
@@ -1293,81 +1272,6 @@ export default function SimulationMode({ role }: Props) {
                   : t("create_visit")}
             </motion.button>
           </div>
-        </motion.div>
-      </Modal>
-
-      {/* ═══════════════ PREVIOUS VISITS FOR ACTIVE CASE ═══════════════ */}
-      <Modal
-        open={showPreviousVisits}
-        onBgClick={() => setShowPreviousVisits(false)}
-      >
-        <motion.div
-          initial={{ scale: 0.95, opacity: 0, y: 16 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.95, opacity: 0, y: 16 }}
-          className="bg-card border border-border rounded-2xl p-6 max-w-xl w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
-          onClick={(e: React.MouseEvent) => e.stopPropagation()}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold">Previous Visits</h3>
-              <p className="text-xs text-muted-foreground">
-                Ordered from newest to oldest
-              </p>
-            </div>
-            <button
-              onClick={() => setShowPreviousVisits(false)}
-              className="p-2 hover:bg-muted rounded-xl transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {previousCaseVisits.length === 0 ? (
-            <div className="p-5 rounded-xl bg-muted/20 border border-border/40 text-sm text-muted-foreground text-center">
-              No previous visits found for this case.
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {previousCaseVisits.map((visit) => {
-                const doctor = allUsers.find(
-                  (u) => u.user_id === visit.doctor_id,
-                );
-                const doctorName =
-                  visit.doctor_name || doctor?.fullname || "Unknown";
-                return (
-                  <button
-                    key={visit.visit_id}
-                    onClick={() => {
-                      setShowPreviousVisits(false);
-                      setDetailVisit(visit);
-                      setShowVisitDetail(true);
-                    }}
-                    className="w-full text-left p-3 rounded-xl border border-tint/10 bg-tint/5 hover:bg-tint/10 hover:border-cyan/25 transition-colors"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-bold">
-                          {fmtDateTime(visit.date)}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Dr. {doctorName}
-                        </p>
-                      </div>
-                      <span className="text-[10px] font-mono text-muted-foreground">
-                        {visit.visit_id.slice(0, 8)}…
-                      </span>
-                    </div>
-                    {visit.notes && (
-                      <p className="text-xs text-foreground/80 mt-2 line-clamp-2">
-                        {visit.notes}
-                      </p>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
         </motion.div>
       </Modal>
 
