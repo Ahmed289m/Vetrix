@@ -3,7 +3,13 @@ from app.agents.agents.InfoAgent import InfoAgent
 
 InfoGettingTask = Task(
     description="""
-Input is provided in visits_info.
+Input data:
+
+visits_info:
+{visits_info}
+
+case_history:
+{case_history}
 
 Summarize all visits in a medical shape:
 - Present visits in chronological clinical style.
