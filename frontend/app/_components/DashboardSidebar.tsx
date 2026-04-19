@@ -133,8 +133,11 @@ export function DashboardSidebar({ role }: { role: Role }) {
               <Image
                 src="/logo.svg"
                 alt="Vetrix logo"
-                width={80}
-                height={80}
+                width={96}
+                height={96}
+                sizes="(min-width: 640px) 96px, 80px"
+                unoptimized
+                draggable={false}
                 className="w-20 h-20 sm:w-24 sm:h-24 object-contain transform group-hover/sidebar-logo:scale-105 transition-transform duration-500"
               />
             </div>
@@ -172,8 +175,7 @@ export function DashboardSidebar({ role }: { role: Role }) {
             {filtered.map((item, index) => {
               const isActive =
                 pathname === item.href ||
-                (item.href !== "/dashboard" &&
-                  pathname.startsWith(item.href));
+                (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
               return (
                 <SidebarMenuItem key={item.href}>

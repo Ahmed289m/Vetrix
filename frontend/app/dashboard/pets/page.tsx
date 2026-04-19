@@ -329,6 +329,9 @@ export default function PetsPage() {
             placeholder={t("search_patients")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.stopPropagation()}
+            autoComplete="off"
+            spellCheck={false}
             className="pl-10 h-11 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
           />
         </div>

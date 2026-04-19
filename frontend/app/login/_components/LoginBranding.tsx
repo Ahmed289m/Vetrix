@@ -83,8 +83,11 @@ export function LoginBranding() {
         <Image
           src="/logo.svg"
           alt="Vetrix logo"
-          width={52}
-          height={52}
+          width={56}
+          height={56}
+          sizes="(min-width: 1280px) 56px, 48px"
+          unoptimized
+          draggable={false}
           className="w-12 h-12 xl:w-14 xl:h-14 object-contain"
           priority
         />

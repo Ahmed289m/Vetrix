@@ -66,7 +66,10 @@ async def getVisitsInfo(pet_id: str, pet_type: str | None = None):
 
                     drugs = await drug_service.list_by_drug_ids(item_drug_ids)
                     for drug in drugs:
-                        dosage_source = item.get("drugDose") or drug.get("dosage")
+                        if normalized_pet_type:
+                            dosage_source = drug.get("dosage")
+                        else:
+                            dosage_source = item.get("drugDose") or drug.get("dosage")
                         medications.append({
                             "drug_name": drug.get("name"),
                             "dosage": _resolve_dosage_for_pet_type(

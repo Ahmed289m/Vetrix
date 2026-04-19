@@ -4,7 +4,7 @@ import DashboardLayoutClient from "./_components/DashboardLayoutClient";
 
 export const metadata: Metadata = {
   title: {
-    default: "Dashboard | Vetrix",
+    default: "Dashboard",
     template: "%s | Vetrix",
   },
   description:

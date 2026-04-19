@@ -26,13 +26,16 @@ export function LoginForm() {
       const errors: { email?: string; password?: string } = {};
       if (!values.email.trim()) {
         errors.email = "Email is required";
-      } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(values.email)) {
+      } else if (
+        !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(values.email)
+      ) {
         errors.email = "Invalid email address";
       }
       if (!values.password.trim()) errors.password = "Password is required";
       return errors;
     },
-    onSubmit: (values) => login({ email: values.email, password: values.password }),
+    onSubmit: (values) =>
+      login({ email: values.email, password: values.password }),
   });
 
   const fieldHasError = (name: "email" | "password") =>
@@ -51,10 +54,13 @@ export function LoginForm() {
           <div className="relative w-10 h-10 rounded-2xl bg-tint/5 border border-tint/10 flex items-center justify-center overflow-hidden shadow-lg shadow-emerald/10">
             <div className="absolute -inset-4 bg-radial from-emerald/20 to-transparent" />
             <Image
-              src="/logo.png"
+              src="/logo.svg"
               alt="Vetrix"
-              width={36}
-              height={36}
+              width={32}
+              height={32}
+              sizes="32px"
+              unoptimized
+              draggable={false}
               className="relative w-8 h-8 object-contain"
               priority
             />
@@ -83,7 +89,12 @@ export function LoginForm() {
               <motion.div
                 initial={{ scale: 0.85, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.1, duration: 0.4, type: "spring", damping: 20 }}
+                transition={{
+                  delay: 0.1,
+                  duration: 0.4,
+                  type: "spring",
+                  damping: 20,
+                }}
                 className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-emerald/20 to-cyan/10 border border-emerald/20 flex items-center justify-center mb-4 shadow-lg shadow-emerald/10"
               >
                 <div className="w-7 h-7 rounded-full gradient-emerald-cyan opacity-90" />
@@ -137,7 +148,10 @@ export function LoginForm() {
                     name="email"
                     value={formik.values.email}
                     onChange={formik.handleChange}
-                    onBlur={(e) => { formik.handleBlur(e); setFocusedField(null); }}
+                    onBlur={(e) => {
+                      formik.handleBlur(e);
+                      setFocusedField(null);
+                    }}
                     onFocus={() => setFocusedField("email")}
                     placeholder="doctor@clinic.com"
                     className={`w-full pl-10 pr-4 py-3 rounded-xl bg-tint/5 border text-sm outline-none transition-all duration-200 ${
@@ -184,7 +198,10 @@ export function LoginForm() {
                     name="password"
                     value={formik.values.password}
                     onChange={formik.handleChange}
-                    onBlur={(e) => { formik.handleBlur(e); setFocusedField(null); }}
+                    onBlur={(e) => {
+                      formik.handleBlur(e);
+                      setFocusedField(null);
+                    }}
                     onFocus={() => setFocusedField("password")}
                     placeholder="••••••••"
                     className={`w-full pl-10 pr-12 py-3 rounded-xl bg-tint/5 border text-sm outline-none transition-all duration-200 ${

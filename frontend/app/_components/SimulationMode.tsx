@@ -1588,7 +1588,10 @@ export default function SimulationMode({ role }: Props) {
                 type="text"
                 value={drugSearch}
                 onChange={(e) => setDrugSearch(e.target.value)}
+                onKeyDown={(e) => e.stopPropagation()}
                 placeholder="Search drugs by name or class…"
+                autoComplete="off"
+                spellCheck={false}
                 className="w-full pl-9 pr-3 py-2 rounded-xl bg-muted/30 border border-border text-xs placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald/40"
               />
               {drugSearch && (
