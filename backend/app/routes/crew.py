@@ -1,5 +1,4 @@
 import logging
-import asyncio
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
@@ -14,7 +13,7 @@ class CrewCaseHistoryRequest(BaseModel):
 
 
 @router.get("/case-history/{pet_id}")
-def get_case_history_data(pet_id: str) -> dict:
+async def get_case_history_data(pet_id: str) -> dict:
     normalized_pet_id = (pet_id or "").strip()
 
     if not normalized_pet_id:
@@ -26,7 +25,7 @@ def get_case_history_data(pet_id: str) -> dict:
     try:
         from app.agents.helpers.getVisitsHelper import get_case_history
 
-        case_history = asyncio.run(get_case_history(normalized_pet_id))
+        case_history = await get_case_history(normalized_pet_id)
 
     except Exception as exc:
         logger.exception("Case history fetch failed for pet_id=%s", normalized_pet_id)
