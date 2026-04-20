@@ -33,7 +33,6 @@ import {
   SelectValue,
 } from "@/app/_components/ui/select";
 import { motion, AnimatePresence } from "@/app/_components/fast-motion";
-import { toast } from "sonner";
 import { fadeUp, stagger } from "@/app/_lib/utils/shared-animations";
 import { useAuth } from "@/app/_hooks/useAuth";
 import { useLang } from "@/app/_hooks/useLanguage";
@@ -139,17 +138,6 @@ export default function OwnersPage() {
       }
     });
 
-    if (successCount > 0) {
-      toast.success(
-        `Deleted ${successCount} client${successCount > 1 ? "s" : ""}.`,
-      );
-    }
-    if (failedIds.length > 0) {
-      toast.error(
-        `Failed to delete ${failedIds.length} client${failedIds.length > 1 ? "s" : ""}.`,
-      );
-    }
-
     setSelectedOwnerIds(failedIds);
   };
 
@@ -162,7 +150,6 @@ export default function OwnersPage() {
     onSubmit: (values, { setSubmitting, resetForm }) => {
       if (isAdminReadOnly) {
         setSubmitting(false);
-        toast.error("Admin can only view clients.");
         return;
       }
 
@@ -172,11 +159,9 @@ export default function OwnersPage() {
           setShowCreateOwner(false);
           setSubmitting(false);
           resetForm();
-          toast.success(t("client_created_success"));
         },
         onError: () => {
           setSubmitting(false);
-          toast.error(t("client_create_failed"));
         },
       });
     },
@@ -192,7 +177,6 @@ export default function OwnersPage() {
     onSubmit: (values, { setSubmitting, resetForm }) => {
       if (isAdminReadOnly) {
         setSubmitting(false);
-        toast.error("Admin can only view clients.");
         return;
       }
 
@@ -201,11 +185,9 @@ export default function OwnersPage() {
           setShowAddPet(null);
           setSubmitting(false);
           resetForm();
-          toast.success(t("pet_added_success"));
         },
         onError: () => {
           setSubmitting(false);
-          toast.error(t("pet_add_failed"));
         },
       });
     },
@@ -213,7 +195,6 @@ export default function OwnersPage() {
 
   const handleOpenAddPet = (ownerId: string) => {
     if (isAdminReadOnly) {
-      toast.error("Admin can only view clients.");
       return;
     }
 
@@ -224,12 +205,10 @@ export default function OwnersPage() {
 
   const handleDeleteOwner = (ownerId: string) => {
     if (isAdminReadOnly) {
-      toast.error("Admin can only view clients.");
       return;
     }
 
     if (ownerId === user?.userId) {
-      toast.error(t("cannot_deactivate_self"));
       return;
     }
 
@@ -237,9 +216,7 @@ export default function OwnersPage() {
       deleteUser.mutate(ownerId, {
         onSuccess: () => {
           setSelectedOwnerIds((prev) => prev.filter((id) => id !== ownerId));
-          toast.success(t("client_deactivated_success"));
         },
-        onError: () => toast.error(t("client_deactivate_failed")),
       });
     }
   };
@@ -257,9 +234,7 @@ export default function OwnersPage() {
         setResettedClient(response.data);
         setShowResettedPassword(false);
         setCopiedResetted(false);
-        toast.success(t("password_loaded_success"));
       },
-      onError: () => toast.error(t("password_load_failed")),
     });
   };
 

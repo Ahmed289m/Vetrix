@@ -54,7 +54,6 @@ import { CaseHistoryModal } from "@/app/dashboard/_components/CaseHistoryModal";
 import { useUsers } from "@/app/_hooks/queries/use-users";
 import { useAuth } from "@/app/_hooks/useAuth";
 import { useLang } from "@/app/_hooks/useLanguage";
-import { toast } from "sonner";
 import type {
   Pet,
   PetType,
@@ -242,17 +241,6 @@ export default function PetsPage() {
       }
     });
 
-    if (successCount > 0) {
-      toast.success(
-        `Deleted ${successCount} patient${successCount > 1 ? "s" : ""}.`,
-      );
-    }
-    if (failedIds.length > 0) {
-      toast.error(
-        `Failed to delete ${failedIds.length} patient${failedIds.length > 1 ? "s" : ""}.`,
-      );
-    }
-
     setSelectedPetIds(failedIds);
   };
 
@@ -264,13 +252,7 @@ export default function PetsPage() {
     setHistoryPet(pet);
     caseHistoryCrew.reset();
     setIsHistoryOpen(true);
-    caseHistoryCrew.mutate(
-      { petId: pet.pet_id, petType: pet.type, lang },
-      {
-        onError: (err: unknown) =>
-          toast.error(getErrorDetail(err, "Failed to load case history.")),
-      },
-    );
+    caseHistoryCrew.mutate({ petId: pet.pet_id, petType: pet.type, lang });
   };
 
   const getClientDetails = (clientId: string) => {

@@ -16,7 +16,6 @@ import {
   X,
 } from "lucide-react";
 import { useFormik } from "formik";
-import { toast } from "sonner";
 import { motion, AnimatePresence } from "@/app/_components/fast-motion";
 import { Button } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
@@ -260,21 +259,11 @@ export default function PrescriptionsPage() {
         },
         {
           onSuccess: () => {
-            toast.success(
-              t("prescription_created_success") ||
-                "Prescription issued successfully.",
-            );
             setIsFormOpen(false);
             resetForm();
             setSubmitting(false);
           },
-          onError: (err: unknown) => {
-            const msg =
-              (err as { response?: { data?: { detail?: string } } })?.response
-                ?.data?.detail ||
-              t("prescription_create_failed") ||
-              "Failed to issue prescription.";
-            toast.error(msg);
+          onError: () => {
             setSubmitting(false);
           },
         },
@@ -303,10 +292,7 @@ export default function PrescriptionsPage() {
           setSelectedPrescriptionIds((prev) =>
             prev.filter((rxId) => rxId !== id),
           );
-          toast.success(t("prescription_revoked") || "Prescription revoked.");
         },
-        onError: () =>
-          toast.error(t("prescription_revoke_failed") || "Failed to revoke."),
       });
     }
   };
@@ -350,17 +336,6 @@ export default function PrescriptionsPage() {
         failedIds.push(ids[index]);
       }
     });
-
-    if (successCount > 0) {
-      toast.success(
-        `Revoked ${successCount} prescription${successCount > 1 ? "s" : ""}.`,
-      );
-    }
-    if (failedIds.length > 0) {
-      toast.error(
-        `Failed to revoke ${failedIds.length} prescription${failedIds.length > 1 ? "s" : ""}.`,
-      );
-    }
 
     setSelectedPrescriptionIds(failedIds);
   };

@@ -21,7 +21,6 @@ import {
   FileJson,
 } from "lucide-react";
 import { useFormik } from "formik";
-import { toast } from "sonner";
 
 import { useAuth } from "@/app/_hooks/useAuth";
 import { useLang } from "@/app/_hooks/useLanguage";
@@ -1352,17 +1351,6 @@ export default function DrugsPage() {
         failedIds.push(ids[index]);
       }
     });
-
-    if (successCount > 0) {
-      toast.success(
-        `Deleted ${successCount} drug${successCount > 1 ? "s" : ""}.`,
-      );
-    }
-    if (failedIds.length > 0) {
-      toast.error(
-        `Failed to delete ${failedIds.length} drug${failedIds.length > 1 ? "s" : ""}.`,
-      );
-    }
 
     setSelectedDrugIds(failedIds);
   };

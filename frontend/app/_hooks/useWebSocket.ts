@@ -77,7 +77,15 @@ export function useWebSocket(
 
       ws.onmessage = (evt) => {
         try {
-          const msg = JSON.parse(evt.data) as { event: string; data?: unknown };
+          const msg = JSON.parse(evt.data) as {
+            event?: unknown;
+            data?: unknown;
+            type?: unknown;
+          };
+
+          // Ignore keep-alive/system payloads that do not carry a domain event.
+          if (typeof msg.event !== "string") return;
+
           if (!shouldHandleRealtimeEvent(msg.event, role)) return;
 
           onEvent?.(msg.event, msg.data);

@@ -14,7 +14,6 @@ import {
   User,
 } from "lucide-react";
 import { useFormik } from "formik";
-import { toast } from "sonner";
 import { Button } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
 import { Checkbox } from "@/app/_components/ui/checkbox";
@@ -296,16 +295,11 @@ export default function AppointmentsPage() {
 
       createAppointment.mutate(payload, {
         onSuccess: () => {
-          toast.success(t("appointment_booked_success"));
           setIsFormOpen(false);
           resetForm();
           setSubmitting(false);
         },
         onError: (err: unknown) => {
-          const msg =
-            (err as { response?: { data?: { detail?: string } } })?.response
-              ?.data?.detail || t("appointment_book_failed");
-          toast.error(msg);
           setSubmitting(false);
         },
       });
@@ -324,9 +318,7 @@ export default function AppointmentsPage() {
           setSelectedAppointmentIds((prev) =>
             prev.filter((item) => item !== id),
           );
-          toast.success(t("appointment_cancelled"));
         },
-        onError: () => toast.error(t("appointment_cancel_failed")),
       });
     }
   };
@@ -402,28 +394,14 @@ export default function AppointmentsPage() {
       }
     });
 
-    if (successCount > 0) {
-      toast.success(
-        `Cancelled ${successCount} appointment${successCount > 1 ? "s" : ""}.`,
-      );
-    }
-    if (failedIds.length > 0) {
-      toast.error(
-        `Failed to cancel ${failedIds.length} appointment${failedIds.length > 1 ? "s" : ""}.`,
-      );
-    }
-
     setSelectedAppointmentIds(failedIds);
   };
 
   const handleCheckIn = (appointmentId: string) => {
-    updateAppointment.mutate(
-      { id: appointmentId, data: { status: "confirmed" } },
-      {
-        onSuccess: () => toast.success(t("appointment_confirmed")),
-        onError: () => toast.error(t("appointment_confirm_failed")),
-      },
-    );
+    updateAppointment.mutate({
+      id: appointmentId,
+      data: { status: "confirmed" },
+    });
   };
 
   // Pets available in the booking form:

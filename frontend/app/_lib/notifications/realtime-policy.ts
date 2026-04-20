@@ -18,10 +18,10 @@ function startsWithAny(value: string, prefixes: readonly string[]): boolean {
  * - admin/owner/doctor/staff: full realtime sync
  */
 export function shouldHandleRealtimeEvent(
-  event: string,
+  event: string | null | undefined,
   role: UserRole | null | undefined,
 ): boolean {
-  if (!role) return false;
+  if (!role || typeof event !== "string") return false;
 
   if (role === "client") {
     return startsWithAny(event, CLIENT_EVENT_PREFIXES);

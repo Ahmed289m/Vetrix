@@ -58,9 +58,9 @@ function extractEntityId(data?: unknown): string | null {
 }
 
 function buildNotificationMessage(event: string, data?: unknown): string {
-  const [entity = "update", action = "updated"] = event.split(":");
+  const [entity = "update", action = "updated"] = (event || "").split(":");
   const entityLabel = singularize(toTitleWords(entity));
-  const actionLabel = action.toLowerCase();
+  const actionLabel = (action || "updated").toLowerCase();
   const entityId = extractEntityId(data);
 
   if (entityId) {

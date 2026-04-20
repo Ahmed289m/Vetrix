@@ -73,8 +73,6 @@ export const metadata: Metadata = {
 };
 
 import { Providers } from "./Providers";
-import { Toaster } from "@/app/_components/ui/toaster";
-import { Toaster as Sonner } from "@/app/_components/ui/sonner";
 
 export default function RootLayout({
   children,
@@ -88,11 +86,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
-        <Providers>
-          {children}
-          <Toaster />
-          <Sonner position="top-right" richColors />
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

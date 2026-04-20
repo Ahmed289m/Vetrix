@@ -11,7 +11,6 @@ import {
   Building2,
 } from "lucide-react";
 import { useFormik } from "formik";
-import { toast } from "sonner";
 import { Button } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
 import { Checkbox } from "@/app/_components/ui/checkbox";
@@ -222,17 +221,6 @@ export default function ClinicsPage() {
         failedIds.push(ids[index]);
       }
     });
-
-    if (successCount > 0) {
-      toast.success(
-        `Deleted ${successCount} clinic${successCount > 1 ? "s" : ""}.`,
-      );
-    }
-    if (failedIds.length > 0) {
-      toast.error(
-        `Failed to delete ${failedIds.length} clinic${failedIds.length > 1 ? "s" : ""}.`,
-      );
-    }
 
     setSelectedClinicIds(failedIds);
   };

@@ -16,7 +16,6 @@ import {
   Clock,
   FileText,
 } from "lucide-react";
-import { toast } from "sonner";
 import { useFormik } from "formik";
 import { useLang } from "@/app/_hooks/useLanguage";
 import { useAuth } from "@/app/_hooks/useAuth";
@@ -281,20 +280,11 @@ export default function VisitsPage() {
       };
       createVisit.mutate(payload, {
         onSuccess: () => {
-          toast.success(
-            t("visit_created_success") || "Visit recorded successfully.",
-          );
           setIsFormOpen(false);
           resetForm();
           setSubmitting(false);
         },
-        onError: (err: unknown) => {
-          const msg =
-            (err as { response?: { data?: { detail?: string } } })?.response
-              ?.data?.detail ||
-            t("visit_create_failed") ||
-            "Failed to record visit.";
-          toast.error(msg);
+        onError: () => {
           setSubmitting(false);
         },
       });
@@ -320,12 +310,8 @@ export default function VisitsPage() {
     try {
       await deleteVisitCascade(visit);
       setSelectedVisitIds((prev) => prev.filter((id) => id !== visit.visit_id));
-      toast.success("Visit deleted.");
-    } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail || "Failed to delete visit.";
-      toast.error(msg);
+    } catch {
+      // Deletion errors are handled by mutation/query state.
     }
   };
 
@@ -373,17 +359,6 @@ export default function VisitsPage() {
         failedIds.push(visitsToDelete[index].visit_id);
       }
     });
-
-    if (successCount > 0) {
-      toast.success(
-        `Deleted ${successCount} visit${successCount > 1 ? "s" : ""}.`,
-      );
-    }
-    if (failedIds.length > 0) {
-      toast.error(
-        `Failed to delete ${failedIds.length} visit${failedIds.length > 1 ? "s" : ""}.`,
-      );
-    }
 
     setSelectedVisitIds(failedIds);
   };

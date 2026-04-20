@@ -47,7 +47,6 @@ import {
   SelectValue,
 } from "@/app/_components/ui/select";
 import { cn } from "@/app/_lib/utils";
-import { toast } from "sonner";
 import { useLang } from "@/app/_hooks/useLanguage";
 
 import {
@@ -164,11 +163,9 @@ export default function UsersPage() {
               setIsFormOpen(false);
               setSubmitting(false);
               setCreatedUser(null);
-              toast.success(t("user_updated_success"));
             },
             onError: () => {
               setSubmitting(false);
-              toast.error(t("user_update_failed"));
             },
           },
         );
@@ -179,11 +176,9 @@ export default function UsersPage() {
             setCreatedUser(data);
             setIsFormOpen(false);
             setSubmitting(false);
-            toast.success(t("user_created_success"));
           },
           onError: () => {
             setSubmitting(false);
-            toast.error(t("user_create_failed"));
           },
         });
       }
@@ -217,7 +212,6 @@ export default function UsersPage() {
 
   const handleDelete = (id: string) => {
     if (id === authUser?.userId) {
-      toast.error(t("cannot_deactivate_self"));
       return;
     }
 
@@ -225,9 +219,7 @@ export default function UsersPage() {
       deleteUser.mutate(id, {
         onSuccess: () => {
           setSelectedUserIds((prev) => prev.filter((userId) => userId !== id));
-          toast.success(t("user_deactivated_success"));
         },
-        onError: () => toast.error(t("user_deactivate_failed")),
       });
     }
   };
@@ -268,17 +260,6 @@ export default function UsersPage() {
       }
     });
 
-    if (successCount > 0) {
-      toast.success(
-        `Deleted ${successCount} user${successCount > 1 ? "s" : ""}.`,
-      );
-    }
-    if (failedIds.length > 0) {
-      toast.error(
-        `Failed to delete ${failedIds.length} user${failedIds.length > 1 ? "s" : ""}.`,
-      );
-    }
-
     setSelectedUserIds(failedIds);
   };
 
@@ -288,9 +269,7 @@ export default function UsersPage() {
         setResettedUser(response.data);
         setShowPassword(false);
         setCopied(false);
-        toast.success(t("password_loaded_success"));
       },
-      onError: () => toast.error(t("password_load_failed")),
     });
   };
 
