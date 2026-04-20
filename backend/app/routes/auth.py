@@ -5,7 +5,6 @@ from app.controllers.auth_controller import AuthController
 from app.core.permission_checker import TokenData, get_current_user
 from app.routes.dependencies import get_auth_controller
 from app.schemas.auth import LoginRequest, RefreshRequest
-from app.utils.ws import broadcast
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -40,21 +39,14 @@ async def refresh_token(
 
 @router.post("/logout")
 async def logout(
-    current_user: TokenData = Depends(get_current_user),
+    _current_user: TokenData = Depends(get_current_user),
 ) -> dict:
     """
     Logout endpoint - clears user session.
     
     - Requires valid JWT authentication
-    - Broadcasts logout event to WebSocket for real-time notification
     - Client should clear tokens and redirect to login
     """
-    # Broadcast logout event to notify other clients
-    await broadcast("auth:logout", {
-        "user_id": current_user.user_id,
-        "email": current_user.email,
-    })
-    
     return {
         "status": status.HTTP_200_OK,
         "success": True,

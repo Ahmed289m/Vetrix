@@ -23,7 +23,6 @@ import { useAuth } from "@/app/_hooks/useAuth";
 import { useAppointments } from "@/app/_hooks/queries/use-appointments";
 import { usePets } from "@/app/_hooks/queries/use-pets";
 import { usePrescriptions } from "@/app/_hooks/queries/use-prescriptions";
-import { useWebSocket } from "@/app/_hooks/useWebSocket";
 import type { Appointment, Pet } from "@/app/_lib/types/models";
 import { cn } from "@/app/_lib/utils";
 
@@ -152,9 +151,6 @@ export function ClientDashboard() {
       }
     });
   }, []);
-
-  // ── Live sync – WebSocket invalidates React Query caches on every backend event
-  useWebSocket();
 
   // ── Data (NO useUsers – clients get 403 on /users) ──────────────────────
   const { data: appointmentsData } = useAppointments();

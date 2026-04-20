@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { shouldHandleRealtimeEvent } from "@/app/_lib/notifications/realtime-policy";
+import type { UserRole } from "@/app/_lib/types/models";
 
 const WS_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/^http/, "ws") ??
@@ -46,7 +48,7 @@ const EVENT_TO_QUERY_KEYS: Record<string, string[]> = {
  *
  * Reconnects automatically with exponential back-off.
  */
-export function useWebSocket() {
+export function useWebSocket(role: UserRole | null = null) {
   const queryClient = useQueryClient();
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -68,6 +70,8 @@ export function useWebSocket() {
       ws.onmessage = (evt) => {
         try {
           const msg = JSON.parse(evt.data) as { event: string; data?: unknown };
+          if (!shouldHandleRealtimeEvent(msg.event, role)) return;
+
           const keys = EVENT_TO_QUERY_KEYS[msg.event];
           if (keys) {
             keys.forEach((key) =>
@@ -92,7 +96,7 @@ export function useWebSocket() {
         ws.close();
       };
     },
-    [queryClient],
+    [queryClient, role],
   );
 
   useEffect(() => {

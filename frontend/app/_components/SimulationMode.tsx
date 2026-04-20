@@ -54,7 +54,6 @@ import {
 } from "@/app/_hooks/queries/use-prescriptions";
 import { usePrescriptionItems } from "@/app/_hooks/queries/use-prescription-items";
 import { useDrugs } from "@/app/_hooks/queries/use-drugs";
-import { useWebSocket } from "@/app/_hooks/useWebSocket";
 import { useAuth } from "@/app/_hooks/useAuth";
 import { CaseHistoryModal } from "@/app/dashboard/_components/CaseHistoryModal";
 import { FluidTherapyModal } from "@/app/dashboard/_components/FluidTherapyModal";
@@ -280,7 +279,6 @@ export default function SimulationMode({ role }: Props) {
   const { t, lang } = useLang();
   const { user } = useAuth();
   const isClientRole = user?.role === "client";
-  useWebSocket(); // live sync: invalidates React Query caches on backend broadcast
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const { data: apptData } = useAppointments();

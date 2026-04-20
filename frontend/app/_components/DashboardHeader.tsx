@@ -236,10 +236,8 @@ export function DashboardHeader({ role }: DashboardHeaderProps) {
                   {/* Notifications */}
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <button className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-tint/[0.05] border border-tint/[0.08] flex items-center justify-center text-muted-foreground/60 hover:text-emerald hover:bg-emerald/[0.06] hover:border-emerald/20 transition-all duration-300 active:scale-95">
+                      <button className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-tint/[0.05] border border-tint/[0.08] flex items-center justify-center text-muted-foreground/60 hover:text-emerald hover:bg-emerald/[0.06] hover:border-emerald/20 transition-all duration-300 active:scale-95">
                         <Bell className="w-4 h-4" />
-                        {/* Notification dot */}
-                        <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald shadow-[0_0_6px_rgba(16,185,129,0.6)] animate-pulse" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent className="bg-popover border-border/10 text-xs font-bold px-3 py-1.5 rounded-lg shadow-xl">
