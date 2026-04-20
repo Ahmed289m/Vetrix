@@ -40,7 +40,16 @@ function stripMotionProps(props: AnyProps) {
 export const motion: Record<string, React.ComponentType<AnyProps>> = new Proxy(
   {},
   {
+    // Cache per-tag components so React keeps stable element identity.
+    // Without this, each render creates a new component type and inputs lose focus.
+    _cache: new Map<string, React.ComponentType<AnyProps>>(),
     get(_target, tag: string) {
+      const cache = (
+        this as { _cache: Map<string, React.ComponentType<AnyProps>> }
+      )._cache;
+      const cached = cache.get(tag);
+      if (cached) return cached;
+
       const Comp = React.forwardRef<HTMLElement, AnyProps>(
         ({ ...props }, ref) => {
           const cleaned = stripMotionProps(props);
@@ -48,6 +57,7 @@ export const motion: Record<string, React.ComponentType<AnyProps>> = new Proxy(
         },
       );
       Comp.displayName = `FastMotion(${tag})`;
+      cache.set(tag, Comp);
       return Comp;
     },
   },
