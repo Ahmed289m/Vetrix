@@ -26,8 +26,8 @@ async def create_user(
     - clinic_id (optional): Clinic ID. Defaults to current user's clinic
     
     **Auto-generated fields:**
-    - email: Generated as name.role@clinic.vetrix.local
-    - password: Generated as name@clinic#{user_id}
+    - email: Generated as first.second.role@clinic.vetrix
+    - password: Generated as a mix of name + clinic + random number + special char (15 chars)
     
     **Response includes:**
     - email: Generated email for this user
