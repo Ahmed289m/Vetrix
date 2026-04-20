@@ -1,14 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import {
-  Sun,
-  Moon,
-  Languages,
-  Bell,
-  Sparkles,
-  Clock,
-} from "lucide-react";
+import { Sun, Moon, Languages, Bell, Sparkles, Clock } from "lucide-react";
 import { SidebarTrigger } from "@/app/_components/ui/sidebar";
 import { useLang } from "@/app/_hooks/useLanguage";
 import {
@@ -62,7 +55,6 @@ function getGreetingEmoji(): string {
   return "🌙";
 }
 
-
 function useLiveClock() {
   const [now, setNow] = useState(new Date());
   useEffect(() => {
@@ -71,7 +63,6 @@ function useLiveClock() {
   }, []);
   return now;
 }
-
 
 /* ──────────────────────────────────────────────────────────────────────
  * Component
@@ -84,13 +75,11 @@ export function DashboardHeader({ role }: DashboardHeaderProps) {
   const isMobile = useIsMobile();
   const now = useLiveClock();
 
-  const displayName =
-    user?.fullname || user?.email?.split("@")[0] || t("user");
+  const displayName = user?.fullname || user?.email?.split("@")[0] || t("user");
   const displayClinic = user?.clinicName || t("vet_clinic") || t("clinic");
   const greeting = useMemo(() => getGreeting(lang), [lang, now]);
   const emoji = useMemo(() => getGreetingEmoji(), [now]);
   const timeOfDay = useMemo(() => getGreetingIcon(), [now]);
-
 
   const displayRole =
     role === "doctor"
@@ -160,20 +149,26 @@ export function DashboardHeader({ role }: DashboardHeaderProps) {
   return (
     <header className="sticky top-0 z-20 border-b border-border/15 bg-background/60 backdrop-blur-2xl">
       {/* Decorative top accent line — dynamic based on time of day */}
-      <div className={`absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r ${accentGradient}`} />
+      <div
+        className={`absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r ${accentGradient}`}
+      />
 
       <div className="px-3 sm:px-5 lg:px-7 py-2.5 sm:py-3">
         <div className="relative overflow-hidden rounded-2xl border border-tint/[0.08] bg-gradient-to-br from-emerald/[0.05] via-background/80 to-cyan/[0.04] shadow-[0_8px_32px_-12px_rgba(16,185,129,0.25),inset_0_1px_0_rgba(255,255,255,0.05)]">
           {/* Animated background orbs — colors shift with time of day */}
           <div className="pointer-events-none absolute inset-0">
-            <div className={`absolute -top-8 -left-8 w-32 h-32 ${accentOrb1} rounded-full blur-3xl animate-pulse`} />
-            <div className={`absolute -bottom-8 -right-8 w-24 h-24 ${accentOrb2} rounded-full blur-3xl animate-pulse`} style={{ animationDelay: "1.5s" }} />
+            <div
+              className={`absolute -top-8 -left-8 w-32 h-32 ${accentOrb1} rounded-full blur-3xl animate-pulse`}
+            />
+            <div
+              className={`absolute -bottom-8 -right-8 w-24 h-24 ${accentOrb2} rounded-full blur-3xl animate-pulse`}
+              style={{ animationDelay: "1.5s" }}
+            />
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-16 bg-emerald/[0.03] rounded-full blur-3xl" />
           </div>
 
           <div className="relative px-3 sm:px-5 lg:px-6 py-2.5 sm:py-3">
             <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-
               {/* ── Left: Sidebar Trigger (mobile/tablet) ── */}
               <div className="lg:hidden shrink-0">
                 <SidebarTrigger className="w-10 h-10 rounded-xl bg-tint/[0.06] border border-tint/[0.08] flex items-center justify-center text-foreground hover:bg-emerald/[0.08] hover:border-emerald/20 hover:text-emerald transition-all duration-300 active:scale-95" />
