@@ -10,8 +10,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/app/_components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/app/_components/ui/popover";
 import { useTheme } from "@/app/_hooks/useTheme";
 import { useAuth } from "@/app/_hooks/useAuth";
+import { useNotifications } from "@/app/_components/WebSocketProvider";
 import { motion, AnimatePresence } from "framer-motion";
 import { useIsMobile } from "@/app/_hooks/use-mobile";
 
@@ -72,7 +78,9 @@ export function DashboardHeader({ role }: DashboardHeaderProps) {
   const { isDark, toggle } = useTheme();
   const { t, lang, setLang } = useLang();
   const { user } = useAuth();
+  const { notifications, unreadCount, markAllAsRead } = useNotifications();
   const isMobile = useIsMobile();
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const now = useLiveClock();
 
   const displayName = user?.fullname || user?.email?.split("@")[0] || t("user");
@@ -102,6 +110,16 @@ export function DashboardHeader({ role }: DashboardHeaderProps) {
   const toggleLang = useCallback(
     () => setLang(lang === "ar" ? "en" : "ar"),
     [lang, setLang],
+  );
+
+  const handleNotificationsOpenChange = useCallback(
+    (open: boolean) => {
+      setIsNotificationsOpen(open);
+      if (open) {
+        markAllAsRead();
+      }
+    },
+    [markAllAsRead],
   );
 
   const timeStr = now.toLocaleTimeString(lang === "ar" ? "ar-EG" : "en-US", {
@@ -229,16 +247,83 @@ export function DashboardHeader({ role }: DashboardHeaderProps) {
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <TooltipProvider delayDuration={300}>
                   {/* Notifications */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-tint/[0.05] border border-tint/[0.08] flex items-center justify-center text-muted-foreground/60 hover:text-emerald hover:bg-emerald/[0.06] hover:border-emerald/20 transition-all duration-300 active:scale-95">
+                  <Popover
+                    open={isNotificationsOpen}
+                    onOpenChange={handleNotificationsOpenChange}
+                  >
+                    <PopoverTrigger asChild>
+                      <button
+                        aria-label={t("notifications")}
+                        className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-tint/[0.05] border border-tint/[0.08] flex items-center justify-center text-muted-foreground/60 hover:text-emerald hover:bg-emerald/[0.06] hover:border-emerald/20 transition-all duration-300 active:scale-95"
+                      >
                         <Bell className="w-4 h-4" />
+                        {unreadCount > 0 && (
+                          <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-emerald shadow-[0_0_6px_rgba(16,185,129,0.55)]" />
+                        )}
                       </button>
-                    </TooltipTrigger>
-                    <TooltipContent className="bg-popover border-border/10 text-xs font-bold px-3 py-1.5 rounded-lg shadow-xl">
-                      {t("notifications")}
-                    </TooltipContent>
-                  </Tooltip>
+                    </PopoverTrigger>
+
+                    <PopoverContent
+                      align="end"
+                      sideOffset={8}
+                      className="w-[300px] sm:w-[340px] p-0 border-border/20 bg-popover/95 backdrop-blur-xl shadow-2xl"
+                    >
+                      <div className="px-4 py-3 border-b border-border/20 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-bold text-foreground">
+                            {t("notifications")}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {lang === "ar"
+                              ? "تحديثات فورية"
+                              : "Realtime updates"}
+                          </p>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-emerald/10 text-emerald border border-emerald/20">
+                          {unreadCount}
+                        </span>
+                      </div>
+
+                      <div className="max-h-80 overflow-y-auto">
+                        {notifications.length === 0 ? (
+                          <div className="px-4 py-8 text-center">
+                            <p className="text-sm font-semibold text-foreground/80">
+                              {lang === "ar"
+                                ? "لا توجد تنبيهات بعد"
+                                : "No notifications yet"}
+                            </p>
+                          </div>
+                        ) : (
+                          <ul className="divide-y divide-border/15">
+                            {notifications.map((item) => (
+                              <li
+                                key={item.id}
+                                className="px-4 py-3 flex items-start gap-2.5"
+                              >
+                                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-emerald shrink-0" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm text-foreground leading-snug break-words">
+                                    {item.message}
+                                  </p>
+                                  <p className="mt-1 text-[11px] text-muted-foreground/70">
+                                    {new Date(
+                                      item.createdAt,
+                                    ).toLocaleTimeString(
+                                      lang === "ar" ? "ar-EG" : "en-US",
+                                      {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      },
+                                    )}
+                                  </p>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
 
                   {/* Theme toggle */}
                   <Tooltip>
