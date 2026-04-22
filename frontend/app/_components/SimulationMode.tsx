@@ -1039,7 +1039,7 @@ export default function SimulationMode({ role }: Props) {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e: React.MouseEvent) => e.stopPropagation()}
                 className="relative w-full max-w-2xl h-[80vh] glass-card border-glow flex flex-col overflow-hidden"
               >
                 {/* Modal header */}
