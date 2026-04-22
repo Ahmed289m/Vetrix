@@ -32,8 +32,10 @@ import {
   BookOpen,
   Droplets,
   Scale,
+  Bot,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ChatAssistant } from "@/app/_components/ChatAssistant";
 import {
   useAppointments,
   useUpdateAppointment,
@@ -253,6 +255,9 @@ export default function SimulationMode({ role }: Props) {
   const [editingVisitId, setEditingVisitId] = useState("");
   const [visitNotes, setVisitNotes] = useState("");
   const [visitPrescriptionId, setVisitPrescriptionId] = useState("");
+
+  // ── AI assistant panel ───────────────────────────────────────────────
+  const [showAiAssistant, setShowAiAssistant] = useState(false);
 
   // ── Visit detail modal ───────────────────────────────────────────────────
   const [showVisitDetail, setShowVisitDetail] = useState(false);
@@ -992,6 +997,21 @@ export default function SimulationMode({ role }: Props) {
                       {t("case_history") || "Case History"}
                     </motion.button>
 
+                    {/* Ask AI */}
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => setShowAiAssistant((v) => !v)}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
+                        showAiAssistant
+                          ? "bg-emerald/15 text-emerald border-emerald/30"
+                          : "bg-muted/30 text-muted-foreground hover:bg-emerald/10 hover:text-emerald border-border/50"
+                      }`}
+                    >
+                      <Bot className="w-4 h-4" />
+                      Ask AI
+                    </motion.button>
+
                     {/* Complete */}
                     <motion.button
                       whileHover={{ scale: 1.02 }}
@@ -1009,6 +1029,21 @@ export default function SimulationMode({ role }: Props) {
                 );
               })()}
             </motion.div>
+
+            {/* AI Assistant Panel */}
+            <AnimatePresence>
+              {showAiAssistant && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 420 }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
+                  className="overflow-hidden rounded-xl border border-emerald/20 bg-card/50 backdrop-blur-sm"
+                >
+                  <ChatAssistant role="doctor" context="simulation_mode" />
+                </motion.div>
+              )}
+            </AnimatePresence>
           )}
 
           {/* ── Pending requests ── */}

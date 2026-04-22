@@ -24,3 +24,4 @@ email-validator
 crewai==1.14.2
 groq
 litellm
+google-genai

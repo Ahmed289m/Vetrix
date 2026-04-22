@@ -20,6 +20,7 @@ from app.routes.prescription import router as prescription_router
 from app.routes.prescription_item import router as prescription_item_router
 from app.routes.visit import router as visit_router
 from app.routes.user import router as user_router
+from app.routes.chat import router as chat_router
 from app.services.admin_bootstrap_service import AdminBootstrapService
 from app.websocket import router as ws_router
 
@@ -105,6 +106,7 @@ app.include_router(prescription_item_router)
 app.include_router(prescription_router)
 app.include_router(visit_router)
 app.include_router(appointment_router)
+app.include_router(chat_router)
 
 # WebSocket routes
 app.include_router(ws_router)

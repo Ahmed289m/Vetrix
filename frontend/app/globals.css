@@ -543,4 +543,35 @@
   .route-fade-in {
     animation: route-fade-in 180ms ease-out both;
   }
+  /* ── AI Chat Typewriter ──────────────────────────────────── */
+  @keyframes blink-cursor {
+    0%,
+    50% {
+      opacity: 1;
+    }
+    51%,
+    100% {
+      opacity: 0;
+    }
+  }
+  .typing-cursor::after {
+    content: "▍";
+    animation: blink-cursor 0.8s step-end infinite;
+    color: hsl(var(--emerald));
+    font-weight: 300;
+    margin-left: 1px;
+  }
+  @keyframes ai-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.6;
+    }
+  }
+  .ai-responding {
+    animation: ai-pulse 1.5s ease-in-out infinite;
+  }
 }
+

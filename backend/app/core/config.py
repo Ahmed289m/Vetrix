@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     app_debug: bool = True
 
     groq_api_key: str = ""
+    gemini_api_key: str = ""
 
     mongodb_uri: str = "mongodb://admin:admin123@localhost:27017"
     mongodb_db_name: str = "vetrix"
