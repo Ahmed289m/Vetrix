@@ -214,15 +214,6 @@ export function ChatAssistant({
               transition={{ delay: i === arr.length - 1 ? 0.08 : 0, duration: 0.35, ease: [0.2, 0, 0, 1] }}
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
             >
-              {/* Avatar */}
-              {msg.role === "assistant" && (
-                <div className="relative mr-3 mt-1 shrink-0">
-                  <div className="absolute -inset-0.5 bg-gradient-to-br from-emerald/25 to-cyan/15 rounded-xl blur-[3px]" />
-                  <div className="relative w-8 h-8 rounded-xl gradient-emerald-cyan flex items-center justify-center shadow-md shadow-emerald/10">
-                    <PawPrint className="w-4 h-4 text-primary-foreground" />
-                  </div>
-                </div>
-              )}
 
               {/* Bubble */}
               <div className="max-w-[85%] sm:max-w-[75%] lg:max-w-[70%] group">
@@ -256,13 +247,7 @@ export function ChatAssistant({
 
           {/* Typing indicator */}
           {isTyping && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-3">
-              <div className="relative shrink-0">
-                <div className="absolute -inset-0.5 bg-gradient-to-br from-emerald/25 to-cyan/15 rounded-xl blur-[3px]" />
-                <div className="relative w-8 h-8 rounded-xl gradient-emerald-cyan flex items-center justify-center glow-pulse shadow-md shadow-emerald/10">
-                  <PawPrint className="w-4 h-4 text-primary-foreground" />
-                </div>
-              </div>
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex items-start">
               <div className="bg-card/80 px-5 py-4 rounded-2xl rounded-bl-sm border border-border/30 backdrop-blur-xl">
                 <div className="flex items-center gap-1.5">
                   <div className="w-2 h-2 rounded-full bg-emerald typing-dot" />

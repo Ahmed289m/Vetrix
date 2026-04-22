@@ -79,6 +79,9 @@ class Permissions:
     DRUGS_UPDATE = "drugs.update"
     DRUGS_DELETE = "drugs.delete"
 
+    # Chat (AI assistant)
+    CHAT_USE = "chat.use"
+
 
 # Role-to-Permissions mapping
 ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
@@ -142,6 +145,8 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
         Permissions.APPOINTMENTS_UPDATE,
         # User management (for viewing patient/client info)
         Permissions.USERS_READ,
+        # Chat (AI assistant)
+        Permissions.CHAT_USE,
     },
     UserRole.STAFF: {
         # Appointment management
