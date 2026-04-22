@@ -4,6 +4,7 @@ import logging
 
 from google import genai
 from google.genai import types
+from google.genai.errors import ServerError
 
 from app.core.config import settings
 
@@ -27,13 +28,10 @@ Guidelines:
 - The user is a licensed veterinarian. Use advanced clinical language."""
 
 _CONTEXT_SUFFIXES: dict[str, str] = {
-    "simulation_mode": (
-        "\nThe doctor is currently in Simulation Mode examining an active patient case. "
-        "Provide focused, case-relevant differential diagnosis assistance."
-    ),
 }
 
-_MODEL = "gemini-2.5-flash"
+# Primary → fallback order (free-tier compatible)
+_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"]
 
 
 def _get_client() -> genai.Client:
@@ -60,25 +58,43 @@ def chat(messages: list[dict], context: str | None = None) -> str:
 
     system = SYSTEM_PROMPT + _CONTEXT_SUFFIXES.get(context or "", "")
 
+    # Filter out any empty-content messages
     contents = [
         types.Content(
             role="model" if m["role"] == "assistant" else "user",
             parts=[types.Part.from_text(text=m["content"])],
         )
         for m in messages
+        if m.get("content", "").strip()
     ]
 
-    try:
-        response = client.models.generate_content(
-            model=_MODEL,
-            contents=contents,
-            config=types.GenerateContentConfig(
-                system_instruction=system,
-                temperature=0.4,
-                max_output_tokens=2048,
-            ),
-        )
-        return response.text or "I couldn't generate a response. Please try again."
-    except Exception as exc:
-        logger.exception("Gemini API call failed")
-        raise RuntimeError(f"Gemini API error: {exc.__class__.__name__}") from exc
+    if not contents:
+        return "Please provide a message to get started."
+
+    config = types.GenerateContentConfig(
+        system_instruction=system,
+        temperature=0.4,
+        max_output_tokens=2048,
+    )
+
+    # Try each model in order — fallback on 503/overload
+    last_exc: Exception | None = None
+    for model in _MODELS:
+        try:
+            response = client.models.generate_content(
+                model=model,
+                contents=contents,
+                config=config,
+            )
+            return response.text or "I couldn't generate a response. Please try again."
+        except ServerError as exc:
+            logger.warning("Model %s unavailable (503), trying fallback: %s", model, exc)
+            last_exc = exc
+            continue
+        except Exception as exc:
+            logger.exception("Gemini API call failed on model %s", model)
+            raise RuntimeError(f"AI service error: {exc.__class__.__name__}") from exc
+
+    # All models exhausted
+    logger.error("All models unavailable")
+    raise RuntimeError("AI service is temporarily overloaded. Please try again shortly.") from last_exc
