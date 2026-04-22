@@ -1040,28 +1040,44 @@ export default function SimulationMode({ role }: Props) {
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
                 onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                className="relative w-full max-w-2xl h-[80vh] glass-card border-glow flex flex-col overflow-hidden"
+                className="relative w-full max-w-2xl h-[80vh] rounded-2xl bg-background/95 backdrop-blur-2xl border border-border/30 shadow-2xl shadow-black/30 flex flex-col overflow-hidden"
               >
+                {/* Ambient glow */}
+                <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
+                  <div className="absolute -top-20 left-1/4 w-72 h-72 bg-emerald/[0.06] rounded-full blur-[100px]" />
+                  <div className="absolute -bottom-16 right-1/3 w-60 h-60 bg-cyan/[0.04] rounded-full blur-[80px]" />
+                </div>
+                {/* Gradient top edge */}
+                <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-emerald/40 to-transparent" />
+
                 {/* Modal header */}
-                <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-border/30">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-xl gradient-emerald-cyan flex items-center justify-center">
-                      <Bot className="w-3.5 h-3.5 text-primary-foreground" />
+                <div className="shrink-0 relative z-10 flex items-center justify-between px-5 py-3.5 border-b border-border/20">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <div className="absolute -inset-0.5 bg-gradient-to-br from-emerald/30 to-cyan/20 rounded-xl blur-sm" />
+                      <div className="relative w-8 h-8 rounded-xl gradient-emerald-cyan flex items-center justify-center shadow-md shadow-emerald/15">
+                        <Bot className="w-4 h-4 text-primary-foreground" />
+                      </div>
                     </div>
                     <div>
-                      <p className="text-sm font-bold gradient-text">Vetrix AI</p>
-                      <p className="text-[10px] text-muted-foreground">Simulation · Differential diagnoses</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold gradient-text">Vetrix AI</p>
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald/8 border border-emerald/15 text-[8px] font-bold text-emerald/70 uppercase tracking-wider">
+                          Simulation
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground/50">Differential diagnoses</p>
                     </div>
                   </div>
                   <button
                     onClick={() => setShowAiAssistant(false)}
-                    className="p-1.5 rounded-xl hover:bg-muted/40 transition-colors text-muted-foreground/40 hover:text-muted-foreground"
+                    className="p-2 rounded-xl hover:bg-muted/30 transition-all duration-200 text-muted-foreground/30 hover:text-muted-foreground"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
                 {/* Chat fills remaining height */}
-                <div className="flex-1 min-h-0">
+                <div className="flex-1 min-h-0 relative z-10">
                   <ChatAssistant role="doctor" context="simulation_mode" />
                 </div>
               </motion.div>
