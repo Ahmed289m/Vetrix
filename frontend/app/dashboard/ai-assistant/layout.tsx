@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "AI Assistant",
-  description: "Vetrix AI — differential diagnosis assistant for doctors.",
+  description: "Vetrix AI — clinical intelligence for differential diagnoses.",
 };
 
 export default function AiAssistantLayout({
