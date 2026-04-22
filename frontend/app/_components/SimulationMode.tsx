@@ -812,6 +812,7 @@ export default function SimulationMode({ role }: Props) {
         <div className="space-y-4">
           {/* ── My active case ── */}
           {myActiveCase && (
+            <>
             <motion.div
               key={myActiveCase.appointment_id}
               initial={{ opacity: 0, scale: 0.97 }}
@@ -1044,6 +1045,7 @@ export default function SimulationMode({ role }: Props) {
                 </motion.div>
               )}
             </AnimatePresence>
+            </>
           )}
 
           {/* ── Pending requests ── */}
