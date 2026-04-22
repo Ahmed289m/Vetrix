@@ -1031,20 +1031,41 @@ export default function SimulationMode({ role }: Props) {
               })()}
             </motion.div>
 
-            {/* AI Assistant Panel */}
-            <AnimatePresence>
-              {showAiAssistant && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 420 }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
-                  className="overflow-hidden rounded-xl border border-emerald/20 bg-card/50 backdrop-blur-sm"
-                >
+            {/* AI Assistant Modal — portal to body, unrestricted by simulation box */}
+            <Modal open={showAiAssistant} onBgClick={() => setShowAiAssistant(false)}>
+              <motion.div
+                key="ai-modal"
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative w-full max-w-2xl h-[80vh] glass-card border-glow flex flex-col overflow-hidden"
+              >
+                {/* Modal header */}
+                <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-border/30">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-xl gradient-emerald-cyan flex items-center justify-center">
+                      <Bot className="w-3.5 h-3.5 text-primary-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold gradient-text">Vetrix AI</p>
+                      <p className="text-[10px] text-muted-foreground">Simulation · Differential diagnoses</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowAiAssistant(false)}
+                    className="p-1.5 rounded-xl hover:bg-muted/40 transition-colors text-muted-foreground/40 hover:text-muted-foreground"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                {/* Chat fills remaining height */}
+                <div className="flex-1 min-h-0">
                   <ChatAssistant role="doctor" context="simulation_mode" />
-                </motion.div>
-              )}
-            </AnimatePresence>
+                </div>
+              </motion.div>
+            </Modal>
             </>
           )}
 

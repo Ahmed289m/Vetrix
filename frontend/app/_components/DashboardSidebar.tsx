@@ -27,6 +27,7 @@ import {
   LogOut,
   Pill,
   Stethoscope,
+  Bot,
 } from "lucide-react";
 import { useAuth } from "@/app/_hooks/useAuth";
 import { motion } from "framer-motion";
@@ -87,6 +88,12 @@ const navItems: NavItem[] = [
     href: "/dashboard/calculators",
     labelKey: "medical_calculators",
     icon: Calculator,
+    roles: ["doctor"],
+  },
+  {
+    href: "/dashboard/ai-assistant",
+    labelKey: "ai_assistant",
+    icon: Bot,
     roles: ["doctor"],
   },
   {
