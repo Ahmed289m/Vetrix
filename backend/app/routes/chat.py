@@ -1,4 +1,3 @@
-"""Chat route — Vetrix AI proxy, doctor-only via RBAC."""
 
 import logging
 

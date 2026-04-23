@@ -85,8 +85,8 @@ const AuthContext = createContext<AuthContextValue>({
   role: null,
   isAuthenticated: false,
   isLoading: true,
-  login: () => {},
-  logout: () => {},
+  login: () => { },
+  logout: () => { },
   isLoggingIn: false,
   loginError: null,
   isLoggingOut: false,
@@ -229,8 +229,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     const responseMessage =
       typeof err?.response?.data === "object" &&
-      err.response?.data !== null &&
-      "message" in err.response.data
+        err.response?.data !== null &&
+        "message" in err.response.data
         ? (err.response.data as { message?: string }).message
         : undefined;
     return responseMessage || err?.message || "Login failed. Please try again.";

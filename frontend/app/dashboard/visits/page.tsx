@@ -117,18 +117,19 @@ export default function VisitsPage() {
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const [selectedVisitIds, setSelectedVisitIds] = useState<string[]>([]);
   const { t } = useLang();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
 
   const isClient = user?.role === "client";
   const isStaff = user?.role === "staff";
   const isDoctor = user?.role === "doctor";
   const isOwner = user?.role === "owner";
+  const shouldLoadUsers = !isAuthLoading && !!user && !isClient;
   const canCreate = isOwner;
   const canOpenDetails = Boolean(user?.role);
 
   const { data: visitsData, isLoading: visitsLoading } = useVisits();
   const { data: petsData } = usePets();
-  const { data: usersData } = useUsers({ enabled: !isClient });
+  const { data: usersData } = useUsers({ enabled: shouldLoadUsers });
   const { data: prescriptionsData } = usePrescriptions();
   const { data: presItemsData } = usePrescriptionItems();
   const { data: drugsData } = useDrugs();

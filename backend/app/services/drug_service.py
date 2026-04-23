@@ -20,7 +20,7 @@ class DrugService:
 
     async def create_drug(self, request: DrugCreate, current_user: TokenData) -> dict:
         """
-        Create a drug. Staff/owner auto-assigns their clinic_id. Admin can set or omit clinic_id.
+        Create a drug. Doctor/owner auto-assigns their clinic_id. Admin can set or omit clinic_id.
         """
         payload = request.model_dump(exclude_none=True)
         # Only admin can set clinic_id arbitrarily
@@ -32,7 +32,7 @@ class DrugService:
         """
         List drugs:
         - Admin: all drugs
-        - Staff/owner: their clinic's drugs + global drugs (clinic_id is None)
+        - Doctor/owner/staff/client: their clinic's drugs + global drugs (clinic_id is None)
         """
         all_drugs = await self.crud.list()
         if current_user.is_superuser:
@@ -44,7 +44,7 @@ class DrugService:
         """
         Get a drug:
         - Admin: any drug
-        - Staff/owner: only their clinic's drugs or global drugs
+        - Non-admin roles: only their clinic's drugs or global drugs
         """
         drug = await self.crud.get(drug_id)
         if current_user.is_superuser:
@@ -57,13 +57,13 @@ class DrugService:
         """
         Update a drug:
         - Admin: any drug
-        - Staff/owner: only their clinic's drugs
+        - Doctor/owner: only their clinic's drugs
         """
         drug = await self.crud.get(drug_id)
         if current_user.is_superuser:
             return await self.crud.update(drug_id, request)
         if drug.get("clinic_id") == current_user.clinic_id:
-            # Prevent staff/owner from changing clinic_id
+            # Prevent non-admin users from changing clinic_id
             update_data = request.model_dump(exclude_none=True)
             update_data.pop("clinic_id", None)
             return await self.crud.update(drug_id, DrugUpdate(**update_data))
@@ -73,7 +73,7 @@ class DrugService:
         """
         Delete a drug:
         - Admin: any drug
-        - Staff/owner: only their clinic's drugs
+        - Doctor/owner: only their clinic's drugs
         """
         drug = await self.crud.get(drug_id)
         if current_user.is_superuser or drug.get("clinic_id") == current_user.clinic_id:

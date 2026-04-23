@@ -8,7 +8,7 @@ Permissions follow action-based naming convention:
 Roles:
 - ADMIN: Global admin with all privileges across all clinics (is_superuser=True)
 - OWNER: Clinic owner with elevated permissions per clinic
-- DOCTOR: Can manage visits and prescriptions
+- DOCTOR: Can manage visits, prescriptions, and clinic drugs
 - STAFF: Limited access to clinic operations
 - CLIENT: Minimal access - can manage own data and appointments
 """
@@ -138,8 +138,11 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
         # Pet management (read + weight-only update, enforced in service layer)
         Permissions.PETS_READ,
         Permissions.PETS_UPDATE,
-        # Drug management (read-only)
+        # Drug management (own clinic only — service enforces scoping)
+        Permissions.DRUGS_CREATE,
         Permissions.DRUGS_READ,
+        Permissions.DRUGS_UPDATE,
+        Permissions.DRUGS_DELETE,
         # Appointment management (read + update for simulation: accept/complete cases)
         Permissions.APPOINTMENTS_READ,
         Permissions.APPOINTMENTS_UPDATE,
@@ -171,11 +174,8 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
         # User management (can create client users only)
         Permissions.USERS_CREATE,
         Permissions.USERS_READ,
-        # Drug management (own clinic only — service enforces scoping)
-        Permissions.DRUGS_CREATE,
+        # Drug management (read-only)
         Permissions.DRUGS_READ,
-        Permissions.DRUGS_UPDATE,
-        Permissions.DRUGS_DELETE,
     },
     UserRole.CLIENT: {
         # Appointment management

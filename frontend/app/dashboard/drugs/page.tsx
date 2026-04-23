@@ -49,12 +49,12 @@ import type { Drug, DrugCreate } from "@/app/_lib/types/models";
 /* ── Permission helpers ────────────────────────────────────────────────
  * Backend service logic (drug_service.py):
  *   - Admin (is_superuser): manage ALL drugs, can set/clear clinic_id
- *   - Owner / Staff: manage ONLY drugs where clinic_id === their clinic_id
+ *   - Owner / Doctor: manage ONLY drugs where clinic_id === their clinic_id
  *     (service auto-assigns clinic_id on create, strips it on update)
- *   - Doctor / Client: read-only
+ *   - Staff / Client: read-only
  *
  * Backend RBAC (permissions.py) now grants DRUGS_CREATE/UPDATE/DELETE
- * to owner + staff so the route guard passes. Service layer enforces scope.
+ * to owner + doctor so the route guard passes. Service layer enforces scope.
  * ────────────────────────────────────────────────────────────────────── */
 
 type ManageLevel = "admin" | "clinic" | "readonly";
@@ -63,7 +63,7 @@ function useManageLevel(): ManageLevel {
   const { user } = useAuth();
   if (!user) return "readonly";
   if (user.isSuperuser || user.role === "admin") return "admin";
-  if (user.role === "owner" || user.role === "staff") return "clinic";
+  if (user.role === "owner" || user.role === "doctor") return "clinic";
   return "readonly";
 }
 
@@ -703,7 +703,7 @@ function DrugCrudForm({
         });
       } else {
         formik.resetForm();
-        // Admin starts with no clinic, staff/owner hint — doesn't matter, backend assigns
+        // Admin starts with no clinic, doctor/owner hint — backend assigns clinic scope
         if (!isAdmin && defaultClinicIdForCreate) {
           formik.setFieldValue("clinic_id", defaultClinicIdForCreate);
         } else if (!isAdmin && clinicId) {
@@ -1210,7 +1210,7 @@ export default function DrugsPage() {
   const level = useManageLevel();
   const isAdmin = level === "admin";
   const isOwner = user?.role === "owner";
-  const isClinicStaff = level === "clinic";
+  const isClinicManager = level === "clinic";
   const clinicId = user?.clinicId ?? null;
 
   const [search, setSearch] = React.useState("");
@@ -1246,7 +1246,7 @@ export default function DrugsPage() {
     cid ? (clinicNameMap[cid] ?? cid) : undefined;
 
   /* Filtered list:
-   * - Backend already filters for staff/owner (returns only global + their clinic).
+   * - Backend already filters for non-admin users (returns only global + their clinic).
    * - Admin receives all. We apply additional client-side scope filter for admin. */
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -1439,7 +1439,7 @@ export default function DrugsPage() {
       </div>
 
       {/* ── Role info banner ── */}
-      {isClinicStaff && (
+      {isClinicManager && (
         <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-xs font-semibold text-amber-400">
           <Building2 className="w-4 h-4 shrink-0" />
           <span>

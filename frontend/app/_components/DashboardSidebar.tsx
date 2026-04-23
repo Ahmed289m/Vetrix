@@ -100,7 +100,7 @@ const navItems: NavItem[] = [
     href: "/dashboard/drugs",
     labelKey: "drugs",
     icon: Pill,
-    roles: ["staff", "owner", "admin"],
+    roles: ["doctor", "owner", "admin"],
   },
 ];
 

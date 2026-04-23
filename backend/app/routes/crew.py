@@ -74,4 +74,11 @@ def run_crew_with_case_history(payload: CrewCaseHistoryRequest) -> dict:
         "success": True,
         "message": "Case history generated successfully.",
         "data": result,
+    }f hasattr(result, "model_dump"):
+        result = result.model_dump()
+
+    return {
+        "success": True,
+        "message": "Case history generated successfully.",
+        "data": result,
     }

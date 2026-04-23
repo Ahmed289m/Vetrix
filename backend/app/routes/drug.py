@@ -16,10 +16,9 @@ async def create_drug(
     controller: DrugController = Depends(get_drug_controller),
 ) -> dict:
     """
-    Create a new drug (ADMIN/DOCTOR only).
+    Create a new drug (ADMIN/OWNER/DOCTOR only).
     
-    - ADMIN can create drugs
-    - DOCTOR can create drugs
+    - ADMIN/OWNER/DOCTOR can create drugs
     """
     created = await controller.create_drug(request, current_user)
     return {"success": True, "message": "Drug created successfully.", "data": created}
@@ -31,10 +30,9 @@ async def list_drugs(
     controller: DrugController = Depends(get_drug_controller),
 ) -> dict:
     """
-    List drugs (ADMIN/DOCTOR/STAFF only).
+    List drugs (authorized users only).
     
-    - ADMIN/DOCTOR/STAFF can list drugs
-    - Drugs are global (not clinic-specific)
+    - ADMIN/OWNER/DOCTOR/STAFF/CLIENT can list drugs
     """
     drugs = await controller.list_drugs(current_user)
     return {"success": True, "message": "Drugs fetched successfully.", "data": drugs}
@@ -49,7 +47,7 @@ async def get_drug(
     """
     Get a specific drug.
     
-    - ADMIN/DOCTOR/STAFF can get any drug
+    - ADMIN/OWNER/DOCTOR/STAFF/CLIENT can get drugs they are authorized to view
     """
     drug = await controller.get_drug(drug_id, current_user)
     return {"success": True, "message": "Drug fetched successfully.", "data": drug}
@@ -63,9 +61,9 @@ async def update_drug(
     controller: DrugController = Depends(get_drug_controller),
 ) -> dict:
     """
-    Update a drug (ADMIN/DOCTOR only).
+    Update a drug (ADMIN/OWNER/DOCTOR only).
     
-    - ADMIN/DOCTOR can update drugs
+    - ADMIN/OWNER/DOCTOR can update drugs
     """
     updated = await controller.update_drug(drug_id, request, current_user)
     return {"success": True, "message": "Drug updated successfully.", "data": updated}
@@ -78,9 +76,9 @@ async def delete_drug(
     controller: DrugController = Depends(get_drug_controller),
 ) -> dict:
     """
-    Delete a drug (ADMIN/DOCTOR only).
+    Delete a drug (ADMIN/OWNER/DOCTOR only).
     
-    - ADMIN/DOCTOR can delete drugs
+    - ADMIN/OWNER/DOCTOR can delete drugs
     """
     await controller.delete_drug(drug_id, current_user)
     return {"success": True, "message": "Drug deleted successfully.", "data": {"drug_id": drug_id}}
