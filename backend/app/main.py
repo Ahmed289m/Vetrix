@@ -161,20 +161,3 @@ async def health() -> dict:
         "message": "Health check successful.",
         "data": {"status": "ok", "environment": settings.app_env},
     }
-        content={
-            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-            "success": False,
-            "message": "An unexpected server error occurred.",
-            "data": None,
-        },
-    )
-
-
-@app.get("/health")
-async def health() -> dict:
-    return {
-        "status": status.HTTP_200_OK,
-        "success": True,
-        "message": "Health check successful.",
-        "data": {"status": "ok", "environment": settings.app_env},
-    }
