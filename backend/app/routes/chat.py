@@ -1,4 +1,5 @@
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -23,7 +24,7 @@ async def send_chat_message(
     try:
         from app.services.gemini_service import chat
 
-        response_text = chat(messages=messages, context=payload.context)
+        response_text = await asyncio.to_thread(chat, messages=messages, context=payload.context)
     except RuntimeError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
     except Exception:
