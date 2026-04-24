@@ -110,7 +110,6 @@ export function ChatAssistant({
 
       const history: ChatMessagePayload[] = messages
         .filter((m) => m.id !== "welcome" && m.content.trim())
-        .concat(userMsg)
         .map(({ role, content }) => ({ role, content }));
 
       chatMutation.mutate(
