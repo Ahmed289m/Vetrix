@@ -10,6 +10,10 @@ from app.models.enums.user_role import UserRole
 router = APIRouter(prefix="/agent", tags=["agent"])
 logger = logging.getLogger(__name__)
 
+MAX_HISTORY_MESSAGES = 6
+_RATE_LIMIT_RETRIES = 2
+_RATE_LIMIT_WAIT = 12
+
 
 class CrewCaseHistoryRequest(BaseModel):
     case_history: dict
@@ -27,10 +31,11 @@ class CustomerServiceRequest(BaseModel):
 
 
 def _build_customer_service_prompt(user_prompt: str, history: list[CustomerServiceChatMessage]) -> str:
-    if not history:
+    recent = history[-MAX_HISTORY_MESSAGES:] if history else []
+    if not recent:
         return user_prompt
 
-    transcript = "\n".join(f"{message.role}: {message.content}" for message in history if message.content.strip())
+    transcript = "\n".join(f"{message.role}: {message.content}" for message in recent if message.content.strip())
     return f"Conversation history:\n{transcript}\n\nCurrent user message:\n{user_prompt}"
 
 
@@ -115,12 +120,27 @@ async def run_customer_service(payload: CustomerServiceRequest, current_user: To
     try:
         from app.agents.crew import run_customer_service_crew
 
-        result = await asyncio.to_thread(
-            run_customer_service_crew,
-            _build_customer_service_prompt(payload.user_prompt, payload.history),
-            current_user.user_id,
-            current_user.clinic_id,
-        )
+        prompt = _build_customer_service_prompt(payload.user_prompt, payload.history)
+        last_exc = None
+        for attempt in range(_RATE_LIMIT_RETRIES + 1):
+            try:
+                result = await asyncio.to_thread(
+                    run_customer_service_crew,
+                    prompt,
+                    current_user.user_id,
+                    current_user.clinic_id,
+                )
+                break
+            except Exception as exc:
+                if "rate_limit" in str(exc).lower() or "429" in str(exc):
+                    last_exc = exc
+                    if attempt < _RATE_LIMIT_RETRIES:
+                        logger.warning("Rate limited (attempt %d), retrying in %ds", attempt + 1, _RATE_LIMIT_WAIT)
+                        await asyncio.sleep(_RATE_LIMIT_WAIT)
+                        continue
+                raise
+        else:
+            raise last_exc  # type: ignore[misc]
     except Exception as exc:
         logger.exception("Customer service crew execution failed")
         raise HTTPException(

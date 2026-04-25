@@ -91,6 +91,16 @@ def _client_token(client_id: str, clinic_id: str | None = None) -> TokenData:
 	)
 
 
+async def _resolve_clinic_id(client_id: str, clinic_id: str | None = None) -> str | None:
+	"""Return *clinic_id* if already provided, otherwise look it up from the client's DB record."""
+	if clinic_id:
+		return clinic_id
+	db = get_database()
+	user_repo = UserRepository(db)
+	user = await user_repo.get_by_user_id(client_id)
+	return user.get("clinic_id") if user else None
+
+
 @tool("client_allowed_actions")
 def client_allowed_actions(client_id: str) -> dict[str, list[str]]:
 	"""Return the list of actions a client is allowed to perform, grouped by category (read, add, update, delete). Requires client_id."""
@@ -198,7 +208,8 @@ def read_drugs(client_id: str, clinic_id: str | None = None, drug_ids: list[str]
 		try:
 			if drug_ids:
 				return await services["drugs"].list_by_drug_ids(drug_ids)
-			return await services["drugs"].list_drugs(_client_token(client_id, clinic_id))
+			resolved_clinic = await _resolve_clinic_id(client_id, clinic_id)
+			return await services["drugs"].list_drugs(_client_token(client_id, resolved_clinic))
 		except HTTPException:
 			return []
 
@@ -220,13 +231,14 @@ def read_my_pets(client_id: str) -> list[dict[str, Any]]:
 
 
 @tool("read_my_profile")
-def read_my_profile(client_id: str, clinic_id: str) -> dict[str, Any]:
+def read_my_profile(client_id: str, clinic_id: str | None = None) -> dict[str, Any]:
 	"""Retrieve the profile information for the client identified by client_id."""
 	services = _services()
 
 	async def _query() -> dict[str, Any]:
 		try:
-			doc = await services["users"].get_user(client_id, _client_token(client_id, clinic_id))
+			resolved_clinic = await _resolve_clinic_id(client_id, clinic_id)
+			doc = await services["users"].get_user(client_id, _client_token(client_id, resolved_clinic))
 			return {"success": True, "data": doc}
 		except HTTPException as exc:
 			return {"success": False, "message": str(exc.detail)}
@@ -337,7 +349,7 @@ def update_my_pet(
 @tool("update_my_profile")
 def update_my_profile(
 	client_id: str,
-	clinic_id: str,
+	clinic_id: str | None = None,
 	fullname: str | None = None,
 	phone: str | None = None,
 	email: str | None = None,
@@ -349,12 +361,13 @@ def update_my_profile(
 		if fullname is None and phone is None and email is None:
 			return {"success": False, "message": "No fields provided for update."}
 
+		resolved_clinic = await _resolve_clinic_id(client_id, clinic_id)
 		request = UserUpdate(fullname=fullname, phone=phone, email=email)
 		try:
 			updated = await services["users"].update_user(
 				client_id,
 				request,
-				_client_token(client_id, clinic_id),
+				_client_token(client_id, resolved_clinic),
 			)
 			return {"success": True, "data": updated}
 		except HTTPException as exc:

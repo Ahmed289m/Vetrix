@@ -136,7 +136,8 @@ export function CustomerServiceChat() {
 
       const history = messages
         .filter((message) => message.id !== "welcome" && message.content.trim())
-        .map(({ role, content }) => ({ role, content }));
+        .map(({ role, content }) => ({ role, content }))
+        .slice(-6);
 
       setMessages((prev) => [
         ...prev,
