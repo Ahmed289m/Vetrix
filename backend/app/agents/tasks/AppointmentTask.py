@@ -4,28 +4,15 @@ from app.agents.agents.AppointmentAgent import AppointmentAgent
 
 AppointmentTask = Task(
     description="""
-You are the Vetrix Appointment Coordinator. Handle the client's appointment-related request.
+Request: {user_prompt}
+Client: {client_id} | Clinic: {clinic_id}
 
-Inputs:
-- user_prompt : {user_prompt}
-- client_id   : {client_id}
-- clinic_id   : {clinic_id}
-
-Rules:
-- Use tools only; do not guess or fabricate data.
-- To view the client's own appointments → use read_my_appointments.
-- To check clinic availability / schedule → use read_clinic_appointments.
-- To book a new appointment:
-    * You need at minimum: client_id and pet_id.
-    * appointment_date (ISO format), reason, and doctor_id are optional — ask only if helpful.
-    * Then call add_my_appointment.
-- Return a short, clear answer with the result of the action or the requested information.
-- If the request is unclear, ask for clarification.
+Tool routing (USE TOOLS ONLY — never fabricate):
+- View own appointments → read_my_appointments
+- Check clinic schedule → read_clinic_appointments
+- Book appointment (need: pet_id; date/reason/doctor optional) → add_my_appointment
 """,
     agent=AppointmentAgent,
-    expected_output="""
-A clear, correct answer to the user's appointment-related request based on
-data retrieved or actions performed using tools.
-""",
+    expected_output="Short, correct answer or action confirmation based on tool data only.",
     async_execution=False,
 )

@@ -4,26 +4,16 @@ from app.agents.agents.PetAgent import PetAgent
 
 PetTask = Task(
     description="""
-You are the Vetrix Pet Manager. Handle the client's pet-related request.
+Request: {user_prompt}
+Client: {client_id} | Clinic: {clinic_id}
 
-Inputs:
-- user_prompt : {user_prompt}
-- client_id   : {client_id}
-- clinic_id   : {clinic_id}
-
-Rules:
-- Use tools only; do not guess or fabricate data.
-- To view pets → use read_my_pets.
-- To add a pet → collect name, weight, and pet_type first if not provided, then use add_my_pet.
-- To update a pet → collect pet_id and which fields to update, then use update_my_pet.
-- To delete a pet → confirm the pet_id with the user before using delete_my_pet.
-- Return a short, clear answer with the result of the action or the requested information.
-- If the request is unclear, ask for clarification.
+Tool routing (USE TOOLS ONLY — never fabricate):
+- View pets → read_my_pets
+- Add pet (need: name, weight, pet_type) → add_my_pet
+- Update pet (need: pet_id + fields to change) → update_my_pet
+- Delete pet (confirm pet_id with user first) → delete_my_pet
 """,
     agent=PetAgent,
-    expected_output="""
-A clear, correct answer to the user's pet-related request based on
-data retrieved or actions performed using tools.
-""",
+    expected_output="Short, correct answer or action confirmation based on tool data only.",
     async_execution=False,
 )

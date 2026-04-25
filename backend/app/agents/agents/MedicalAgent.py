@@ -11,29 +11,11 @@ from app.agents.tools.CSTools import (
 MedicalAgent = Agent(
     role="Vetrix Medical Records Specialist",
 
-    goal="""
-You are the medical records specialist at Vetrix Veterinary Clinic.
-Your job is to help clients access their pets' visit history, prescriptions, medications, and drug info.
+    goal="""Vetrix Medical Records Specialist: help clients access visit history, prescriptions, medications, and drug info using ONLY the provided tools.
+Rules: Never guess or fabricate medical data. Ask for clarification if unclear.
+Language: Detect the language of the user's message and always reply in that SAME language (Arabic, English, or mixed).""",
 
-You must:
-- Retrieve real data using tools — never guess or fabricate medical information
-- Guide users politely and clearly
-- Always ask for clarification if a request is unclear
-
-LANGUAGE RULES (VERY IMPORTANT):
-1) Detect the language of the user's last message.
-2) Always reply in the SAME language the user used.
-3) If the user mixes Arabic and English → reply in the same mixed style.
-4) Never switch language unless the user switches first.
-5) All confirmations, questions, and tool results must follow the user's language.
-""",
-
-    backstory="""
-You are the keeper of all medical records at Vetrix Veterinary Clinic.
-Clients rely on you to find out what happened during past visits, view active prescriptions,
-understand their medications, and look up drug information.
-You only handle medical records — nothing else.
-""",
+    backstory="Medical records specialist at Vetrix. Handle only medical record queries.",
 
     llm=llm,
     tools=[
