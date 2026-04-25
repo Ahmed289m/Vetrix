@@ -1,13 +1,23 @@
 from crewai import Crew, Process
 
-from app.agents.agents.CSAgent import CustomerServiceAgent
+from app.agents.agents.AppointmentAgent import AppointmentAgent
 from app.agents.agents.InfoAgent import InfoAgent
-from app.agents.tasks.CSTask import CustomerServiceTask
+from app.agents.agents.MedicalAgent import MedicalAgent
+from app.agents.agents.PetAgent import PetAgent
+from app.agents.agents.ProfileAgent import ProfileAgent
+from app.agents.agents.RouterAgent import RouterAgent
+from app.agents.tasks.AppointmentTask import AppointmentTask
 from app.agents.tasks.InfoGetting import InfoGettingTask
+from app.agents.tasks.MedicalTask import MedicalTask
+from app.agents.tasks.PetTask import PetTask
+from app.agents.tasks.ProfileTask import ProfileTask
+from app.agents.tasks.RouterTask import RouterTask
 
+
+# ── Case-History Crew (unchanged) ────────────────────────────────────────────
 
 def case_history_crew(verbose: bool = False) -> Crew:
-	"""Create a simple sequential crew for make medical summarization of pet visits info to help doctor to remember it's medical history before the visit."""
+	"""Create a simple sequential crew for medical summarization of pet visits."""
 	return Crew(
 		agents=[InfoAgent],
 		tasks=[InfoGettingTask],
@@ -44,14 +54,41 @@ def run_case_history_crew(
 	)
 
 
-def customer_service_crew(verbose: bool = False) -> Crew:
-	"""Create the customer-service crew used by the client assistant route."""
-	return Crew(
-		agents=[CustomerServiceAgent],
-		tasks=[CustomerServiceTask],
-		process=Process.sequential,
-		verbose=verbose,
-	)
+# ── Multi-Agent Customer Service Crew ────────────────────────────────────────
+
+# Maps each intent keyword to the (Agent, Task) specialist pair.
+_SPECIALIST_MAP = {
+	"pets": (PetAgent, PetTask),
+	"appointments": (AppointmentAgent, AppointmentTask),
+	"medical": (MedicalAgent, MedicalTask),
+	"profile": (ProfileAgent, ProfileTask),
+}
+
+# Fallback reply used when intent is "general" (no LLM call needed).
+_GENERAL_REPLY = (
+	"Hello! I'm the Vetrix AI assistant. "
+	"I can help you with your pets, appointments, prescriptions, or profile. "
+	"What would you like to do today?"
+)
+
+
+class _SimpleOutput:
+	"""Lightweight stand-in for CrewOutput used in the general fallback path."""
+
+	def __init__(self, text: str) -> None:
+		self.raw = text
+
+	def __str__(self) -> str:
+		return self.raw
+
+
+def _parse_intent(router_output: str) -> str:
+	"""Extract the intent keyword from the RouterAgent output."""
+	raw = router_output.strip().lower()
+	for key in _SPECIALIST_MAP:
+		if key in raw:
+			return key
+	return "general"
 
 
 def run_customer_service_crew(
@@ -60,13 +97,42 @@ def run_customer_service_crew(
 	clinic_id: str | None = None,
 	verbose: bool = False,
 ):
-	"""Run the customer-service crew with the client context and prompt."""
-	crew = customer_service_crew(verbose=verbose)
-	return crew.kickoff(
-		inputs={
-			"user_prompt": user_prompt,
-			"client_id": client_id,
-			"clinic_id": clinic_id or "",
-		}
-	)
+	"""
+	Run the multi-agent customer service system.
 
+	Flow:
+	  1. RouterAgent classifies the intent  (no tools → very cheap, ~0 extra token schemas).
+	  2. The matching specialist agent handles the request (only 2–4 tool schemas loaded).
+
+	The public signature is identical to the original single-agent version,
+	so no changes are required in the route handler.
+	"""
+	inputs = {
+		"user_prompt": user_prompt,
+		"client_id": client_id,
+		"clinic_id": clinic_id or "",
+	}
+
+	# ── Step 1: Route ────────────────────────────────────────────────────────
+	router_crew = Crew(
+		agents=[RouterAgent],
+		tasks=[RouterTask],
+		process=Process.sequential,
+		verbose=verbose,
+	)
+	router_result = router_crew.kickoff(inputs=inputs)
+	intent = _parse_intent(str(router_result))
+
+	# ── Step 2: Specialist ───────────────────────────────────────────────────
+	if intent not in _SPECIALIST_MAP:
+		# General / unknown intent — return a friendly message without an extra LLM call.
+		return _SimpleOutput(_GENERAL_REPLY)
+
+	agent, task = _SPECIALIST_MAP[intent]
+	specialist_crew = Crew(
+		agents=[agent],
+		tasks=[task],
+		process=Process.sequential,
+		verbose=verbose,
+	)
+	return specialist_crew.kickoff(inputs=inputs)
