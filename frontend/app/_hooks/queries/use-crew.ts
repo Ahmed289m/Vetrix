@@ -12,3 +12,15 @@ export function useCaseHistoryCrew() {
     mutationFn: (params: CaseHistoryParams) => crewApi.getVisitsInfo(params),
   });
 }
+
+export function useCustomerServiceCrew() {
+  return useMutation({
+    mutationFn: ({
+      userPrompt,
+      history,
+    }: {
+      userPrompt: string;
+      history: { role: "user" | "assistant"; content: string }[];
+    }) => crewApi.sendCustomerServiceMessage(userPrompt, history),
+  });
+}

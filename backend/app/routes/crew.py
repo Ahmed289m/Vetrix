@@ -1,8 +1,11 @@
+import asyncio
 import logging
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 
 from app.core.config import settings
+from app.core.permission_checker import TokenData, get_current_user
+from app.models.enums.user_role import UserRole
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 logger = logging.getLogger(__name__)
@@ -11,6 +14,24 @@ logger = logging.getLogger(__name__)
 class CrewCaseHistoryRequest(BaseModel):
     case_history: dict
     language: str | None = None
+
+
+class CustomerServiceChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class CustomerServiceRequest(BaseModel):
+    user_prompt: str
+    history: list[CustomerServiceChatMessage] = Field(default_factory=list)
+
+
+def _build_customer_service_prompt(user_prompt: str, history: list[CustomerServiceChatMessage]) -> str:
+    if not history:
+        return user_prompt
+
+    transcript = "\n".join(f"{message.role}: {message.content}" for message in history if message.content.strip())
+    return f"Conversation history:\n{transcript}\n\nCurrent user message:\n{user_prompt}"
 
 
 @router.get("/case-history/{pet_id}")
@@ -74,4 +95,43 @@ def run_crew_with_case_history(payload: CrewCaseHistoryRequest) -> dict:
         "success": True,
         "message": "Case history generated successfully.",
         "data": result,
+    }
+
+
+@router.post("/customer-service")
+async def run_customer_service(payload: CustomerServiceRequest, current_user: TokenData = Depends(get_current_user)) -> dict:
+    if current_user.role != UserRole.CLIENT and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Customer service assistant is available for clients only.",
+        )
+
+    if not (settings.groq_api_key or "").strip():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="GROQ_API_KEY is missing.",
+        )
+
+    try:
+        from app.agents.crew import run_customer_service_crew
+
+        result = await asyncio.to_thread(
+            run_customer_service_crew,
+            _build_customer_service_prompt(payload.user_prompt, payload.history),
+            current_user.user_id,
+            current_user.clinic_id,
+        )
+    except Exception as exc:
+        logger.exception("Customer service crew execution failed")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Customer service crew failed: {exc.__class__.__name__}",
+        )
+
+    raw_text = result.raw if hasattr(result, "raw") else str(result)
+
+    return {
+        "success": True,
+        "message": "Customer service response generated successfully.",
+        "data": {"response": raw_text},
     }

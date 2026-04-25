@@ -23,6 +23,16 @@ interface GetVisitsInfoParams {
   lang?: "en" | "ar";
 }
 
+export interface CustomerServiceChatMessagePayload {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface CustomerServiceRequestPayload {
+  user_prompt: string;
+  history: CustomerServiceChatMessagePayload[];
+}
+
 export const crewApi = {
   getVisitInfo: ({ petId, petType }: GetVisitsInfoParams) => {
     const query = petType?.trim()
@@ -52,4 +62,15 @@ export const crewApi = {
     const caseHistory = historyResponse.data?.case_history ?? { visits: [] };
     return crewApi.summarizeCaseHistory(caseHistory, lang);
   },
+
+  sendCustomerServiceMessage: (
+    user_prompt: string,
+    history: CustomerServiceChatMessagePayload[] = [],
+  ) =>
+    api
+      .post<ApiResponse<{ response: string }>>("/agent/customer-service", {
+        user_prompt,
+        history,
+      } satisfies CustomerServiceRequestPayload)
+      .then((r) => r.data),
 };
