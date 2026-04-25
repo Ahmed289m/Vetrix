@@ -92,8 +92,8 @@ def _client_token(client_id: str, clinic_id: str | None = None) -> TokenData:
 
 
 @tool("client_allowed_actions")
-def client_allowed_actions() -> dict[str, list[str]]:
-	"""Return the list of actions a client is allowed to perform, grouped by category (read, add, update, delete)."""
+def client_allowed_actions(client_id: str) -> dict[str, list[str]]:
+	"""Return the list of actions a client is allowed to perform, grouped by category (read, add, update, delete). Requires client_id."""
 	return {
 		"read": [
 			"appointments.read.own",
