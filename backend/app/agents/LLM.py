@@ -9,7 +9,6 @@ llm = LLM(
     top_p=0.9,
     top_k=40,  
     max_output_tokens=8192,
-    stop_sequences=["END", "STOP"],
-    stream=True,  
+    
    
 )
