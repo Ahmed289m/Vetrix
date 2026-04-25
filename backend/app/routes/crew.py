@@ -129,6 +129,7 @@ async def run_customer_service(payload: CustomerServiceRequest, current_user: To
                     prompt,
                     current_user.user_id,
                     current_user.clinic_id,
+                    True,  # verbose — temp debug
                 )
                 break
             except Exception as exc:
@@ -149,6 +150,7 @@ async def run_customer_service(payload: CustomerServiceRequest, current_user: To
         )
 
     raw_text = result.raw if hasattr(result, "raw") else str(result)
+    logger.info("[CS-AGENT] Final response: %s", raw_text[:500])
 
     return {
         "success": True,
