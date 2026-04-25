@@ -93,6 +93,7 @@ def _client_token(client_id: str, clinic_id: str | None = None) -> TokenData:
 
 @tool("client_allowed_actions")
 def client_allowed_actions() -> dict[str, list[str]]:
+	"""Return the list of actions a client is allowed to perform, grouped by category (read, add, update, delete)."""
 	return {
 		"read": [
 			"appointments.read.own",
@@ -120,6 +121,7 @@ def client_allowed_actions() -> dict[str, list[str]]:
 
 @tool("read_my_appointments")
 def read_my_appointments(client_id: str) -> list[dict[str, Any]]:
+	"""Retrieve all appointments belonging to the client identified by client_id."""
 	services = _services()
 
 	async def _query() -> list[dict[str, Any]]:
@@ -133,6 +135,7 @@ def read_my_appointments(client_id: str) -> list[dict[str, Any]]:
 
 @tool("read_clinic_appointments")
 def read_clinic_appointments(client_id: str, clinic_id: str | None = None) -> list[dict[str, Any]]:
+	"""Retrieve all appointments for the clinic. Requires client_id for auth and optionally clinic_id."""
 	services = _services()
 
 	async def _query() -> list[dict[str, Any]]:
@@ -146,6 +149,7 @@ def read_clinic_appointments(client_id: str, clinic_id: str | None = None) -> li
 
 @tool("read_my_visits")
 def read_my_visits(client_id: str) -> list[dict[str, Any]]:
+	"""Retrieve all veterinary visit records for the client identified by client_id."""
 	services = _services()
 
 	async def _query() -> list[dict[str, Any]]:
@@ -159,6 +163,7 @@ def read_my_visits(client_id: str) -> list[dict[str, Any]]:
 
 @tool("read_my_prescriptions")
 def read_my_prescriptions(client_id: str) -> list[dict[str, Any]]:
+	"""Retrieve all prescriptions for the client identified by client_id."""
 	services = _services()
 
 	async def _query() -> list[dict[str, Any]]:
@@ -172,6 +177,7 @@ def read_my_prescriptions(client_id: str) -> list[dict[str, Any]]:
 
 @tool("read_my_prescription_items")
 def read_my_prescription_items(client_id: str) -> list[dict[str, Any]]:
+	"""Retrieve all individual prescription items (medications) for the client identified by client_id."""
 	services = _services()
 
 	async def _query() -> list[dict[str, Any]]:
@@ -185,6 +191,7 @@ def read_my_prescription_items(client_id: str) -> list[dict[str, Any]]:
 
 @tool("read_drugs")
 def read_drugs(client_id: str, clinic_id: str | None = None, drug_ids: list[str] | None = None) -> list[dict[str, Any]]:
+	"""Retrieve drug/medication information. Optionally filter by a list of drug_ids."""
 	services = _services()
 
 	async def _query() -> list[dict[str, Any]]:
@@ -200,6 +207,7 @@ def read_drugs(client_id: str, clinic_id: str | None = None, drug_ids: list[str]
 
 @tool("read_my_pets")
 def read_my_pets(client_id: str) -> list[dict[str, Any]]:
+	"""Retrieve all pets owned by the client identified by client_id."""
 	services = _services()
 
 	async def _query() -> list[dict[str, Any]]:
@@ -213,6 +221,7 @@ def read_my_pets(client_id: str) -> list[dict[str, Any]]:
 
 @tool("read_my_profile")
 def read_my_profile(client_id: str, clinic_id: str) -> dict[str, Any]:
+	"""Retrieve the profile information for the client identified by client_id."""
 	services = _services()
 
 	async def _query() -> dict[str, Any]:
@@ -234,6 +243,7 @@ def add_my_appointment(
 	doctor_id: str | None = None,
 	clinic_id: str | None = None,
 ) -> dict[str, Any]:
+	"""Create a new appointment for a pet. Requires client_id and pet_id. Optionally provide appointment_date (ISO format), reason, and doctor_id."""
 	services = _services()
 
 	async def _create() -> dict[str, Any]:
@@ -270,6 +280,7 @@ def add_my_pet(
 	pet_type: str,
 	clinic_id: str | None = None,
 ) -> dict[str, Any]:
+	"""Add a new pet for the client. Requires name, weight, and pet_type (e.g. 'dog', 'cat')."""
 	services = _services()
 
 	async def _create() -> dict[str, Any]:
@@ -302,6 +313,7 @@ def update_my_pet(
 	pet_type: str | None = None,
 	clinic_id: str | None = None,
 ) -> dict[str, Any]:
+	"""Update an existing pet's information. Requires pet_id. Provide any of name, weight, or pet_type to update."""
 	services = _services()
 
 	async def _update() -> dict[str, Any]:
@@ -330,6 +342,7 @@ def update_my_profile(
 	phone: str | None = None,
 	email: str | None = None,
 ) -> dict[str, Any]:
+	"""Update the client's profile. Provide any of fullname, phone, or email to update."""
 	services = _services()
 
 	async def _update() -> dict[str, Any]:
@@ -352,6 +365,7 @@ def update_my_profile(
 
 @tool("delete_my_pet")
 def delete_my_pet(client_id: str, pet_id: str, clinic_id: str | None = None) -> dict[str, Any]:
+	"""Delete a pet by pet_id. The pet must belong to the client identified by client_id."""
 	services = _services()
 
 	async def _delete() -> dict[str, Any]:
