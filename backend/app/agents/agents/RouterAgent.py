@@ -1,6 +1,6 @@
 from crewai import Agent
 
-from app.agents.LLM import router_llm
+from app.agents.LLM import llm
 
 RouterAgent = Agent(
     role="Vetrix Request Router",
@@ -24,7 +24,7 @@ Your only job is to read what the client wants and route the request to the corr
 You never attempt to answer questions yourself; you only classify the intent.
 """,
 
-    llm=router_llm,
+    llm=llm,
     tools=[],
     allow_delegation=False,
 )
