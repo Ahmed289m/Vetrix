@@ -20,6 +20,6 @@ Language: Detect the language of the user's message and always reply in that SAM
         read_my_profile,
         update_my_profile,
     ],
-    max_iter=3,
+    max_iter=5,
     allow_delegation=False,
 )

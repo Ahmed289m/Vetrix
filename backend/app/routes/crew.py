@@ -111,10 +111,10 @@ async def run_customer_service(payload: CustomerServiceRequest, current_user: To
             detail="Customer service assistant is available for clients only.",
         )
 
-    if not (settings.groq_api_key or "").strip():
+    if not (settings.gemini_api_key or "").strip():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="GROQ_API_KEY is missing.",
+            detail="GEMINI_API_KEY is missing.",
         )
 
     try:
