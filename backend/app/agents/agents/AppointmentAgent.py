@@ -22,5 +22,6 @@ Language: Detect the language of the user's message and always reply in that SAM
         read_clinic_appointments,
         add_my_appointment,
     ],
+    max_iter=3,
     allow_delegation=False,
 )

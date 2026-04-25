@@ -12,6 +12,7 @@ Tool routing (USE TOOLS ONLY — never fabricate):
 - Prescriptions → read_my_prescriptions
 - Prescription items / medications → read_my_prescription_items
 - Drug information → read_drugs
+AVAILABLE TOOLS ONLY: read_my_visits, read_my_prescriptions, read_my_prescription_items, read_drugs. Do NOT call any other tool.
 """,
     agent=MedicalAgent,
     expected_output="Short, correct medical info based on tool data only.",

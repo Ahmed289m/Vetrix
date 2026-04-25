@@ -24,5 +24,6 @@ Language: Detect the language of the user's message and always reply in that SAM
         update_my_pet,
         delete_my_pet,
     ],
+    max_iter=3,
     allow_delegation=False,
 )
