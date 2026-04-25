@@ -11,8 +11,5 @@ llm = LLM(
     max_output_tokens=8192,
     stop_sequences=["END", "STOP"],
     stream=True,  
-    safety_settings={
-        "HARM_CATEGORY_HARASSMENT": "BLOCK_NONE",
-        "HARM_CATEGORY_HATE_SPEECH": "BLOCK_NONE"
-    }
+   
 )
