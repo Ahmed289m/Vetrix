@@ -7,8 +7,10 @@ PetTask = Task(
 Request: {user_prompt}
 Client: {client_id} | Clinic: {clinic_id}
 
+client_id and clinic_id are auto-injected — do NOT pass them to any tool.
+
 Tool routing (USE TOOLS ONLY — never fabricate):
-- View pets → read_my_pets
+- View pets → read_my_pets (no args needed)
 - Add pet (need: name, weight, pet_type) → add_my_pet
 - Update pet (need: pet_id + fields to change) → update_my_pet
 - Delete pet (confirm pet_id with user first) → delete_my_pet

@@ -107,6 +107,10 @@ def run_customer_service_crew(
 	The public signature is identical to the original single-agent version,
 	so no changes are required in the route handler.
 	"""
+	from app.agents.tools.CSTools import set_context
+
+	set_context(client_id, clinic_id or "")
+
 	inputs = {
 		"user_prompt": user_prompt,
 		"client_id": client_id,

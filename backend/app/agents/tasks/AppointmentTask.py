@@ -7,9 +7,11 @@ AppointmentTask = Task(
 Request: {user_prompt}
 Client: {client_id} | Clinic: {clinic_id}
 
+client_id and clinic_id are auto-injected — do NOT pass them to any tool.
+
 Tool routing (USE TOOLS ONLY — never fabricate):
-- View own appointments → read_my_appointments
-- Check clinic schedule → read_clinic_appointments
+- View own appointments → read_my_appointments (no args needed)
+- Check clinic schedule → read_clinic_appointments (no args needed)
 - Book appointment (need: pet_id; date/reason/doctor optional) → add_my_appointment
 AVAILABLE TOOLS ONLY: read_my_appointments, read_clinic_appointments, add_my_appointment. Do NOT call any other tool.
 """,
