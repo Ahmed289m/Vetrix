@@ -106,7 +106,7 @@ async def _resolve_clinic_id() -> str | None:
 # ── Read-only tools ─────────────────────────────────────────────────────────
 
 @tool("client_allowed_actions")
-def client_allowed_actions() -> dict[str, list[str]]:
+def client_allowed_actions(action: str = "fetch") -> dict[str, list[str]]:
 	"""Return the list of actions the current client is allowed to perform, grouped by category."""
 	return {
 		"read": [
@@ -134,7 +134,7 @@ def client_allowed_actions() -> dict[str, list[str]]:
 
 
 @tool("read_my_appointments")
-def read_my_appointments() -> list[dict[str, Any]]:
+def read_my_appointments(action: str = "fetch") -> list[dict[str, Any]]:
 	"""Retrieve all appointments belonging to the current client."""
 	services = _services()
 
@@ -148,7 +148,7 @@ def read_my_appointments() -> list[dict[str, Any]]:
 
 
 @tool("read_clinic_appointments")
-def read_clinic_appointments() -> list[dict[str, Any]]:
+def read_clinic_appointments(action: str = "fetch") -> list[dict[str, Any]]:
 	"""Retrieve all appointments for the clinic."""
 	services = _services()
 
@@ -162,7 +162,7 @@ def read_clinic_appointments() -> list[dict[str, Any]]:
 
 
 @tool("read_my_visits")
-def read_my_visits() -> list[dict[str, Any]]:
+def read_my_visits(action: str = "fetch") -> list[dict[str, Any]]:
 	"""Retrieve all veterinary visit records for the current client."""
 	services = _services()
 
@@ -176,7 +176,7 @@ def read_my_visits() -> list[dict[str, Any]]:
 
 
 @tool("read_my_prescriptions")
-def read_my_prescriptions() -> list[dict[str, Any]]:
+def read_my_prescriptions(action: str = "fetch") -> list[dict[str, Any]]:
 	"""Retrieve all prescriptions for the current client."""
 	services = _services()
 
@@ -190,7 +190,7 @@ def read_my_prescriptions() -> list[dict[str, Any]]:
 
 
 @tool("read_my_prescription_items")
-def read_my_prescription_items() -> list[dict[str, Any]]:
+def read_my_prescription_items(action: str = "fetch") -> list[dict[str, Any]]:
 	"""Retrieve all individual prescription items (medications) for the current client."""
 	services = _services()
 
@@ -222,7 +222,7 @@ def read_drugs(drug_ids: str = "") -> list[dict[str, Any]]:
 
 
 @tool("read_my_pets")
-def read_my_pets() -> list[dict[str, Any]]:
+def read_my_pets(action: str = "fetch") -> list[dict[str, Any]]:
 	"""Retrieve all pets owned by the current client."""
 	services = _services()
 
@@ -236,7 +236,7 @@ def read_my_pets() -> list[dict[str, Any]]:
 
 
 @tool("read_my_profile")
-def read_my_profile() -> dict[str, Any]:
+def read_my_profile(action: str = "fetch") -> dict[str, Any]:
 	"""Retrieve the profile information for the current client."""
 	services = _services()
 
