@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import threading
 from datetime import datetime
 from typing import Any
 
@@ -33,28 +32,11 @@ from app.services.visit_service import VisitService
 
 
 def _run_async(coro: Any) -> Any:
-	try:
-		asyncio.get_running_loop()
-	except RuntimeError:
-		return asyncio.run(coro)
+	from app.core.database import get_event_loop
 
-	result: dict[str, Any] = {}
-	error: dict[str, Exception] = {}
-
-	def _runner() -> None:
-		try:
-			result["value"] = asyncio.run(coro)
-		except Exception as exc:  # pragma: no cover
-			error["value"] = exc
-
-	thread = threading.Thread(target=_runner, daemon=True)
-	thread.start()
-	thread.join()
-
-	if "value" in error:
-		raise error["value"]
-
-	return result.get("value")
+	main_loop = get_event_loop()
+	future = asyncio.run_coroutine_threadsafe(coro, main_loop)
+	return future.result()
 
 
 def _services() -> dict[str, Any]:
