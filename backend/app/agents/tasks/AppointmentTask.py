@@ -8,11 +8,12 @@ Request: {user_prompt}
 Client: {client_id} | Clinic: {clinic_id}
 
 client_id and clinic_id are auto-injected — do NOT pass them to any tool.
+All tool parameters are REQUIRED. Pass empty string "" for fields the user has not provided.
 
 Tool routing (USE TOOLS ONLY — never fabricate):
-- View own appointments → read_my_appointments (no args needed)
-- Check clinic schedule → read_clinic_appointments (no args needed)
-- Book appointment (need: pet_id; date/reason/doctor optional) → add_my_appointment
+- View own appointments → read_my_appointments(action="fetch")
+- Check clinic schedule → read_clinic_appointments(action="fetch")
+- Book appointment → add_my_appointment(pet_id, appointment_date, reason, doctor_id) — pass "" for unknown fields
 AVAILABLE TOOLS ONLY: read_my_appointments, read_clinic_appointments, add_my_appointment. Do NOT call any other tool.
 """,
     agent=AppointmentAgent,

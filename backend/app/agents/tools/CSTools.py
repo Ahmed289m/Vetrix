@@ -32,6 +32,9 @@ from app.services.user_service import UserService
 from app.services.visit_service import VisitService
 
 # ── Thread-local context for system-injected values ─────────────────────────
+# set_context() is called on the thread-pool thread where CrewAI runs.
+# Tool functions (also on that thread) capture values BEFORE _run_async()
+# schedules work on the main event loop thread.
 _context = threading.local()
 
 
@@ -82,65 +85,38 @@ def _services() -> dict[str, Any]:
 	}
 
 
-def _client_token(clinic_id: str = "") -> TokenData:
+def _make_token(client_id: str, clinic_id: str = "") -> TokenData:
 	return TokenData(
-		user_id=_get_client_id(),
+		user_id=client_id,
 		email="",
 		role=UserRole.CLIENT,
-		clinic_id=clinic_id or _get_clinic_id() or None,
+		clinic_id=clinic_id or None,
 		is_superuser=False,
 	)
 
 
-async def _resolve_clinic_id() -> str | None:
-	cid = _get_clinic_id()
-	if cid:
-		return cid
-	client_id = _get_client_id()
+async def _resolve_clinic(client_id: str, clinic_id: str) -> str:
+	if clinic_id:
+		return clinic_id
 	db = get_database()
 	user_repo = UserRepository(db)
 	user = await user_repo.get_by_user_id(client_id)
-	return user.get("clinic_id") if user else None
+	return (user.get("clinic_id") if user else None) or ""
 
 
 # ── Read-only tools ─────────────────────────────────────────────────────────
-
-@tool("client_allowed_actions")
-def client_allowed_actions(action: str = "fetch") -> dict[str, list[str]]:
-	"""Return the list of actions the current client is allowed to perform, grouped by category."""
-	return {
-		"read": [
-			"appointments.read.own",
-			"appointments.read",
-			"visits.read.own",
-			"prescriptions.read.own",
-			"prescription_items.read.own",
-			"drugs.read",
-			"pets.read.own",
-			"users.read.own",
-		],
-		"add": [
-			"appointments.create.own",
-			"pets.create.own",
-		],
-		"update": [
-			"pets.update.own",
-			"users.update.own",
-		],
-		"delete": [
-			"pets.delete.own",
-		],
-	}
-
+# All params are required (no defaults) so Groq always gets every property
+# in the tool call. Pass empty string "" for unused optional fields.
 
 @tool("read_my_appointments")
-def read_my_appointments(action: str = "fetch") -> list[dict[str, Any]]:
-	"""Retrieve all appointments belonging to the current client."""
+def read_my_appointments(action: str) -> list[dict[str, Any]]:
+	"""Retrieve all appointments belonging to the current client. Pass action='fetch'."""
 	services = _services()
+	token = _make_token(_get_client_id(), _get_clinic_id())
 
 	async def _query() -> list[dict[str, Any]]:
 		try:
-			return await services["appointments"].get_appointments(_client_token())
+			return await services["appointments"].get_appointments(token)
 		except HTTPException:
 			return []
 
@@ -148,13 +124,14 @@ def read_my_appointments(action: str = "fetch") -> list[dict[str, Any]]:
 
 
 @tool("read_clinic_appointments")
-def read_clinic_appointments(action: str = "fetch") -> list[dict[str, Any]]:
-	"""Retrieve all appointments for the clinic."""
+def read_clinic_appointments(action: str) -> list[dict[str, Any]]:
+	"""Retrieve all appointments for the clinic. Pass action='fetch'."""
 	services = _services()
+	token = _make_token(_get_client_id(), _get_clinic_id())
 
 	async def _query() -> list[dict[str, Any]]:
 		try:
-			return await services["appointments"].get_appointments(_client_token())
+			return await services["appointments"].get_appointments(token)
 		except HTTPException:
 			return []
 
@@ -162,13 +139,14 @@ def read_clinic_appointments(action: str = "fetch") -> list[dict[str, Any]]:
 
 
 @tool("read_my_visits")
-def read_my_visits(action: str = "fetch") -> list[dict[str, Any]]:
-	"""Retrieve all veterinary visit records for the current client."""
+def read_my_visits(action: str) -> list[dict[str, Any]]:
+	"""Retrieve all veterinary visit records for the current client. Pass action='fetch'."""
 	services = _services()
+	token = _make_token(_get_client_id(), _get_clinic_id())
 
 	async def _query() -> list[dict[str, Any]]:
 		try:
-			return await services["visits"].list_visits(_client_token())
+			return await services["visits"].list_visits(token)
 		except HTTPException:
 			return []
 
@@ -176,13 +154,14 @@ def read_my_visits(action: str = "fetch") -> list[dict[str, Any]]:
 
 
 @tool("read_my_prescriptions")
-def read_my_prescriptions(action: str = "fetch") -> list[dict[str, Any]]:
-	"""Retrieve all prescriptions for the current client."""
+def read_my_prescriptions(action: str) -> list[dict[str, Any]]:
+	"""Retrieve all prescriptions for the current client. Pass action='fetch'."""
 	services = _services()
+	token = _make_token(_get_client_id(), _get_clinic_id())
 
 	async def _query() -> list[dict[str, Any]]:
 		try:
-			return await services["prescriptions"].list_prescriptions(_client_token())
+			return await services["prescriptions"].list_prescriptions(token)
 		except HTTPException:
 			return []
 
@@ -190,13 +169,14 @@ def read_my_prescriptions(action: str = "fetch") -> list[dict[str, Any]]:
 
 
 @tool("read_my_prescription_items")
-def read_my_prescription_items(action: str = "fetch") -> list[dict[str, Any]]:
-	"""Retrieve all individual prescription items (medications) for the current client."""
+def read_my_prescription_items(action: str) -> list[dict[str, Any]]:
+	"""Retrieve all individual prescription items (medications) for the current client. Pass action='fetch'."""
 	services = _services()
+	token = _make_token(_get_client_id(), _get_clinic_id())
 
 	async def _query() -> list[dict[str, Any]]:
 		try:
-			return await services["prescription_items"].list_prescription_items(_client_token())
+			return await services["prescription_items"].list_prescription_items(token)
 		except HTTPException:
 			return []
 
@@ -204,17 +184,19 @@ def read_my_prescription_items(action: str = "fetch") -> list[dict[str, Any]]:
 
 
 @tool("read_drugs")
-def read_drugs(drug_ids: str = "") -> list[dict[str, Any]]:
-	"""Retrieve drug/medication information. Optionally pass drug_ids as a comma-separated string to filter."""
+def read_drugs(drug_ids: str) -> list[dict[str, Any]]:
+	"""Retrieve drug/medication information. Pass drug_ids as comma-separated string, or empty string "" to list all."""
 	services = _services()
+	client_id = _get_client_id()
+	clinic_id = _get_clinic_id()
 
 	async def _query() -> list[dict[str, Any]]:
 		try:
 			ids = [d.strip() for d in drug_ids.split(",") if d.strip()] if drug_ids else []
 			if ids:
 				return await services["drugs"].list_by_drug_ids(ids)
-			resolved_clinic = await _resolve_clinic_id()
-			return await services["drugs"].list_drugs(_client_token(resolved_clinic or ""))
+			resolved = await _resolve_clinic(client_id, clinic_id)
+			return await services["drugs"].list_drugs(_make_token(client_id, resolved))
 		except HTTPException:
 			return []
 
@@ -222,13 +204,14 @@ def read_drugs(drug_ids: str = "") -> list[dict[str, Any]]:
 
 
 @tool("read_my_pets")
-def read_my_pets(action: str = "fetch") -> list[dict[str, Any]]:
-	"""Retrieve all pets owned by the current client."""
+def read_my_pets(action: str) -> list[dict[str, Any]]:
+	"""Retrieve all pets owned by the current client. Pass action='fetch'."""
 	services = _services()
+	token = _make_token(_get_client_id(), _get_clinic_id())
 
 	async def _query() -> list[dict[str, Any]]:
 		try:
-			return await services["pets"].list_pets(_client_token())
+			return await services["pets"].list_pets(token)
 		except HTTPException:
 			return []
 
@@ -236,15 +219,16 @@ def read_my_pets(action: str = "fetch") -> list[dict[str, Any]]:
 
 
 @tool("read_my_profile")
-def read_my_profile(action: str = "fetch") -> dict[str, Any]:
-	"""Retrieve the profile information for the current client."""
+def read_my_profile(action: str) -> dict[str, Any]:
+	"""Retrieve the profile information for the current client. Pass action='fetch'."""
 	services = _services()
+	client_id = _get_client_id()
+	clinic_id = _get_clinic_id()
 
 	async def _query() -> dict[str, Any]:
 		try:
-			resolved_clinic = await _resolve_clinic_id()
-			token = _client_token(resolved_clinic or "")
-			doc = await services["users"].get_user(_get_client_id(), token)
+			resolved = await _resolve_clinic(client_id, clinic_id)
+			doc = await services["users"].get_user(client_id, _make_token(client_id, resolved))
 			return {"success": True, "data": doc}
 		except HTTPException as exc:
 			return {"success": False, "message": str(exc.detail)}
@@ -253,16 +237,19 @@ def read_my_profile(action: str = "fetch") -> dict[str, Any]:
 
 
 # ── Write tools ─────────────────────────────────────────────────────────────
+# All params required. Pass empty string "" for fields the user hasn't provided.
 
 @tool("add_my_appointment")
 def add_my_appointment(
 	pet_id: str,
-	appointment_date: str = "",
-	reason: str = "",
-	doctor_id: str = "",
+	appointment_date: str,
+	reason: str,
+	doctor_id: str,
 ) -> dict[str, Any]:
-	"""Create a new appointment for a pet. Requires pet_id. Optionally provide appointment_date (ISO format), reason, and doctor_id."""
+	"""Create a new appointment for a pet. Requires pet_id. Pass empty string "" for appointment_date, reason, or doctor_id if not provided by user."""
 	services = _services()
+	client_id = _get_client_id()
+	token = _make_token(client_id, _get_clinic_id())
 
 	async def _create() -> dict[str, Any]:
 		parsed_date = None
@@ -274,17 +261,14 @@ def add_my_appointment(
 
 		request = AppointmentCreate(
 			pet_id=pet_id,
-			client_id=_get_client_id(),
+			client_id=client_id,
 			doctor_id=doctor_id or None,
 			appointment_date=parsed_date,
 			reason=reason or None,
 		)
 
 		try:
-			created = await services["appointments"].create_appointment(
-				request,
-				_client_token(),
-			)
+			created = await services["appointments"].create_appointment(request, token)
 			return {"success": True, "data": created}
 		except HTTPException as exc:
 			return {"success": False, "message": str(exc.detail)}
@@ -295,24 +279,28 @@ def add_my_appointment(
 @tool("add_my_pet")
 def add_my_pet(
 	name: str,
-	weight: float,
+	weight: str,
 	pet_type: str,
 ) -> dict[str, Any]:
-	"""Add a new pet for the current client. Requires name, weight, and pet_type (e.g. 'dog', 'cat')."""
+	"""Add a new pet for the current client. Requires name, weight (number as string), and pet_type (e.g. 'dog', 'cat')."""
 	services = _services()
+	client_id = _get_client_id()
+	token = _make_token(client_id, _get_clinic_id())
 
 	async def _create() -> dict[str, Any]:
 		try:
+			parsed_weight = float(weight)
+		except (ValueError, TypeError):
+			return {"success": False, "message": "weight must be a valid number."}
+
+		try:
 			request = PetCreate(
 				name=name,
-				weight=weight,
+				weight=parsed_weight,
 				type=pet_type,
-				client_id=_get_client_id(),
+				client_id=client_id,
 			)
-			created = await services["pets"].create_pet(
-				request,
-				_client_token(),
-			)
+			created = await services["pets"].create_pet(request, token)
 			return {"success": True, "data": created}
 		except HTTPException as exc:
 			return {"success": False, "message": str(exc.detail)}
@@ -325,12 +313,13 @@ def add_my_pet(
 @tool("update_my_pet")
 def update_my_pet(
 	pet_id: str,
-	name: str = "",
-	weight: str = "",
-	pet_type: str = "",
+	name: str,
+	weight: str,
+	pet_type: str,
 ) -> dict[str, Any]:
-	"""Update an existing pet's information. Requires pet_id. Provide any of name, weight, or pet_type to update."""
+	"""Update an existing pet's information. Requires pet_id. Pass empty string "" for name, weight, or pet_type if not changing."""
 	services = _services()
+	token = _make_token(_get_client_id(), _get_clinic_id())
 
 	async def _update() -> dict[str, Any]:
 		parsed_weight = None
@@ -349,11 +338,7 @@ def update_my_pet(
 			type=pet_type or None,
 		)
 		try:
-			updated = await services["pets"].update_pet(
-				pet_id,
-				request,
-				_client_token(),
-			)
+			updated = await services["pets"].update_pet(pet_id, request, token)
 			return {"success": True, "data": updated}
 		except HTTPException as exc:
 			return {"success": False, "message": str(exc.detail)}
@@ -363,18 +348,20 @@ def update_my_pet(
 
 @tool("update_my_profile")
 def update_my_profile(
-	fullname: str = "",
-	phone: str = "",
-	email: str = "",
+	fullname: str,
+	phone: str,
+	email: str,
 ) -> dict[str, Any]:
-	"""Update the current client's profile. Provide any of fullname, phone, or email to update."""
+	"""Update the current client's profile. Pass empty string "" for fields not being changed."""
 	services = _services()
+	client_id = _get_client_id()
+	clinic_id = _get_clinic_id()
 
 	async def _update() -> dict[str, Any]:
 		if not fullname and not phone and not email:
 			return {"success": False, "message": "No fields provided for update."}
 
-		resolved_clinic = await _resolve_clinic_id()
+		resolved = await _resolve_clinic(client_id, clinic_id)
 		request = UserUpdate(
 			fullname=fullname or None,
 			phone=phone or None,
@@ -382,9 +369,7 @@ def update_my_profile(
 		)
 		try:
 			updated = await services["users"].update_user(
-				_get_client_id(),
-				request,
-				_client_token(resolved_clinic or ""),
+				client_id, request, _make_token(client_id, resolved),
 			)
 			return {"success": True, "data": updated}
 		except HTTPException as exc:
@@ -397,10 +382,11 @@ def update_my_profile(
 def delete_my_pet(pet_id: str) -> dict[str, Any]:
 	"""Delete a pet by pet_id. The pet must belong to the current client."""
 	services = _services()
+	token = _make_token(_get_client_id(), _get_clinic_id())
 
 	async def _delete() -> dict[str, Any]:
 		try:
-			await services["pets"].delete_pet(pet_id, _client_token())
+			await services["pets"].delete_pet(pet_id, token)
 			return {"success": True, "message": "Pet deleted successfully.", "data": {"pet_id": pet_id}}
 		except HTTPException as exc:
 			return {"success": False, "message": str(exc.detail)}
