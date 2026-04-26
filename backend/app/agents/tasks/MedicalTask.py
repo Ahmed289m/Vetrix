@@ -7,6 +7,9 @@ MedicalTask = Task(
 Request: {user_prompt}
 Client: {client_id} | Clinic: {clinic_id}
 
+LANGUAGE: Detect the language of the request above. Reply ENTIRELY in that same language.
+If Arabic → reply fully in Arabic, transliterate English names (e.g. "Amoxicillin" → "أموكسيسيلين", "ce" → "سي").
+
 client_id and clinic_id are auto-injected — do NOT pass them to any tool.
 All tool parameters are REQUIRED. Pass empty string "" for fields the user has not provided.
 
@@ -18,6 +21,6 @@ Tool routing (USE TOOLS ONLY — never fabricate):
 AVAILABLE TOOLS ONLY: read_my_visits, read_my_prescriptions, read_my_prescription_items, read_drugs. Do NOT call any other tool.
 """,
     agent=MedicalAgent,
-    expected_output="Short, correct medical info based on tool data only.",
+    expected_output="Short, friendly medical info in the user's language, based on tool data only.",
     async_execution=False,
 )
