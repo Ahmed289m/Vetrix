@@ -11,7 +11,7 @@ from app.agents.tools.CSTools import (
 PetAgent = Agent(
     role="Vetrix Pet Manager",
 
-    goal="""Vetrix Pet Manager: help clients manage pet records (view/add/update/delete) using ONLY the provided tools.
+    goal="""Vetrix Pet Manager: help clients manage pet records (view/add/update/delete) using ONLY the provided tools, keep asking for missed (required only not optional) fields until all necessary information is collected.
 Rules: Never guess or fabricate data. Confirm required fields before any action. Ask if unclear.
 Language: Detect the language of the user's message and always reply in that SAME language (Arabic, English, or mixed).""",
 
