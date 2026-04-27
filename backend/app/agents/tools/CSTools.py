@@ -260,14 +260,16 @@ def read_my_profile(action: str) -> dict[str, Any]:
 @tool("add_my_appointment")
 def add_my_appointment(
 	pet_id: str,
-	appointment_date: str,
-	reason: str,
-	doctor_id: str,
+	appointment_date: str = "",
+	reason: str = "",
+	doctor_id: str = "",
 ) -> dict[str, Any]:
 	"""Create a new appointment for a pet. Requires pet_id. Pass empty string "" for appointment_date, reason, or doctor_id if not provided by user."""
 	services = _services()
 	client_id = _get_client_id()
 	token = _make_token(client_id, _get_clinic_id())
+	if not (pet_id or "").strip():
+		return {"success": False, "message": "pet_id is required to book an appointment."}
 
 	async def _create() -> dict[str, Any]:
 		parsed_date = None
@@ -331,13 +333,15 @@ def add_my_pet(
 @tool("update_my_pet")
 def update_my_pet(
 	pet_id: str,
-	name: str,
-	weight: str,
-	pet_type: str,
+	name: str = "",
+	weight: str = "",
+	pet_type: str = "",
 ) -> dict[str, Any]:
 	"""Update an existing pet's information. Requires pet_id. Pass empty string "" for name, weight, or pet_type if not changing."""
 	services = _services()
 	token = _make_token(_get_client_id(), _get_clinic_id())
+	if not (pet_id or "").strip():
+		return {"success": False, "message": "pet_id is required."}
 
 	async def _update() -> dict[str, Any]:
 		parsed_weight = None
@@ -366,9 +370,9 @@ def update_my_pet(
 
 @tool("update_my_profile")
 def update_my_profile(
-	fullname: str,
-	phone: str,
-	email: str,
+	fullname: str = "",
+	phone: str = "",
+	email: str = "",
 ) -> dict[str, Any]:
 	"""Update the current client's profile. Pass empty string "" for fields not being changed."""
 	services = _services()

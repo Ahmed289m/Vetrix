@@ -11,12 +11,18 @@ LANGUAGE: Detect the language of the request above. Reply ENTIRELY in that same 
 If Arabic → reply fully in Arabic, transliterate English names (e.g. "ce" → "سي", "Max" → "ماكس").
 
 client_id and clinic_id are auto-injected — do NOT pass them to any tool.
-All tool parameters are REQUIRED. Pass empty string "" for fields the user has not provided.
+
+Function-calling safety rules:
+- Never call add_my_appointment unless pet_id is provided and non-empty.
+- If pet_id is missing, ask a short clarifying question instead of calling any write tool.
+- appointment_date, reason, and doctor_id are optional. For unknown optional fields, pass "".
 
 Tool routing (USE TOOLS ONLY — never fabricate):
 - View own appointments → read_my_appointments(action="fetch")
 - Check clinic schedule → read_clinic_appointments(action="fetch")
-- Book appointment → add_my_appointment(pet_id, appointment_date, reason, doctor_id) — pass "" for unknown fields
+- Book appointment:
+    - If pet_id exists → add_my_appointment(pet_id, appointment_date, reason, doctor_id)
+    - If pet_id is missing → ask user for pet_id first (no tool call)
 AVAILABLE TOOLS ONLY: read_my_appointments, read_clinic_appointments, add_my_appointment. Do NOT call any other tool.
 """,
     agent=AppointmentAgent,
