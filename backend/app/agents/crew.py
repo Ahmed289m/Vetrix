@@ -60,7 +60,6 @@ _SPECIALIST_MAP = {
 	"pets": (PetAgent, PetTask),
 	"appointments": (AppointmentAgent, AppointmentTask),
 	"medical": (MedicalAgent, MedicalTask),
-	"profile": (ProfileAgent, ProfileTask),
 }
 
 # Fallback reply used when intent is "general" (no LLM call needed).
@@ -94,7 +93,7 @@ def _parse_intent(router_output: str) -> str:
 		clean = re.sub(r"[^a-z]", "", line)
 		if clean in valid:
 			return clean
-		match = re.search(r"final\s*output\s*:\s*(pets|appointments|medical|profile|general)", line)
+		match = re.search(r"final\s*output\s*:\s*(pets|appointments|medical|general)", line)
 		if match:
 			return match.group(1)
 
