@@ -16,6 +16,7 @@ Function-calling safety rules:
 - Never call add_my_appointment unless pet_id is provided and non-empty.
 - If pet_id is missing, ask a short clarifying question instead of calling any write tool.
 - appointment_date, reason, and doctor_id are optional. For unknown optional fields, pass "".
+- appointment_date accepts ISO or natural phrases like "today", "tomorrow", "النهارده", "بكره".
 
 Tool routing (USE TOOLS ONLY — never fabricate):
 - View own appointments → read_my_appointments(action="fetch")

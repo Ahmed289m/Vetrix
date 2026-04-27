@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from crewai.tools import tool
@@ -83,6 +83,47 @@ def _services() -> dict[str, Any]:
 		"drugs": DrugService(drug_repo),
 		"users": UserService(user_repo, clinic_repo, CredentialService()),
 	}
+
+
+def _parse_appointment_datetime(value: str) -> datetime | None:
+	"""Parse common user date inputs into datetime.
+
+	Accepted:
+	- ISO datetime/date: 2026-04-27T10:30:00, 2026-04-27
+	- Common date formats: 27/04/2026, 27-04-2026, 2026/04/27
+	- Relative words: today/tomorrow and Arabic equivalents
+	"""
+	text = (value or "").strip()
+	if not text:
+		return None
+
+	lowered = text.lower()
+	now = datetime.now()
+
+	if lowered in {"today", "tod", "tn"} or text in {"النهارده", "النهاردة", "اليوم"}:
+		return now
+	if lowered in {"tomorrow", "tmr", "tmrw"} or text in {"بكره", "بكرا", "غدا"}:
+		return now + timedelta(days=1)
+
+	for fmt in (
+		"%Y-%m-%dT%H:%M:%S",
+		"%Y-%m-%d %H:%M:%S",
+		"%Y-%m-%dT%H:%M",
+		"%Y-%m-%d %H:%M",
+		"%Y-%m-%d",
+		"%d/%m/%Y",
+		"%d-%m-%Y",
+		"%Y/%m/%d",
+	):
+		try:
+			return datetime.strptime(text, fmt)
+		except ValueError:
+			continue
+
+	try:
+		return datetime.fromisoformat(text)
+	except ValueError:
+		return None
 
 
 def _make_token(client_id: str, clinic_id: str = "") -> TokenData:
@@ -274,10 +315,12 @@ def add_my_appointment(
 	async def _create() -> dict[str, Any]:
 		parsed_date = None
 		if appointment_date:
-			try:
-				parsed_date = datetime.fromisoformat(appointment_date)
-			except ValueError:
-				return {"success": False, "message": "appointment_date must be ISO format."}
+			parsed_date = _parse_appointment_datetime(appointment_date)
+			if parsed_date is None:
+				return {
+					"success": False,
+					"message": "appointment_date is invalid. Use ISO date/time or common values like today/tomorrow.",
+				}
 
 		request = AppointmentCreate(
 			pet_id=pet_id,

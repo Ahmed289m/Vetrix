@@ -10,6 +10,8 @@ from app.models.enums.user_role import UserRole
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 logger = logging.getLogger(__name__)
+logging.getLogger("CrewAIEventsBus").setLevel(logging.ERROR)
+logging.getLogger("crewai.events").setLevel(logging.ERROR)
 
 MAX_HISTORY_MESSAGES = 6
 _RATE_LIMIT_RETRIES = 2
