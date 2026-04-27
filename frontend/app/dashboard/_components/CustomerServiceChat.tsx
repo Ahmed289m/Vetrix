@@ -196,7 +196,7 @@ export function CustomerServiceChat() {
   }, [clientId]);
 
   return (
-    <div className="h-svh flex flex-col bg-background relative overflow-hidden">
+    <div className="h-full flex flex-col bg-background relative overflow-hidden">
       {/* Background gradient */}
       <div className="absolute inset-0 chat-gradient pointer-events-none" />
 

@@ -5,10 +5,10 @@ from app.agents.agents.AppointmentAgent import AppointmentAgent
 AppointmentTask = Task(
     description="""
 Request: {user_prompt}
-Client: {client_id} | Clinic: {clinic_id}
+Client: {client_id}
+Clinic: {clinic_id}
 
-LANGUAGE: Detect the language of the request above. Reply ENTIRELY in that same language.
-If Arabic → reply fully in Arabic, transliterate English names (e.g. "ce" → "سي", "Max" → "ماكس").
+
 
 
 Function-calling safety rules:
@@ -17,10 +17,7 @@ Function-calling safety rules:
 - appointment_date, reason, and doctor_id are optional. For unknown optional fields, pass "".
 - appointment_date accepts ISO or natural phrases like "today", "tomorrow", "النهارده", "بكره".
 
-Tool routing (USE TOOLS ONLY — never fabricate):
-- View own appointments → read_my_appointments(action="fetch")
-- Check clinic schedule → read_clinic_appointments(action="fetch")
-- Book appointment:add_my_appointment(pet_id, appointment_date, reason)
+
     
 """,
     agent=AppointmentAgent,

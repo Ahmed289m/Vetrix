@@ -57,14 +57,6 @@ export default function DashboardLayoutClient({
     );
   }
 
-  if (role === "client") {
-    return (
-      <div className="min-h-screen w-full bg-background text-foreground relative overflow-hidden">
-        {children}
-      </div>
-    );
-  }
-
   return (
     <SidebarProvider>
       <div className="flex h-svh w-full bg-background text-foreground relative overflow-x-hidden">
