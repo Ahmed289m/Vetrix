@@ -40,6 +40,5 @@ LANGUAGE — THIS IS CRITICAL:
         read_my_prescription_items,
         read_drugs,
     ],
-    max_iter=5,
     allow_delegation=False,
 )

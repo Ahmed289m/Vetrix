@@ -19,7 +19,7 @@ from app.repositories.prescription_item_repository import PrescriptionItemReposi
 from app.repositories.prescription_repository import PrescriptionRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.visit_repository import VisitRepository
-from app.schemas.appointment import AppointmentCreate
+from app.schemas.appointment import AppointmentCreate, AppointmentUpdate
 from app.schemas.pet import PetCreate, PetUpdate
 from app.schemas.user import UserUpdate
 from app.services.appointment_service import AppointmentService
@@ -436,6 +436,64 @@ def update_my_profile(
 			updated = await services["users"].update_user(
 				client_id, request, _make_token(client_id, resolved),
 			)
+			return {"success": True, "data": updated}
+		except HTTPException as exc:
+			return {"success": False, "message": str(exc.detail)}
+
+	return _run_async(_update())
+
+
+@tool("cancel_my_appointment")
+def cancel_my_appointment(appointment_id: str) -> dict[str, Any]:
+	"""Cancel (delete) an appointment by appointment_id. The appointment must belong to the current client."""
+	services = _services()
+	token = _make_token(_get_client_id(), _get_clinic_id())
+
+	async def _delete() -> dict[str, Any]:
+		try:
+			await services["appointments"].delete_appointment(appointment_id, token)
+			return {"success": True, "message": "Appointment cancelled successfully.", "data": {"appointment_id": appointment_id}}
+		except HTTPException as exc:
+			return {"success": False, "message": str(exc.detail)}
+
+	return _run_async(_delete())
+
+
+@tool("update_my_appointment")
+def update_my_appointment(
+	appointment_id: str,
+	appointment_date: str = "",
+	reason: str = "",
+	doctor_id: str = "",
+	status: str = "",
+) -> dict[str, Any]:
+	"""Update an existing appointment. Requires appointment_id. Pass empty string "" for fields not being changed."""
+	services = _services()
+	token = _make_token(_get_client_id(), _get_clinic_id())
+	if not (appointment_id or "").strip():
+		return {"success": False, "message": "appointment_id is required."}
+
+	async def _update() -> dict[str, Any]:
+		parsed_date = None
+		if appointment_date:
+			parsed_date = _parse_appointment_datetime(appointment_date)
+			if parsed_date is None:
+				return {
+					"success": False,
+					"message": "appointment_date is invalid. Use ISO date/time or common values like today/tomorrow.",
+				}
+
+		if not appointment_date and not reason and not doctor_id and not status:
+			return {"success": False, "message": "No fields provided for update."}
+
+		request = AppointmentUpdate(
+			appointment_date=parsed_date,
+			reason=reason or None,
+			doctor_id=doctor_id or None,
+			status=status or None,
+		)
+		try:
+			updated = await services["appointments"].update_appointment(appointment_id, request, token)
 			return {"success": True, "data": updated}
 		except HTTPException as exc:
 			return {"success": False, "message": str(exc.detail)}

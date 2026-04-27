@@ -9,9 +9,8 @@ RouterAgent = Agent(
 Analyze the client's message and classify it into exactly one of these intent categories:
 
 - pets        → the client wants to view, add, update, or delete their pets
-- appointments → the client wants to view, book, or check clinic appointment slots
-- medical     → the client wants to view visits, prescriptions, medications, or drug info
-- profile     → the client wants to view or update their personal profile
+- appointments → the client wants to view, book, or check his clinic appointments
+- medical     → the client wants to view visits, prescriptions, medications, or drugs related to their pets.
 - general     → greetings, unclear requests, or anything that does not fit the above
 
 Output ONLY the single lowercase category word. No explanation, no punctuation, no extra text.
