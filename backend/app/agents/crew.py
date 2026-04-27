@@ -5,13 +5,11 @@ from app.agents.agents.AppointmentAgent import AppointmentAgent
 from app.agents.agents.InfoAgent import InfoAgent
 from app.agents.agents.MedicalAgent import MedicalAgent
 from app.agents.agents.PetAgent import PetAgent
-from app.agents.agents.ProfileAgent import ProfileAgent
 from app.agents.agents.RouterAgent import RouterAgent
 from app.agents.tasks.AppointmentTask import AppointmentTask
 from app.agents.tasks.InfoGetting import InfoGettingTask
 from app.agents.tasks.MedicalTask import MedicalTask
 from app.agents.tasks.PetTask import PetTask
-from app.agents.tasks.ProfileTask import ProfileTask
 from app.agents.tasks.RouterTask import RouterTask
 
 
@@ -67,9 +65,8 @@ _SPECIALIST_MAP = {
 
 # Fallback reply used when intent is "general" (no LLM call needed).
 _GENERAL_REPLY = (
-	"Hello! I'm the Vetrix AI assistant. "
-	"I can help you with your pets, appointments, prescriptions, or profile. "
-	"What would you like to do today?"
+	"Hello! I'm the Vetrix AI assistant.I can help you?"
+	
 )
 
 
