@@ -1,4 +1,5 @@
 from crewai import Crew, Process
+import re
 
 from app.agents.agents.AppointmentAgent import AppointmentAgent
 from app.agents.agents.InfoAgent import InfoAgent
@@ -84,10 +85,22 @@ class _SimpleOutput:
 
 def _parse_intent(router_output: str) -> str:
 	"""Extract the intent keyword from the RouterAgent output."""
-	raw = router_output.strip().lower()
-	for key in _SPECIALIST_MAP:
-		if key in raw:
-			return key
+	raw = (router_output or "").strip().lower()
+	valid = set(_SPECIALIST_MAP.keys()) | {"general"}
+
+	# Expected path: a single category token only.
+	if raw in valid:
+		return raw
+
+	# Accept common noisy variants like: "Final Output: appointments".
+	for line in raw.splitlines():
+		clean = re.sub(r"[^a-z]", "", line)
+		if clean in valid:
+			return clean
+		match = re.search(r"final\s*output\s*:\s*(pets|appointments|medical|profile|general)", line)
+		if match:
+			return match.group(1)
+
 	return "general"
 
 

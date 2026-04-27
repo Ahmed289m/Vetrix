@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
@@ -13,6 +14,14 @@ logger = logging.getLogger(__name__)
 MAX_HISTORY_MESSAGES = 6
 _RATE_LIMIT_RETRIES = 2
 _RATE_LIMIT_WAIT = 12
+_HISTORY_BLOCKLIST = (
+    "AVAILABLE TOOLS ONLY",
+    "Crew Execution Completed",
+    "Task Completion",
+    "Tracing Preference Saved",
+    "Update Available",
+    "Final Output:",
+)
 
 
 class CrewCaseHistoryRequest(BaseModel):
@@ -30,13 +39,57 @@ class CustomerServiceRequest(BaseModel):
     history: list[CustomerServiceChatMessage] = Field(default_factory=list)
 
 
+def _sanitize_history_content(content: str) -> str:
+    lines = [line.strip() for line in content.splitlines() if line.strip()]
+    cleaned: list[str] = []
+    for line in lines:
+        line_lower = line.lower()
+        if any(token.lower() in line_lower for token in _HISTORY_BLOCKLIST):
+            continue
+        cleaned.append(line)
+    return "\n".join(cleaned).strip()
+
+
 def _build_customer_service_prompt(user_prompt: str, history: list[CustomerServiceChatMessage]) -> str:
     recent = history[-MAX_HISTORY_MESSAGES:] if history else []
     if not recent:
         return user_prompt
 
-    transcript = "\n".join(f"{message.role}: {message.content}" for message in recent if message.content.strip())
+    transcript_lines: list[str] = []
+    for message in recent:
+        role = (message.role or "").strip().lower()
+        if role not in {"user", "assistant"}:
+            continue
+        cleaned_content = _sanitize_history_content(message.content or "")
+        if not cleaned_content:
+            continue
+        transcript_lines.append(f"{role}: {cleaned_content}")
+
+    if not transcript_lines:
+        return user_prompt
+
+    transcript = "\n".join(transcript_lines)
     return f"Conversation history:\n{transcript}\n\nCurrent user message:\n{user_prompt}"
+
+
+def _sanitize_agent_response(raw_text: str) -> str:
+    text = (raw_text or "").strip()
+    if not text:
+        return text
+
+    final_match = re.search(r"Final Output:\s*(.+)", text, flags=re.IGNORECASE)
+    if final_match:
+        candidate = final_match.group(1).strip()
+        if candidate:
+            return candidate
+
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    cleaned = [
+        line
+        for line in lines
+        if not any(token.lower() in line.lower() for token in _HISTORY_BLOCKLIST)
+    ]
+    return "\n".join(cleaned).strip() or text
 
 
 @router.get("/case-history/{pet_id}")
@@ -129,7 +182,7 @@ async def run_customer_service(payload: CustomerServiceRequest, current_user: To
                     prompt,
                     current_user.user_id,
                     current_user.clinic_id,
-                    True,  # verbose — temp debug
+                    False,
                 )
                 break
             except Exception as exc:
@@ -150,6 +203,7 @@ async def run_customer_service(payload: CustomerServiceRequest, current_user: To
         )
 
     raw_text = result.raw if hasattr(result, "raw") else str(result)
+    raw_text = _sanitize_agent_response(raw_text)
     logger.info("[CS-AGENT] Final response: %s", raw_text[:500])
 
     return {

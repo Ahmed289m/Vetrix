@@ -126,12 +126,30 @@ def read_my_appointments(action: str) -> list[dict[str, Any]]:
 @tool("read_clinic_appointments")
 def read_clinic_appointments(action: str) -> list[dict[str, Any]]:
 	"""Retrieve all appointments for the clinic. Pass action='fetch'."""
-	services = _services()
-	token = _make_token(_get_client_id(), _get_clinic_id())
+	client_id = _get_client_id()
+	clinic_id = _get_clinic_id()
 
 	async def _query() -> list[dict[str, Any]]:
 		try:
-			return await services["appointments"].get_appointments(token)
+			resolved_clinic_id = await _resolve_clinic(client_id, clinic_id)
+			if not resolved_clinic_id:
+				return []
+
+			db = get_database()
+			repo = AppointmentRepository(db)
+			appointments = await repo.list(clinic_id=resolved_clinic_id, is_superuser=False)
+
+			# Return a privacy-safe clinic schedule view.
+			return [
+				{
+					"appointment_id": appt.get("appointment_id"),
+					"pet_id": appt.get("pet_id"),
+					"doctor_id": appt.get("doctor_id"),
+					"appointment_date": appt.get("appointment_date"),
+					"status": appt.get("status"),
+				}
+				for appt in appointments
+			]
 		except HTTPException:
 			return []
 
