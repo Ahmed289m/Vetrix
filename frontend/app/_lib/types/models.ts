@@ -198,6 +198,22 @@ export interface DrugUpdate {
   clinic_id?: string | null;
 }
 
+/* ── Drug Interaction Check ──────────────────────────────────────── */
+
+export interface DrugInteractionWarning {
+  drug_a: string;
+  drug_a_id: string;
+  drug_b: string;
+  drug_b_id: string;
+  reason: string;
+  severity: string;
+}
+
+export interface DrugInteractionResult {
+  has_interactions: boolean;
+  warnings: DrugInteractionWarning[];
+}
+
 /* ── Prescription ─────────────────────────────────────────────────── */
 
 export interface Prescription {

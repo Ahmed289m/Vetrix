@@ -81,3 +81,116 @@ class DrugService:
             return
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
 
+    def _assess_severity(self, drug_a: dict, drug_b: dict, matched_reason: str) -> str:
+        """
+        Assess severity of drug interaction based on various factors.
+        Returns: "contraindication", "major", "moderate", or "minor"
+        """
+        reason_lower = matched_reason.lower()
+        
+        # Contraindications take precedence
+        contraindications_a = [c.lower() for c in drug_a.get("contraindications", [])]
+        contraindications_b = [c.lower() for c in drug_b.get("contraindications", [])]
+        
+        name_b_lower = drug_b.get("name", "").lower()
+        class_b_lower = drug_b.get("drugClass", "").lower()
+        name_a_lower = drug_a.get("name", "").lower()
+        class_a_lower = drug_a.get("drugClass", "").lower()
+        
+        for contra in contraindications_a:
+            if name_b_lower in contra or class_b_lower in contra:
+                return "contraindication"
+        for contra in contraindications_b:
+            if name_a_lower in contra or class_a_lower in contra:
+                return "contraindication"
+        
+        # Assess interaction severity based on keywords
+        major_keywords = [
+            "serotonin", "maoi", "ssri", "interaction", "contraindicated",
+            "avoid", "severe", "critical", "hypotension", "hemorrhage",
+            "nephrotoxicity", "hepatotoxicity", "seizure", "arrhythmia"
+        ]
+        moderate_keywords = [
+            "caution", "monitor", "dose", "adjust", "reduce", "increase",
+            "accumulation", "clearance", "metabolism", "synergistic"
+        ]
+        
+        reason_keywords = reason_lower.split()
+        for keyword in reason_keywords:
+            if any(major in keyword for major in major_keywords):
+                return "major"
+        
+        for keyword in reason_keywords:
+            if any(mod in keyword for mod in moderate_keywords):
+                return "moderate"
+        
+        return "minor"
+
+    async def check_interactions(self, drug_ids: list[str], current_user: TokenData) -> dict:
+        """
+        Check for drug interactions and contraindications.
+        Returns structured warnings with severity levels.
+        """
+        if len(drug_ids) < 2:
+            return {"has_interactions": False, "warnings": []}
+
+        drug_docs = await self.list_by_drug_ids(drug_ids)
+        drugs_map: dict[str, dict] = {}
+        for d in drug_docs:
+            did = d.get("drug_id") or d.get("_id", "")
+            drugs_map[did] = d
+
+        warnings: list[dict] = []
+        checked: set[tuple[str, str]] = set()
+
+        for did_a, drug_a in drugs_map.items():
+            interactions_a = [i.lower() for i in drug_a.get("drugInteractions", [])]
+            name_a = drug_a.get("name", "")
+            class_a = drug_a.get("drugClass", "")
+
+            for did_b, drug_b in drugs_map.items():
+                if did_a == did_b:
+                    continue
+                pair = tuple(sorted([did_a, did_b]))
+                if pair in checked:
+                    continue
+                checked.add(pair)
+
+                name_b = drug_b.get("name", "")
+                class_b = drug_b.get("drugClass", "")
+                interactions_b = [i.lower() for i in drug_b.get("drugInteractions", [])]
+
+                matched_reason = None
+                # Try matching from drug_a interactions
+                for entry in interactions_a:
+                    if (name_b.lower() in entry or entry in name_b.lower() or
+                        class_b.lower() in entry or entry in class_b.lower()):
+                        matched_reason = entry
+                        break
+
+                # Try matching from drug_b interactions
+                if not matched_reason:
+                    for entry in interactions_b:
+                        if (name_a.lower() in entry or entry in name_a.lower() or
+                            class_a.lower() in entry or entry in class_a.lower()):
+                            matched_reason = entry
+                            break
+
+                # Assess severity and create warning
+                if matched_reason:
+                    severity = self._assess_severity(drug_a, drug_b, matched_reason)
+                    warnings.append({
+                        "drug_a": name_a,
+                        "drug_a_id": did_a,
+                        "drug_b": name_b,
+                        "drug_b_id": did_b,
+                        "reason": matched_reason.title(),
+                        "severity": severity,
+                    })
+
+        # Sort warnings by severity (contraindication > major > moderate > minor)
+        severity_order = {"contraindication": 0, "major": 1, "moderate": 2, "minor": 3}
+        warnings.sort(key=lambda w: severity_order.get(w.get("severity", "minor"), 4))
+
+        return {"has_interactions": len(warnings) > 0, "warnings": warnings}
+

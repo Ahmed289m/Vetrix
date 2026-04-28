@@ -1,5 +1,5 @@
 from app.core.permission_checker import TokenData
-from app.schemas.drug import DrugCreate, DrugUpdate
+from app.schemas.drug import DrugCreate, DrugUpdate, DrugInteractionRequest
 from app.services.drug_service import DrugService
 
 
@@ -24,4 +24,7 @@ class DrugController:
 
     async def delete_drug(self, drug_id: str, current_user: TokenData) -> None:
         await self.service.delete_drug(drug_id, current_user)
+
+    async def check_interactions(self, request: DrugInteractionRequest, current_user: TokenData) -> dict:
+        return await self.service.check_interactions(request.drug_ids, current_user)
 

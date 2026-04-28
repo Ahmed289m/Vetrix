@@ -4,7 +4,7 @@ from app.controllers.drug_controller import DrugController
 from app.core.permission_checker import TokenData, require_permission
 from app.core.permissions import Permissions
 from app.routes.dependencies import get_drug_controller
-from app.schemas.drug import DrugCreate, DrugUpdate
+from app.schemas.drug import DrugCreate, DrugUpdate, DrugInteractionRequest
 
 router = APIRouter(prefix="/drugs", tags=["drugs"])
 
@@ -17,11 +17,21 @@ async def create_drug(
 ) -> dict:
     """
     Create a new drug (ADMIN/OWNER/DOCTOR only).
-    
+
     - ADMIN/OWNER/DOCTOR can create drugs
     """
     created = await controller.create_drug(request, current_user)
     return {"success": True, "message": "Drug created successfully.", "data": created}
+
+
+@router.post("/check-interactions")
+async def check_drug_interactions(
+    request: DrugInteractionRequest,
+    current_user: TokenData = Depends(require_permission(Permissions.DRUGS_READ)),
+    controller: DrugController = Depends(get_drug_controller),
+) -> dict:
+    result = await controller.check_interactions(request, current_user)
+    return {"success": True, "message": "Interaction check completed.", "data": result}
 
 
 @router.get("")

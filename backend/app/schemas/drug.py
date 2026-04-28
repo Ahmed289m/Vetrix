@@ -44,3 +44,21 @@ class DrugResponse(BaseModel):
     clinic_id: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class DrugInteractionRequest(BaseModel):
+    drug_ids: list[str]
+
+
+class DrugInteractionWarning(BaseModel):
+    drug_a: str
+    drug_a_id: str
+    drug_b: str
+    drug_b_id: str
+    reason: str
+    severity: str
+
+
+class DrugInteractionResponse(BaseModel):
+    has_interactions: bool
+    warnings: list[DrugInteractionWarning]

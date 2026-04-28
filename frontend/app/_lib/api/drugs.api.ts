@@ -1,6 +1,6 @@
 import { api } from "../axios";
 import type { ApiResponse } from "../types/api.types";
-import type { Drug, DrugCreate, DrugUpdate } from "../types/models";
+import type { Drug, DrugCreate, DrugUpdate, DrugInteractionResult } from "../types/models";
 
 export const drugsApi = {
   list: () =>
@@ -17,4 +17,7 @@ export const drugsApi = {
 
   delete: (id: string) =>
     api.delete<ApiResponse<{ drug_id: string }>>(`/drugs/${id}`).then((r) => r.data),
+
+  checkInteractions: (drug_ids: string[]) =>
+    api.post<ApiResponse<DrugInteractionResult>>("/drugs/check-interactions", { drug_ids }).then((r) => r.data),
 };

@@ -12,8 +12,10 @@ import {
   ChevronRight,
   Activity,
   AlertCircle,
+  AlertTriangle,
   Info,
   X,
+  Check,
 } from "lucide-react";
 import { useFormik } from "formik";
 import { motion, AnimatePresence } from "@/app/_components/fast-motion";
@@ -63,7 +65,12 @@ import { usePets } from "@/app/_hooks/queries/use-pets";
 import { useUsers } from "@/app/_hooks/queries/use-users";
 import { useAuth } from "@/app/_hooks/useAuth";
 import { useLang } from "@/app/_hooks/useLanguage";
-import type { Drug, Prescription } from "@/app/_lib/types/models";
+import type {
+  Drug,
+  DrugInteractionWarning,
+  Prescription,
+} from "@/app/_lib/types/models";
+import { drugsApi } from "@/app/_lib/api/drugs.api";
 
 type MouseEvent = React.MouseEvent<HTMLDivElement>;
 
@@ -79,6 +86,43 @@ const formatDose = (val: unknown): string => {
   return String(val);
 };
 
+const getSeverityStyle = (severity: string) => {
+  switch (severity?.toLowerCase()) {
+    case "contraindication":
+      return {
+        containerClass: "border-red-500/30 bg-red-500/5",
+        headerClass: "text-red-500",
+        iconColor: "text-red-500",
+        badgeClass: "bg-red-500/10 text-red-500 border-red-500/20",
+        icon: "⚠️",
+      };
+    case "major":
+      return {
+        containerClass: "border-orange-500/30 bg-orange-500/5",
+        headerClass: "text-orange-500",
+        iconColor: "text-orange-500",
+        badgeClass: "bg-orange-500/10 text-orange-500 border-orange-500/20",
+        icon: "🔴",
+      };
+    case "moderate":
+      return {
+        containerClass: "border-amber-500/30 bg-amber-500/5",
+        headerClass: "text-amber-500",
+        iconColor: "text-amber-500",
+        badgeClass: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+        icon: "🟡",
+      };
+    default:
+      return {
+        containerClass: "border-cyan-500/30 bg-cyan-500/5",
+        headerClass: "text-cyan-500",
+        iconColor: "text-cyan-500",
+        badgeClass: "bg-cyan-500/10 text-cyan-500 border-cyan-500/20",
+        icon: "ℹ️",
+      };
+  }
+};
+
 export default function PrescriptionsPage() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -91,7 +135,8 @@ export default function PrescriptionsPage() {
   const { t } = useLang();
 
   const isClient = user?.role === "client";
-  const canCreate = false;
+  const canCreate =
+    user?.role === "doctor" || user?.role === "admin" || user?.role === "owner";
   const canDeletePrescriptions = !isClient && user?.role !== "staff";
 
   const { data: rxData, isLoading: rxLoading } = usePrescriptions();
@@ -236,6 +281,12 @@ export default function PrescriptionsPage() {
   }, [bulkDeletablePrescriptionIds]);
 
   // ── Form ─────────────────────────────────────────────────────────────────
+  const [drugSearch, setDrugSearch] = React.useState("");
+  const [interactionWarnings, setInteractionWarnings] = React.useState<
+    DrugInteractionWarning[]
+  >([]);
+  const [checkingInteractions, setCheckingInteractions] = React.useState(false);
+
   const formik = useFormik({
     initialValues: {
       client_id: "",
@@ -262,6 +313,8 @@ export default function PrescriptionsPage() {
             setIsFormOpen(false);
             resetForm();
             setSubmitting(false);
+            setInteractionWarnings([]);
+            setDrugSearch("");
           },
           onError: () => {
             setSubmitting(false);
@@ -271,15 +324,65 @@ export default function PrescriptionsPage() {
     },
   });
 
+  const selectedDrugsInForm = drugs.filter((d) =>
+    formik.values.drug_ids.includes(d.drug_id),
+  );
+
+  const filteredDrugsForForm = React.useMemo(() => {
+    const q = drugSearch.trim().toLowerCase();
+    if (!q) return drugs;
+    return drugs.filter(
+      (d) =>
+        d.name.toLowerCase().includes(q) ||
+        d.drugClass.toLowerCase().includes(q),
+    );
+  }, [drugs, drugSearch]);
+
+  const toggleDrugInForm = (drugId: string) => {
+    const current = formik.values.drug_ids;
+    const next = current.includes(drugId)
+      ? current.filter((id) => id !== drugId)
+      : [...current, drugId];
+    formik.setFieldValue("drug_ids", next);
+  };
+
+  React.useEffect(() => {
+    const ids = formik.values.drug_ids;
+    if (ids.length < 2) {
+      setInteractionWarnings([]);
+      return;
+    }
+
+    let cancelled = false;
+    setCheckingInteractions(true);
+
+    drugsApi
+      .checkInteractions(ids)
+      .then((res) => {
+        if (!cancelled) {
+          setInteractionWarnings(res.data?.warnings ?? []);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setInteractionWarnings([]);
+      })
+      .finally(() => {
+        if (!cancelled) setCheckingInteractions(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [formik.values.drug_ids]);
+
   const clientPets = pets.filter(
     (p) => p.client_id === formik.values.client_id,
   );
-  const selectedDrugInForm = formik.values.drug_ids.length
-    ? drugs.find((d) => d.drug_id === formik.values.drug_ids[0])
-    : undefined;
 
   const handleOpenForm = () => {
     formik.resetForm();
+    setInteractionWarnings([]);
+    setDrugSearch("");
     setIsFormOpen(true);
   };
 
@@ -877,79 +980,323 @@ export default function PrescriptionsPage() {
               </Select>
             </div>
 
-            {/* Drug — no manual dose entry */}
-            <div className="space-y-2 pt-2 border-t border-tint/5">
+            {/* Drugs — multi-select with interaction checker */}
+            <div className="space-y-3 pt-2 border-t border-tint/5">
               <Label className="text-xs font-black uppercase tracking-widest text-emerald ml-1 flex items-center gap-1.5">
                 <Pill className="w-3.5 h-3.5" />{" "}
-                {t("select_drug") || "Select Drug"} *
+                {t("select_drug") || "Select Drugs"} *
               </Label>
-              <Select
-                value={formik.values.drug_ids[0] || ""}
-                onValueChange={(val) =>
-                  formik.setFieldValue("drug_ids", val ? [val] : [])
-                }
-              >
-                <SelectTrigger
-                  className={cn(
-                    "h-14 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-2xl font-bold",
-                    formik.errors.drug_ids && "border-red-500/50",
-                  )}
-                >
-                  <SelectValue
-                    placeholder={
-                      t("search_drug") || "Choose a drug from formulary"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl">
-                  {drugs.map((d) => (
-                    <SelectItem
-                      key={d.drug_id}
-                      value={d.drug_id}
-                      className="rounded-xl font-bold"
-                    >
-                      {d.name}
-                      <span className="ml-2 text-muted-foreground font-normal text-xs">
-                        · {d.drugClass}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
 
-              {/* Live drug preview */}
-              {selectedDrugInForm && (
+              {/* Selected drugs tags */}
+              {selectedDrugsInForm.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {selectedDrugsInForm.map((d) => (
+                    <motion.span
+                      key={d.drug_id}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.8, opacity: 0 }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald/10 text-emerald text-sm font-bold"
+                    >
+                      <Pill className="w-3.5 h-3.5" />
+                      {d.name}
+                      <button
+                        type="button"
+                        onClick={() => toggleDrugInForm(d.drug_id)}
+                        className="ml-0.5 p-0.5 rounded-full hover:bg-emerald/20 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </motion.span>
+                  ))}
+                </div>
+              )}
+
+              {/* Drug search + list */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search drugs..."
+                  value={drugSearch}
+                  onChange={(e) => setDrugSearch(e.target.value)}
+                  className="pl-10 h-12 bg-tint/5 border-tint/5 focus:border-emerald/30 focus:ring-emerald/20 rounded-xl font-medium"
+                />
+              </div>
+
+              <div className="max-h-48 overflow-y-auto custom-scrollbar rounded-xl border border-tint/5 bg-tint/5">
+                {filteredDrugsForForm.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    No drugs found
+                  </div>
+                ) : (
+                  filteredDrugsForForm.map((d) => {
+                    const isSelected = formik.values.drug_ids.includes(
+                      d.drug_id,
+                    );
+                    const hasWarning = interactionWarnings.some(
+                      (w) =>
+                        w.drug_a_id === d.drug_id || w.drug_b_id === d.drug_id,
+                    );
+                    return (
+                      <button
+                        key={d.drug_id}
+                        type="button"
+                        onClick={() => toggleDrugInForm(d.drug_id)}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-4 py-3 text-left transition-colors border-b border-tint/5 last:border-b-0",
+                          isSelected ? "bg-emerald/10" : "hover:bg-tint/10",
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors",
+                            isSelected
+                              ? "bg-emerald border-emerald"
+                              : "border-muted-foreground/30",
+                          )}
+                        >
+                          {isSelected && (
+                            <Check className="w-3 h-3 text-white" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-foreground truncate">
+                            {d.name}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            {d.drugClass}
+                          </p>
+                        </div>
+                        {isSelected && hasWarning && (
+                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+
+              {formik.errors.drug_ids && (
+                <p className="text-xs text-red-400 font-bold ml-1">
+                  {formik.errors.drug_ids}
+                </p>
+              )}
+
+              {/* Live interaction warnings */}
+              <AnimatePresence>
+                {interactionWarnings.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, height: 0 }}
+                    animate={{ opacity: 1, y: 0, height: "auto" }}
+                    exit={{ opacity: 0, y: 8, height: 0 }}
+                    className="space-y-2"
+                  >
+                    {/* Contraindications and major warnings first */}
+                    {interactionWarnings
+                      .filter((w) =>
+                        ["contraindication", "major"].includes(
+                          w.severity?.toLowerCase(),
+                        ),
+                      )
+                      .map((w, idx) => {
+                        const style = getSeverityStyle(w.severity);
+                        return (
+                          <motion.div
+                            key={`${w.drug_a_id}-${w.drug_b_id}-${idx}`}
+                            initial={{ opacity: 0, x: -8 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                            className={cn(
+                              "rounded-2xl border overflow-hidden",
+                              style.containerClass,
+                            )}
+                          >
+                            <div className="p-4 space-y-3">
+                              <div className="flex items-center gap-2">
+                                <AlertTriangle
+                                  className={cn("w-5 h-5", style.iconColor)}
+                                />
+                                <p
+                                  className={cn(
+                                    "text-xs font-black uppercase tracking-widest",
+                                    style.headerClass,
+                                  )}
+                                >
+                                  {w.severity === "contraindication"
+                                    ? "⛔ CONTRAINDICATED"
+                                    : "⚠️ MAJOR INTERACTION"}
+                                </p>
+                              </div>
+                              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-background/20 border border-current/10">
+                                <span className="text-lg shrink-0 mt-0.5">
+                                  {style.icon}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-bold text-foreground">
+                                    {w.drug_a}{" "}
+                                    <span
+                                      className={cn("mx-1", style.headerClass)}
+                                    >
+                                      &harr;
+                                    </span>{" "}
+                                    {w.drug_b}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {w.reason}
+                                  </p>
+                                </div>
+                              </div>
+                              <p
+                                className={cn(
+                                  "text-[10px] font-bold",
+                                  style.headerClass,
+                                )}
+                              >
+                                {w.severity === "contraindication"
+                                  ? "These drugs must not be prescribed together. Consider alternative medications."
+                                  : "Significant interaction risk. Close monitoring or dose adjustment required."}
+                              </p>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+
+                    {/* Moderate and minor warnings */}
+                    {interactionWarnings.filter((w) =>
+                      ["moderate", "minor"].includes(w.severity?.toLowerCase()),
+                    ).length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8, height: 0 }}
+                        animate={{ opacity: 1, y: 0, height: "auto" }}
+                        exit={{ opacity: 0, y: 8, height: 0 }}
+                        className="rounded-2xl border border-amber-500/20 bg-amber-500/5 overflow-hidden"
+                      >
+                        <div className="p-4 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 text-amber-500" />
+                            <p className="text-xs font-black uppercase tracking-widest text-amber-500">
+                              Other Interactions (
+                              {
+                                interactionWarnings.filter((w) =>
+                                  ["moderate", "minor"].includes(
+                                    w.severity?.toLowerCase(),
+                                  ),
+                                ).length
+                              }
+                              )
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            {interactionWarnings
+                              .filter((w) =>
+                                ["moderate", "minor"].includes(
+                                  w.severity?.toLowerCase(),
+                                ),
+                              )
+                              .map((w, idx) => (
+                                <motion.div
+                                  key={`${w.drug_a_id}-${w.drug_b_id}`}
+                                  initial={{ opacity: 0, x: -8 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ delay: idx * 0.05 }}
+                                  className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/5 border border-amber-500/10"
+                                >
+                                  <span className="text-sm shrink-0 mt-0.5">
+                                    {w.severity === "moderate" ? "🟡" : "ℹ️"}
+                                  </span>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-bold text-foreground">
+                                      {w.drug_a}{" "}
+                                      <span className="text-amber-500 mx-1">
+                                        &harr;
+                                      </span>{" "}
+                                      {w.drug_b}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                      {w.severity === "moderate"
+                                        ? "Moderate: "
+                                        : "Minor: "}
+                                      {w.reason}
+                                    </p>
+                                  </div>
+                                </motion.div>
+                              ))}
+                          </div>
+                          <p className="text-[10px] text-amber-500/70 font-bold">
+                            Review interactions before prescribing. Consider
+                            alternatives or dose adjustments if needed.
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Checking spinner */}
+              {checkingInteractions && formik.values.drug_ids.length >= 2 && (
+                <div className="flex items-center gap-2 px-2 py-1">
+                  <div className="w-3 h-3 border-2 border-emerald border-t-transparent rounded-full animate-spin" />
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                    Checking interactions...
+                  </span>
+                </div>
+              )}
+
+              {/* No interactions confirmation */}
+              {!checkingInteractions &&
+                formik.values.drug_ids.length >= 2 &&
+                interactionWarnings.length === 0 && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald/5 border border-emerald/10"
+                  >
+                    <div className="w-5 h-5 rounded-full bg-emerald/20 flex items-center justify-center shrink-0">
+                      <Check className="w-3 h-3 text-emerald" />
+                    </div>
+                    <p className="text-xs font-bold text-emerald">
+                      No known interactions between selected drugs
+                    </p>
+                  </motion.div>
+                )}
+
+              {/* Selected drug previews */}
+              {selectedDrugsInForm.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="p-4 rounded-2xl bg-emerald/5 border border-emerald/10 space-y-3"
+                  className="space-y-2"
                 >
-                  <p className="text-xs font-black uppercase tracking-widest text-emerald">
-                    Drug Info • Auto-filled
-                  </p>
-                  <div className="space-y-1.5">
-                    {Object.entries(selectedDrugInForm.dosage || {}).map(
-                      ([k, v]) => (
-                        <div key={k} className="flex justify-between text-sm">
-                          <span className="text-muted-foreground capitalize">
-                            {k}
-                          </span>
-                          <span className="font-bold text-foreground">
-                            {formatDose(v)}
-                          </span>
-                        </div>
-                      ),
-                    )}
-                  </div>
-                  {selectedDrugInForm.indications?.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      <span className="font-bold">Indications: </span>
-                      {selectedDrugInForm.indications.slice(0, 2).join(", ")}
-                      {selectedDrugInForm.indications.length > 2 && " ..."}
-                    </p>
-                  )}
+                  {selectedDrugsInForm.map((drug) => (
+                    <div
+                      key={drug.drug_id}
+                      className="p-3 rounded-xl bg-emerald/5 border border-emerald/10 space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-black text-emerald uppercase tracking-widest">
+                          {drug.name}
+                        </p>
+                        <span className="text-[10px] text-muted-foreground">
+                          {drug.drugClass}
+                        </span>
+                      </div>
+                      {drug.dosage &&
+                        Object.entries(drug.dosage).map(([k, v]) => (
+                          <div key={k} className="flex justify-between text-xs">
+                            <span className="text-muted-foreground capitalize">
+                              {k}
+                            </span>
+                            <span className="font-bold text-foreground">
+                              {formatDose(v)}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  ))}
                 </motion.div>
               )}
+
               <p className="px-2 pt-1 text-[10px] font-black text-muted-foreground/40 italic uppercase tracking-widest">
                 {t("dosage_auto_from_drug") ||
                   "Dosage is pulled automatically from the drug formulary — no manual entry needed"}
