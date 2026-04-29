@@ -144,7 +144,8 @@ class DrugService:
         checked: set[tuple[str, str]] = set()
 
         for did_a, drug_a in drugs_map.items():
-            interactions_a = [i.lower() for i in drug_a.get("drugInteractions", [])]
+            interactions_a = drug_a.get("drugInteractions", [])
+            interactions_a_text = [str(i).lower() for i in interactions_a]
             name_a = drug_a.get("name", "")
             class_a = drug_a.get("drugClass", "")
 
@@ -158,19 +159,28 @@ class DrugService:
 
                 name_b = drug_b.get("name", "")
                 class_b = drug_b.get("drugClass", "")
-                interactions_b = [i.lower() for i in drug_b.get("drugInteractions", [])]
+                interactions_b = drug_b.get("drugInteractions", [])
+                interactions_b_text = [str(i).lower() for i in interactions_b]
 
                 matched_reason = None
+                
+                # Try matching by explicit ID
+                if did_b in interactions_a:
+                    matched_reason = f"Explicit interaction noted with {name_b}"
+                elif did_a in interactions_b:
+                    matched_reason = f"Explicit interaction noted with {name_a}"
+
                 # Try matching from drug_a interactions
-                for entry in interactions_a:
-                    if (name_b.lower() in entry or entry in name_b.lower() or
-                        class_b.lower() in entry or entry in class_b.lower()):
-                        matched_reason = entry
-                        break
+                if not matched_reason:
+                    for entry in interactions_a_text:
+                        if (name_b.lower() in entry or entry in name_b.lower() or
+                            class_b.lower() in entry or entry in class_b.lower()):
+                            matched_reason = entry
+                            break
 
                 # Try matching from drug_b interactions
                 if not matched_reason:
-                    for entry in interactions_b:
+                    for entry in interactions_b_text:
                         if (name_a.lower() in entry or entry in name_a.lower() or
                             class_a.lower() in entry or entry in class_a.lower()):
                             matched_reason = entry

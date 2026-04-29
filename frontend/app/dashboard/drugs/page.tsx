@@ -44,6 +44,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/app/_components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/app/_components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/app/_components/ui/popover";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/app/_lib/utils";
 import type { Drug, DrugCreate } from "@/app/_lib/types/models";
 
 /* ── Permission helpers ────────────────────────────────────────────────
@@ -303,6 +318,7 @@ function DrugDetailPanel({
   drug: Drug;
   manageable: boolean;
   clinicName?: string;
+  allDrugs: Drug[];
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -395,7 +411,10 @@ function DrugDetailPanel({
           <DetailSection
             icon={<Pill className="w-4 h-4 text-cyan-400" />}
             label={t("drug_interactions_label")}
-            items={drug.drugInteractions}
+            items={drug.drugInteractions?.map((interaction) => {
+              const found = allDrugs.find((d) => d.drug_id === interaction);
+              return found ? found.name : interaction;
+            })}
           />
 
           {drug.dosage && Object.keys(drug.dosage).length > 0 && (
@@ -565,7 +584,7 @@ type DrugFormValues = {
   indications: string;
   sideEffects: string;
   contraindications: string;
-  drugInteractions: string;
+  drugInteractions: string[];
   dosageDog: string;
   dosageCat: string;
   toxicityDog: string;
@@ -598,6 +617,7 @@ function DrugCrudForm({
   ownerClinicOptions: Array<{ clinic_id: string; clinicName: string }>;
   enableClinicSelectionForOwner: boolean;
   defaultClinicIdForCreate: string | null;
+  allDrugs: Drug[];
   onSuccess: () => void;
 }) {
   const createDrug = useCreateDrug();
@@ -612,7 +632,7 @@ function DrugCrudForm({
       indications: "",
       sideEffects: "",
       contraindications: "",
-      drugInteractions: "",
+      drugInteractions: [],
       dosageDog: "",
       dosageCat: "",
       toxicityDog: "",
@@ -630,7 +650,7 @@ function DrugCrudForm({
         indications: parseTagArray(values.indications),
         sideEffects: parseTagArray(values.sideEffects),
         contraindications: parseTagArray(values.contraindications),
-        drugInteractions: parseTagArray(values.drugInteractions),
+        drugInteractions: values.drugInteractions,
         dosage: {
           ...(values.dosageDog ? { dog: values.dosageDog.trim() } : {}),
           ...(values.dosageCat ? { cat: values.dosageCat.trim() } : {}),
@@ -690,9 +710,7 @@ function DrugCrudForm({
           contraindications: tagArrayToString(
             selectedDrug.contraindications ?? [],
           ),
-          drugInteractions: tagArrayToString(
-            selectedDrug.drugInteractions ?? [],
-          ),
+          drugInteractions: selectedDrug.drugInteractions ?? [],
           dosageDog: asText(dosage.dog),
           dosageCat: asText(dosage.cat),
           toxicityDog: asText(toxicity.dog),
@@ -916,13 +934,85 @@ function DrugCrudForm({
           />
         </Field>
         <Field label={t("drug_interactions_label")}>
-          <Input
-            name="drugInteractions"
-            value={formik.values.drugInteractions}
-            onChange={formik.handleChange}
-            placeholder="e.g. Warfarin, Methotrexate"
-            className="h-12 bg-tint/5 border-tint/5 focus:border-cyan-400/30 rounded-xl"
-          />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                className="w-full h-12 bg-tint/5 border-tint/5 focus:border-cyan-400/30 rounded-xl justify-between font-normal text-left px-3 text-muted-foreground"
+              >
+                {formik.values.drugInteractions.length > 0
+                  ? `${formik.values.drugInteractions.length} drugs selected`
+                  : "Select interactive drugs..."}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[400px] p-0 rounded-2xl border-tint/10 shadow-xl" align="start">
+              <Command>
+                <CommandInput placeholder="Search drugs..." className="h-11" />
+                <CommandList>
+                  <CommandEmpty>No drugs found.</CommandEmpty>
+                  <CommandGroup className="max-h-64 overflow-auto custom-scrollbar">
+                    {allDrugs
+                      .filter((d) => d.drug_id !== selectedDrug?.drug_id)
+                      .map((d) => {
+                        const isSelected = formik.values.drugInteractions.includes(d.drug_id);
+                        return (
+                          <CommandItem
+                            key={d.drug_id}
+                            value={d.name}
+                            onSelect={() => {
+                              const next = isSelected
+                                ? formik.values.drugInteractions.filter((id) => id !== d.drug_id)
+                                : [...formik.values.drugInteractions, d.drug_id];
+                              formik.setFieldValue("drugInteractions", next);
+                            }}
+                            className="cursor-pointer font-medium py-2 px-3 data-[selected=true]:bg-cyan-500/10 data-[selected=true]:text-cyan-400"
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4 text-cyan-400",
+                                isSelected ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {d.name} <span className="ml-2 text-xs opacity-50 font-normal">({d.drugClass})</span>
+                          </CommandItem>
+                        );
+                      })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+          {formik.values.drugInteractions.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {formik.values.drugInteractions.map((id) => {
+                const d = allDrugs.find((x) => x.drug_id === id);
+                if (!d) return null;
+                return (
+                  <span
+                    key={id}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-500/10 border border-cyan-500/20 text-cyan-400"
+                  >
+                    {d.name}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        formik.setFieldValue(
+                          "drugInteractions",
+                          formik.values.drugInteractions.filter((x) => x !== id)
+                        );
+                      }}
+                      className="hover:bg-cyan-500/20 rounded-full p-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+          )}
         </Field>
         {/* Specific Destructured Dosage */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1603,6 +1693,7 @@ export default function DrugsPage() {
             clinicName={
               isAdmin ? getClinicName(selectedDrug.clinic_id) : undefined
             }
+            allDrugs={allDrugs}
             onClose={() => setSelectedDrug(null)}
             onEdit={() => handleOpenEdit(selectedDrug)}
             onDelete={() => handleDelete(selectedDrug)}
@@ -1627,6 +1718,7 @@ export default function DrugsPage() {
               ? ownerClinicFilter
               : (ownerClinicOptions[0]?.clinic_id ?? clinicId)
           }
+          allDrugs={allDrugs}
           onSuccess={() => {
             setIsFormOpen(false);
             setEditDrug(null);
