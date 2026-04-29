@@ -311,6 +311,7 @@ function DrugDetailPanel({
   drug,
   manageable,
   clinicName,
+  allDrugs,
   onClose,
   onEdit,
   onDelete,
@@ -605,6 +606,7 @@ function DrugCrudForm({
   ownerClinicOptions,
   enableClinicSelectionForOwner,
   defaultClinicIdForCreate,
+  allDrugs,
   onSuccess,
 }: {
   isOpen: boolean;
@@ -947,7 +949,10 @@ function DrugCrudForm({
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[400px] p-0 rounded-2xl border-tint/10 shadow-xl" align="start">
+            <PopoverContent
+              className="w-100 p-0 rounded-2xl border-tint/10 shadow-xl"
+              align="start"
+            >
               <Command>
                 <CommandInput placeholder="Search drugs..." className="h-11" />
                 <CommandList>
@@ -956,15 +961,21 @@ function DrugCrudForm({
                     {allDrugs
                       .filter((d) => d.drug_id !== selectedDrug?.drug_id)
                       .map((d) => {
-                        const isSelected = formik.values.drugInteractions.includes(d.drug_id);
+                        const isSelected =
+                          formik.values.drugInteractions.includes(d.drug_id);
                         return (
                           <CommandItem
                             key={d.drug_id}
                             value={d.name}
                             onSelect={() => {
                               const next = isSelected
-                                ? formik.values.drugInteractions.filter((id) => id !== d.drug_id)
-                                : [...formik.values.drugInteractions, d.drug_id];
+                                ? formik.values.drugInteractions.filter(
+                                    (id) => id !== d.drug_id,
+                                  )
+                                : [
+                                    ...formik.values.drugInteractions,
+                                    d.drug_id,
+                                  ];
                               formik.setFieldValue("drugInteractions", next);
                             }}
                             className="cursor-pointer font-medium py-2 px-3 data-[selected=true]:bg-cyan-500/10 data-[selected=true]:text-cyan-400"
@@ -972,10 +983,13 @@ function DrugCrudForm({
                             <Check
                               className={cn(
                                 "mr-2 h-4 w-4 text-cyan-400",
-                                isSelected ? "opacity-100" : "opacity-0"
+                                isSelected ? "opacity-100" : "opacity-0",
                               )}
                             />
-                            {d.name} <span className="ml-2 text-xs opacity-50 font-normal">({d.drugClass})</span>
+                            {d.name}{" "}
+                            <span className="ml-2 text-xs opacity-50 font-normal">
+                              ({d.drugClass})
+                            </span>
                           </CommandItem>
                         );
                       })}
@@ -1001,7 +1015,9 @@ function DrugCrudForm({
                         e.stopPropagation();
                         formik.setFieldValue(
                           "drugInteractions",
-                          formik.values.drugInteractions.filter((x) => x !== id)
+                          formik.values.drugInteractions.filter(
+                            (x) => x !== id,
+                          ),
                         );
                       }}
                       className="hover:bg-cyan-500/20 rounded-full p-0.5"
