@@ -33,9 +33,11 @@ import {
   Droplets,
   Scale,
   Bot,
+  Calculator,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ChatAssistant } from "@/app/_components/ChatAssistant";
+import { DrugDoseCalculatorModal } from "@/app/dashboard/_components/DrugDoseCalculatorModal";
 import {
   useAppointments,
   useUpdateAppointment,
@@ -269,6 +271,9 @@ export default function SimulationMode({ role }: Props) {
   // ── Fluid therapy modal ───────────────────────────────────────────────
   const [showFluidTherapy, setShowFluidTherapy] = useState(false);
 
+  // ── Drug dose calculator modal ────────────────────────────────────────
+  const [showDrugCalc, setShowDrugCalc] = useState(false);
+
   // ── Update weight modal ───────────────────────────────────────────────
   const [showUpdateWeight, setShowUpdateWeight] = useState(false);
   const [newWeightInput, setNewWeightInput] = useState("");
@@ -424,12 +429,8 @@ export default function SimulationMode({ role }: Props) {
       for (let j = i + 1; j < selectedDrugs.length; j++) {
         const a = selectedDrugs[i];
         const b = selectedDrugs[j];
-        const aInteractsB = (a.drugInteractions || []).some((name) =>
-          b.name.toLowerCase().includes(name.toLowerCase()),
-        );
-        const bInteractsA = (b.drugInteractions || []).some((name) =>
-          a.name.toLowerCase().includes(name.toLowerCase()),
-        );
+        const aInteractsB = (a.drugInteractions || []).includes(b.drug_id);
+        const bInteractsA = (b.drugInteractions || []).includes(a.drug_id);
         if (aInteractsB || bInteractsA) pairs.push({ a: a.name, b: b.name });
       }
     }
@@ -987,6 +988,17 @@ export default function SimulationMode({ role }: Props) {
                       Fluid Therapy
                     </motion.button>
 
+                    {/* Drug Calculator */}
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => setShowDrugCalc(true)}
+                      className="flex items-center gap-2 bg-emerald/10 hover:bg-emerald/20 text-emerald px-4 py-2.5 rounded-xl text-sm font-bold border border-emerald/20 transition-colors"
+                    >
+                      <Calculator className="w-4 h-4" />
+                      Drug Calculator
+                    </motion.button>
+
                     {/* Case History */}
                     <motion.button
                       whileHover={{ scale: 1.02 }}
@@ -1508,7 +1520,10 @@ export default function SimulationMode({ role }: Props) {
                             <Zap className="w-3 h-3" /> Known Interactions
                           </p>
                           <p className="text-amber-400/80 font-medium">
-                            {drug.drugInteractions.join(", ")}
+                            {drug.drugInteractions.map((idOrName) => {
+                              const resolved = allDrugs.find((d) => d.drug_id === idOrName);
+                              return resolved ? resolved.name : idOrName;
+                            }).join(", ")}
                           </p>
                         </div>
                       )}
@@ -1967,6 +1982,24 @@ export default function SimulationMode({ role }: Props) {
           <FluidTherapyModal
             open={showFluidTherapy}
             onClose={() => setShowFluidTherapy(false)}
+            initialWeight={activePet?.weight}
+            initialSpecies={
+              activePet?.type === "dog" || activePet?.type === "cat"
+                ? activePet.type
+                : "dog"
+            }
+            petName={myActiveCase?.petName}
+          />
+        );
+      })()}
+
+      {/* ═══════════════════ DRUG DOSE CALCULATOR MODAL ══════════════════════════ */}
+      {(() => {
+        const activePet = allPets.find((p) => p.pet_id === myActiveCase?.petId);
+        return (
+          <DrugDoseCalculatorModal
+            open={showDrugCalc}
+            onClose={() => setShowDrugCalc(false)}
             initialWeight={activePet?.weight}
             initialSpecies={
               activePet?.type === "dog" || activePet?.type === "cat"

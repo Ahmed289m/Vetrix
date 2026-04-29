@@ -53,19 +53,41 @@ export function calcFluidDeficit(
 
 // ─── Ongoing Losses ───────────────────────────────────────────────────────────
 
+export type LossSeverity = "mild" | "severe";
+
+/**
+ * mL/kg multipliers per episode, by severity.
+ *
+ * Vomiting:
+ *   Mild / occasional  → 1 mL/kg per episode
+ *   Frequent / severe  → 2 mL/kg per episode
+ *
+ * Diarrhea:
+ *   Mild               → 4 mL/kg per episode
+ *   Severe / watery    → 6 mL/kg per episode
+ */
+export const VOMIT_RATE: Record<LossSeverity, number> = { mild: 1, severe: 2 };
+export const DIARRHEA_RATE: Record<LossSeverity, number> = { mild: 4, severe: 6 };
+
 /**
  * Estimated ongoing losses from vomiting & diarrhea.
- * Vomiting:  1 mL/kg/vomit episode
- * Diarrhea: 200 mL/kg/diarrhea episode
+ *
+ * @param weightKg      Body weight in kg
+ * @param vomitCount    Number of vomiting episodes
+ * @param diarrheaCount Number of diarrhea episodes
+ * @param vomitSev      Vomiting severity ("mild" | "severe"), default "mild"
+ * @param diarrheaSev   Diarrhea severity ("mild" | "severe"), default "mild"
  */
 export function calcOngoingLosses(
   weightKg: number,
   vomitCount: number,
   diarrheaCount: number,
+  vomitSev: LossSeverity = "mild",
+  diarrheaSev: LossSeverity = "mild",
 ): number {
   if (weightKg <= 0) return 0;
-  const vomitLoss = weightKg * 1 * Math.max(0, vomitCount);
-  const diarrheaLoss = weightKg * 200 * Math.max(0, diarrheaCount);
+  const vomitLoss = weightKg * VOMIT_RATE[vomitSev] * Math.max(0, vomitCount);
+  const diarrheaLoss = weightKg * DIARRHEA_RATE[diarrheaSev] * Math.max(0, diarrheaCount);
   return vomitLoss + diarrheaLoss;
 }
 

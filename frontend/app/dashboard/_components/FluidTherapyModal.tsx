@@ -34,8 +34,11 @@ import {
   getNormalRateRange,
   CLINICAL_PRECAUTIONS,
   DEHYDRATION_COLOR,
+  VOMIT_RATE,
+  DIARRHEA_RATE,
   type FluidSpecies,
   type DropFactor,
+  type LossSeverity,
 } from "@/app/_lib/utils/fluid-therapy";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -161,6 +164,8 @@ export function FluidTherapyModal({
   const [vomitCount, setVomitCount] = React.useState(0);
   const [diarrheaCount, setDiarrheaCount] = React.useState(0);
   const [dropFactor, setDropFactor] = React.useState<DropFactor>(20);
+  const [vomitSeverity, setVomitSeverity] = React.useState<LossSeverity>("mild");
+  const [diarrheaSeverity, setDiarrheaSeverity] = React.useState<LossSeverity>("mild");
 
   // ── Dilution inputs ─────────────────────────────────────────────────────────
   const [dilC1, setDilC1] = React.useState("");
@@ -204,7 +209,7 @@ export function FluidTherapyModal({
   const w = parseFloat(weight) || 0;
   const maintenance = calcMaintenanceAllometric(w, species);
   const deficit = calcFluidDeficit(w, dehydration);
-  const ongoing = calcOngoingLosses(w, vomitCount, diarrheaCount);
+  const ongoing = calcOngoingLosses(w, vomitCount, diarrheaCount, vomitSeverity, diarrheaSeverity);
   const total24h = calcTotal24h(maintenance, deficit, ongoing);
   const hourlyRate = calcHourlyRate(total24h);
   const minuteRate = calcMinuteRate(hourlyRate);
@@ -443,18 +448,56 @@ export function FluidTherapyModal({
 
                   {/* Row 3: Ongoing losses */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <NumberStepper
-                      label="Vomiting — عدد مرات القيء"
-                      sublabel="1 mL/kg per episode"
-                      value={vomitCount}
-                      onChange={setVomitCount}
-                    />
-                    <NumberStepper
-                      label="Diarrhea — عدد مرات الإسهال"
-                      sublabel="200 mL/kg per episode"
-                      value={diarrheaCount}
-                      onChange={setDiarrheaCount}
-                    />
+                    <div className="space-y-2">
+                      <NumberStepper
+                        label="Vomiting — عدد مرات القيء"
+                        sublabel={`${VOMIT_RATE[vomitSeverity]} mL/kg per episode`}
+                        value={vomitCount}
+                        onChange={setVomitCount}
+                      />
+                      <div className="flex gap-1.5">
+                        {(["mild", "severe"] as const).map((sev) => (
+                          <button
+                            key={sev}
+                            onClick={() => setVomitSeverity(sev)}
+                            className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                              vomitSeverity === sev
+                                ? sev === "severe"
+                                  ? "bg-orange/15 text-orange border border-orange/30"
+                                  : "bg-emerald/15 text-emerald border border-emerald/30"
+                                : "bg-tint/5 text-muted-foreground hover:bg-tint/10 border border-transparent"
+                            }`}
+                          >
+                            {sev === "mild" ? "Mild (1 mL/kg)" : "Severe (2 mL/kg)"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <NumberStepper
+                        label="Diarrhea — عدد مرات الإسهال"
+                        sublabel={`${DIARRHEA_RATE[diarrheaSeverity]} mL/kg per episode`}
+                        value={diarrheaCount}
+                        onChange={setDiarrheaCount}
+                      />
+                      <div className="flex gap-1.5">
+                        {(["mild", "severe"] as const).map((sev) => (
+                          <button
+                            key={sev}
+                            onClick={() => setDiarrheaSeverity(sev)}
+                            className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                              diarrheaSeverity === sev
+                                ? sev === "severe"
+                                  ? "bg-red-500/15 text-red-400 border border-red-500/30"
+                                  : "bg-emerald/15 text-emerald border border-emerald/30"
+                                : "bg-tint/5 text-muted-foreground hover:bg-tint/10 border border-transparent"
+                            }`}
+                          >
+                            {sev === "mild" ? "Mild (4 mL/kg)" : "Severe (6 mL/kg)"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
