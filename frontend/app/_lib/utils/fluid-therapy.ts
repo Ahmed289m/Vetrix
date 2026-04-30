@@ -27,14 +27,14 @@ export function calcMaintenanceAllometric(
 /**
  * Linear daily maintenance (normal clinical reference).
  * Dog: 60 mL/kg/24h
- * Cat: 45 mL/kg/24h
+ * Cat: 40 mL/kg/24h
  */
 export function calcMaintenanceLinear(
   weightKg: number,
   species: FluidSpecies,
 ): number {
   if (weightKg <= 0) return 0;
-  return weightKg * (species === "dog" ? 60 : 45);
+  return weightKg * (species === "dog" ? 60 : 40);
 }
 
 // ─── Fluid Deficit ────────────────────────────────────────────────────────────
@@ -152,12 +152,17 @@ export function getMaxBolusRate(
   return weightKg * (species === "dog" ? 90 : 60); // mL/hr
 }
 
-/** Normal maintenance infusion rate range (mL/hr) */
-export function getNormalRateRange(weightKg: number): {
-  min: number;
-  max: number;
-} {
-  return { min: weightKg * 10, max: weightKg * 20 };
+/**
+ * Normal maintenance infusion rate range (mL/hr).
+ * Dog: 2–6 mL/kg/hr
+ * Cat: 2–3 mL/kg/hr
+ */
+export function getNormalRateRange(
+  weightKg: number,
+  species: FluidSpecies = "dog",
+): { min: number; max: number } {
+  const maxRate = species === "cat" ? 3 : 6;
+  return { min: weightKg * 2, max: weightKg * maxRate };
 }
 
 // ─── Dehydration Severity ─────────────────────────────────────────────────────

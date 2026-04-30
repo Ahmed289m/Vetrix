@@ -6,12 +6,16 @@ import { Droplets, Calculator, Pill } from "lucide-react";
 import { useLang } from "@/app/_hooks/useLanguage";
 import { FluidTherapyModal } from "@/app/dashboard/_components/FluidTherapyModal";
 import { DrugDoseCalculatorModal } from "@/app/dashboard/_components/DrugDoseCalculatorModal";
+import { useDrugs } from "@/app/_hooks/queries/use-drugs";
 import { fadeUp } from "@/app/_lib/utils/shared-animations";
+import type { Drug } from "@/app/_lib/types/models";
 
 export default function CalculatorsPage() {
   const { t } = useLang();
   const [isFluidOpen, setIsFluidOpen] = React.useState(false);
   const [isDoseOpen, setIsDoseOpen] = React.useState(false);
+  const { data: drugsData } = useDrugs();
+  const allDrugs: Drug[] = drugsData?.data ?? [];
 
   return (
     <>
@@ -128,10 +132,10 @@ export default function CalculatorsPage() {
               <div className="flex flex-wrap gap-2 pt-1">
                 {[
                   "Weight-Based",
+                  "Drug Auto-Fill",
                   "mL / Tablets",
                   "Safety Warnings",
                   "Total mg",
-                  "Formula Breakdown",
                 ].map((tag) => (
                   <span
                     key={tag}
@@ -162,6 +166,7 @@ export default function CalculatorsPage() {
       <DrugDoseCalculatorModal
         open={isDoseOpen}
         onClose={() => setIsDoseOpen(false)}
+        drugs={allDrugs}
       />
     </>
   );

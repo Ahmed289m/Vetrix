@@ -216,7 +216,7 @@ export function FluidTherapyModal({
   const dropsPerMin = calcDropsPerMinute(minuteRate, dropFactor);
   const dropsPerSec = calcDropsPerSecond(dropsPerMin);
   const maxBolus = getMaxBolusRate(w, species);
-  const normalRange = getNormalRateRange(w);
+  const normalRange = getNormalRateRange(w, species);
   const severity = getDehydrationSeverity(dehydration);
   const colors = DEHYDRATION_COLOR[severity];
   const smartPlan = getSmartPlan(species);

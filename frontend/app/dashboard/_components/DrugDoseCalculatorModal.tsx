@@ -11,12 +11,32 @@ import {
   AlertTriangle,
   FlaskConical,
   Pill,
+  Search,
+  ChevronDown,
 } from "lucide-react";
 import {
   calculateDose,
   type DoseUnit,
 } from "@/app/_lib/utils/dosage-calculator";
 import type { FluidSpecies } from "@/app/_lib/utils/fluid-therapy";
+import type { Drug } from "@/app/_lib/types/models";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Parse leading numeric value from a dosage string like "10mg/kg q8-12h" or "5-10 mg/kg" */
+function parseDosageNumber(raw: unknown): number | null {
+  if (raw == null) return null;
+  const str = String(raw).trim();
+  // Match leading number (int or float), optionally preceded by whitespace
+  const match = str.match(/^(\d+(?:\.\d+)?)/);
+  return match ? parseFloat(match[1]) : null;
+}
+
+/** Get species-specific dosage string from drug record */
+function getDrugDosageRaw(drug: Drug, species: FluidSpecies): unknown {
+  const dosage = drug.dosage as Record<string, unknown>;
+  return dosage[species] ?? null;
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -27,6 +47,10 @@ export interface DrugDoseCalculatorModalProps {
   initialWeight?: number;
   initialSpecies?: FluidSpecies;
   petName?: string;
+  /** Full list of available drugs for the drug selector */
+  drugs?: Drug[];
+  /** Pre-selected drug IDs (from prescriptions) for auto batch calculation */
+  preselectedDrugIds?: string[];
 }
 
 // ── Input Field ───────────────────────────────────────────────────────────────
@@ -83,6 +107,8 @@ export function DrugDoseCalculatorModal({
   initialWeight,
   initialSpecies,
   petName,
+  drugs = [],
+  preselectedDrugIds,
 }: DrugDoseCalculatorModalProps) {
   // ── State ─────────────────────────────────────────────────────────────────
   const [species, setSpecies] = React.useState<FluidSpecies>(
@@ -95,13 +121,72 @@ export function DrugDoseCalculatorModal({
   const [concentration, setConcentration] = React.useState<string>("");
   const [doseUnit, setDoseUnit] = React.useState<DoseUnit>("mL");
 
+  // ── Drug selector state ─────────────────────────────────────────────────
+  const [selectedDrugId, setSelectedDrugId] = React.useState<string>("");
+  const [drugSearchQuery, setDrugSearchQuery] = React.useState("");
+  const [showDrugDropdown, setShowDrugDropdown] = React.useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  const selectedDrug = drugs.find((d) => d.drug_id === selectedDrugId);
+
+  // ── Filter drugs ──────────────────────────────────────────────────────────
+  const filteredDrugs = React.useMemo(() => {
+    if (!drugs.length) return [];
+    const q = drugSearchQuery.trim().toLowerCase();
+    if (!q) return drugs;
+    return drugs.filter(
+      (d) =>
+        d.name.toLowerCase().includes(q) ||
+        d.drugClass.toLowerCase().includes(q),
+    );
+  }, [drugs, drugSearchQuery]);
+
+  // ── Close dropdown on outside click ───────────────────────────────────────
+  React.useEffect(() => {
+    if (!showDrugDropdown) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
+        setShowDrugDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showDrugDropdown]);
+
   // ── Sync props when opened ──────────────────────────────────────────────
   React.useEffect(() => {
     if (open) {
       if (initialSpecies) setSpecies(initialSpecies);
       if (initialWeight != null) setWeight(String(initialWeight));
+      // If preselectedDrugIds provided, pick the first one
+      if (preselectedDrugIds?.length && drugs.length) {
+        const firstId = preselectedDrugIds[0];
+        setSelectedDrugId(firstId);
+        const drug = drugs.find((d) => d.drug_id === firstId);
+        if (drug) {
+          const rawDosage = getDrugDosageRaw(drug, initialSpecies ?? "dog");
+          const parsed = parseDosageNumber(rawDosage);
+          if (parsed) setDosage(String(parsed));
+        }
+      } else {
+        setSelectedDrugId("");
+      }
     }
-  }, [open, initialWeight, initialSpecies]);
+  }, [open, initialWeight, initialSpecies, preselectedDrugIds, drugs]);
+
+  // ── Auto-fill dosage when drug or species changes ─────────────────────────
+  React.useEffect(() => {
+    if (selectedDrug) {
+      const rawDosage = getDrugDosageRaw(selectedDrug, species);
+      const parsed = parseDosageNumber(rawDosage);
+      if (parsed) {
+        setDosage(String(parsed));
+      }
+    }
+  }, [selectedDrugId, species, selectedDrug]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -136,6 +221,32 @@ export function DrugDoseCalculatorModal({
   });
 
   const hasAllInputs = w > 0 && d > 0 && c > 0;
+
+  // ── Batch results for preselected drugs ────────────────────────────────────
+  const batchResults = React.useMemo(() => {
+    if (!preselectedDrugIds?.length || !drugs.length || w <= 0 || c <= 0) return [];
+    return preselectedDrugIds
+      .map((drugId) => {
+        const drug = drugs.find((dd) => dd.drug_id === drugId);
+        if (!drug) return null;
+        const rawDosage = getDrugDosageRaw(drug, species);
+        const parsed = parseDosageNumber(rawDosage);
+        if (!parsed) return null;
+        const res = calculateDose({
+          weightKg: w,
+          dosageMgPerKg: parsed,
+          concentrationMgPerUnit: c,
+          unit: doseUnit,
+        });
+        return { drug, dosageMgPerKg: parsed, result: res, rawDosage: String(rawDosage ?? "") };
+      })
+      .filter(Boolean) as Array<{
+      drug: Drug;
+      dosageMgPerKg: number;
+      result: ReturnType<typeof calculateDose>;
+      rawDosage: string;
+    }>;
+  }, [preselectedDrugIds, drugs, w, c, species, doseUnit]);
 
   if (typeof document === "undefined") return null;
 
@@ -220,6 +331,128 @@ export function DrugDoseCalculatorModal({
                   </p>
                 </div>
 
+                {/* ── Drug Selector ── */}
+                {drugs.length > 0 && (
+                  <div className="space-y-2" ref={dropdownRef}>
+                    <div className="flex items-center gap-1.5">
+                      <Pill className="w-3.5 h-3.5 text-emerald" />
+                      <p className="text-xs font-bold text-muted-foreground">
+                        Select Drug — اختر الدواء
+                      </p>
+                    </div>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowDrugDropdown((v) => !v)}
+                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-bold transition-all ${
+                          selectedDrug
+                            ? "bg-emerald/5 border-emerald/30 text-emerald"
+                            : "bg-muted/30 border-border/50 text-muted-foreground"
+                        }`}
+                      >
+                        <span className="truncate">
+                          {selectedDrug
+                            ? `${selectedDrug.name} — ${selectedDrug.drugClass}`
+                            : "Choose a drug to auto-fill dosage…"}
+                        </span>
+                        <ChevronDown
+                          className={`w-4 h-4 shrink-0 transition-transform ${showDrugDropdown ? "rotate-180" : ""}`}
+                        />
+                      </button>
+
+                      {/* Dropdown */}
+                      <AnimatePresence>
+                        {showDrugDropdown && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -4 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute z-50 top-full mt-1 w-full rounded-xl bg-card border border-border/60 shadow-2xl overflow-hidden"
+                          >
+                            {/* Search */}
+                            <div className="relative border-b border-border/40">
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                              <input
+                                type="text"
+                                value={drugSearchQuery}
+                                onChange={(e) =>
+                                  setDrugSearchQuery(e.target.value)
+                                }
+                                onKeyDown={(e) => e.stopPropagation()}
+                                placeholder="Search drugs…"
+                                autoComplete="off"
+                                spellCheck={false}
+                                autoFocus
+                                className="w-full pl-9 pr-3 py-2.5 bg-transparent text-xs outline-none placeholder-muted-foreground"
+                              />
+                            </div>
+                            {/* List */}
+                            <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                              {filteredDrugs.length === 0 ? (
+                                <div className="py-4 text-center text-xs text-muted-foreground">
+                                  No drugs found
+                                </div>
+                              ) : (
+                                filteredDrugs.map((drug) => {
+                                  const rawDose = getDrugDosageRaw(
+                                    drug,
+                                    species,
+                                  );
+                                  const parsed = parseDosageNumber(rawDose);
+                                  const isActive =
+                                    drug.drug_id === selectedDrugId;
+                                  return (
+                                    <button
+                                      key={drug.drug_id}
+                                      onClick={() => {
+                                        setSelectedDrugId(drug.drug_id);
+                                        setShowDrugDropdown(false);
+                                        setDrugSearchQuery("");
+                                      }}
+                                      className={`w-full text-left px-4 py-2.5 text-xs flex items-center justify-between gap-2 transition-colors ${
+                                        isActive
+                                          ? "bg-emerald/10 text-emerald"
+                                          : "hover:bg-muted/30"
+                                      }`}
+                                    >
+                                      <div className="min-w-0">
+                                        <p className="font-bold truncate">
+                                          {drug.name}
+                                        </p>
+                                        <p className="text-muted-foreground/60 truncate">
+                                          {drug.drugClass}
+                                        </p>
+                                      </div>
+                                      {parsed && (
+                                        <span className="shrink-0 px-2 py-0.5 rounded-lg bg-cyan/10 border border-cyan/20 text-cyan text-[10px] font-bold tabular-nums">
+                                          {parsed} mg/kg
+                                        </span>
+                                      )}
+                                    </button>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    {/* Auto-filled hint */}
+                    {selectedDrug && (
+                      <p className="text-[10px] text-emerald/70 flex items-center gap-1 px-1">
+                        <FlaskConical className="w-3 h-3" />
+                        Dosage auto-filled from{" "}
+                        <span className="font-bold">{selectedDrug.name}</span>{" "}
+                        ({species} dose:{" "}
+                        {String(getDrugDosageRaw(selectedDrug, species) ?? "N/A")}
+                        )
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Species toggle */}
                 <div className="flex gap-2">
                   {(["dog", "cat"] as const).map((s) => (
@@ -278,7 +511,11 @@ export function DrugDoseCalculatorModal({
                   />
                   <CalcInput
                     label="Dosage — الجرعة"
-                    sublabel="Prescribed dose per kg"
+                    sublabel={
+                      selectedDrug
+                        ? `Auto-filled from ${selectedDrug.name}`
+                        : "Prescribed dose per kg"
+                    }
                     value={dosage}
                     onChange={setDosage}
                     placeholder="e.g. 10"
@@ -350,16 +587,6 @@ export function DrugDoseCalculatorModal({
                         </div>
                       </div>
 
-                      {/* Equation display */}
-                      <div className="p-3 rounded-xl bg-card/50 border border-border/30 text-center">
-                        <p className="text-xs text-muted-foreground font-mono">
-                          {w} kg × {d} mg/kg ÷ {c} mg/{doseUnit === "mL" ? "mL" : "tab"} ={" "}
-                          <span className="font-bold text-emerald">
-                            {result.dose} {doseUnit}
-                          </span>
-                        </p>
-                      </div>
-
                       {/* Warning */}
                       {result.warning && (
                         <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400">
@@ -371,8 +598,51 @@ export function DrugDoseCalculatorModal({
                   )}
                 </AnimatePresence>
 
+                {/* ── Batch results for prescription drugs ── */}
+                {batchResults.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald flex items-center gap-1">
+                      <Calculator className="w-3 h-3" />
+                      All Prescription Doses
+                    </p>
+                    {batchResults.map(({ drug, dosageMgPerKg, result: res, rawDosage }) => (
+                      <div
+                        key={drug.drug_id}
+                        className="p-3 rounded-xl bg-emerald/5 border border-emerald/15 space-y-1.5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-bold text-emerald">
+                            {drug.name}
+                          </p>
+                          {res.valid && (
+                            <span className="text-lg font-black text-emerald tabular-nums">
+                              {res.dose}{" "}
+                              <span className="text-xs text-emerald/60">
+                                {doseUnit}
+                              </span>
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                          <span>
+                            Dosage: <span className="font-bold text-cyan">{dosageMgPerKg} mg/kg</span>
+                            {rawDosage && (
+                              <span className="opacity-60"> ({rawDosage})</span>
+                            )}
+                          </span>
+                          {res.valid && (
+                            <span>
+                              Total: <span className="font-bold">{res.totalMg} mg</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* Prompt when inputs are incomplete */}
-                {!hasAllInputs && (
+                {!hasAllInputs && batchResults.length === 0 && (
                   <div className="p-6 rounded-2xl border border-border/30 bg-muted/5 text-center space-y-2">
                     <Calculator className="w-8 h-8 text-muted-foreground/30 mx-auto" />
                     <p className="text-sm text-muted-foreground font-medium">

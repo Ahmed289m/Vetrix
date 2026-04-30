@@ -38,6 +38,7 @@ import {
 import { toast } from "sonner";
 import { ChatAssistant } from "@/app/_components/ChatAssistant";
 import { DrugDoseCalculatorModal } from "@/app/dashboard/_components/DrugDoseCalculatorModal";
+import { calcDrugDose } from "@/app/_lib/utils/dosage-calculator";
 import {
   useAppointments,
   useUpdateAppointment,
@@ -109,6 +110,14 @@ const formatDose = (val: unknown): string => {
     }
   }
   return String(val);
+};
+
+/** Parse leading numeric value from a dosage string like "10mg/kg q8-12h" */
+const parseDosageNumber = (raw: unknown): number | null => {
+  if (raw == null) return null;
+  const str = String(raw).trim();
+  const match = str.match(/^(\d+(?:\.\d+)?)/);
+  return match ? parseFloat(match[1]) : null;
 };
 
 /** Get species key for dosage/toxicity objects.
@@ -381,6 +390,30 @@ export default function SimulationMode({ role }: Props) {
     );
     const firstDrugId = item?.drug_ids?.[0];
     return allDrugs.find((d) => d.drug_id === firstDrugId);
+  };
+
+  /** Get ALL drug IDs for a prescription (multi-drug support) */
+  const getAllDrugIdsForRx = (rxId: string): string[] => {
+    const rx = allPrescriptions.find((p) => p.prescription_id === rxId);
+    if (!rx) return [];
+    const ids: string[] = [];
+    for (const piId of rx.prescriptionItem_ids || []) {
+      const pi = allPresItems.find((p) => p.prescriptionItem_id === piId);
+      if (pi?.drug_ids) ids.push(...pi.drug_ids);
+    }
+    return ids;
+  };
+
+  /** Calculate auto-dose for a drug given pet weight and species */
+  const calcAutoDose = (drug: Drug, petWeight: number, petType: string) => {
+    const sKey = speciesKey(petType);
+    if (!sKey) return null;
+    const dosage = drug.dosage as Record<string, unknown>;
+    const rawDosage = dosage[sKey];
+    const mgPerKg = parseDosageNumber(rawDosage);
+    if (!mgPerKg || petWeight <= 0) return null;
+    const totalMg = Math.round(petWeight * mgPerKg * 100) / 100;
+    return { mgPerKg, totalMg, rawDosage: String(rawDosage ?? "") };
   };
 
   const getCasePrescriptions = (petId: string, clientId: string) =>
@@ -894,31 +927,47 @@ export default function SimulationMode({ role }: Props) {
                       const drug = getDrugForRx(rx.prescription_id);
                       const sKey = speciesKey(myActiveCase.petType);
                       const sev = getDrugSeverityForSpecies(drug, sKey);
+                      const activePetForDose = allPets.find((p) => p.pet_id === myActiveCase.petId);
+                      const autoDose = drug && activePetForDose ? calcAutoDose(drug, activePetForDose.weight, myActiveCase.petType) : null;
                       return (
                         <div
                           key={rx.prescription_id}
-                          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald/5 border border-emerald/15 text-xs group"
+                          className="px-3 py-2 rounded-xl bg-emerald/5 border border-emerald/15 text-xs group space-y-1"
                         >
-                          <Pill className="w-3.5 h-3.5 text-emerald shrink-0" />
-                          <span className="font-bold text-emerald flex-1 truncate">
-                            {drug?.name || "Drug"}
-                          </span>
-                          {sev && <ToxicityBadge severity={sev} />}
-                          <button
-                            onClick={() => {
-                              setDetailVisit(null);
-                              setShowVisitDetail(false);
-                            }}
-                            className="sr-only"
-                          />
-                          <button
-                            onClick={() =>
-                              handleDeletePrescription(rx.prescription_id)
-                            }
-                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/10 rounded-lg transition-all"
-                          >
-                            <Trash2 className="w-3 h-3 text-red-400" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <Pill className="w-3.5 h-3.5 text-emerald shrink-0" />
+                            <span className="font-bold text-emerald flex-1 truncate">
+                              {drug?.name || "Drug"}
+                            </span>
+                            {sev && <ToxicityBadge severity={sev} />}
+                            <button
+                              onClick={() => {
+                                setDetailVisit(null);
+                                setShowVisitDetail(false);
+                              }}
+                              className="sr-only"
+                            />
+                            <button
+                              onClick={() =>
+                                handleDeletePrescription(rx.prescription_id)
+                              }
+                              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/10 rounded-lg transition-all"
+                            >
+                              <Trash2 className="w-3 h-3 text-red-400" />
+                            </button>
+                          </div>
+                          {autoDose && (
+                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground ml-5">
+                              <Calculator className="w-3 h-3 text-cyan shrink-0" />
+                              <span>
+                                <span className="font-bold text-cyan">{autoDose.mgPerKg} mg/kg</span>
+                                <span className="mx-1">×</span>
+                                <span className="font-bold">{activePetForDose?.weight} kg</span>
+                                <span className="mx-1">=</span>
+                                <span className="font-black text-emerald">{autoDose.totalMg} mg</span>
+                              </span>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -1495,6 +1544,28 @@ export default function SimulationMode({ role }: Props) {
                         </div>
                       )}
 
+                      {/* Auto-calculated dose */}
+                      {(() => {
+                        const autoDose = pet ? calcAutoDose(drug, pet.weight, pet.type) : null;
+                        if (!autoDose) return null;
+                        return (
+                          <div className="px-3 py-2.5 rounded-xl bg-emerald/10 border border-emerald/25 text-xs">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-emerald mb-1 flex items-center gap-1">
+                              <Calculator className="w-3 h-3" /> Calculated Dose
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-muted-foreground">
+                                {autoDose.mgPerKg} mg/kg × {pet?.weight} kg
+                              </span>
+                              <span className="text-emerald">=</span>
+                              <span className="text-lg font-black text-emerald tabular-nums">
+                                {autoDose.totalMg} mg
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       {/* Species-specific toxicity */}
                       {tox && (
                         <div
@@ -1996,6 +2067,10 @@ export default function SimulationMode({ role }: Props) {
       {/* ═══════════════════ DRUG DOSE CALCULATOR MODAL ══════════════════════════ */}
       {(() => {
         const activePet = allPets.find((p) => p.pet_id === myActiveCase?.petId);
+        // Collect all drug IDs from session prescriptions for batch calculation
+        const preselectedIds = sessionCasePrescriptions.flatMap((rx) =>
+          getAllDrugIdsForRx(rx.prescription_id),
+        );
         return (
           <DrugDoseCalculatorModal
             open={showDrugCalc}
@@ -2007,6 +2082,8 @@ export default function SimulationMode({ role }: Props) {
                 : "dog"
             }
             petName={myActiveCase?.petName}
+            drugs={allDrugs}
+            preselectedDrugIds={preselectedIds.length > 0 ? preselectedIds : undefined}
           />
         );
       })()}
