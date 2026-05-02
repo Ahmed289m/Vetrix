@@ -44,6 +44,31 @@ _MAX_RETRIES = 2
 _RETRY_BACKOFF_BASE = 1.5  # seconds
 
 
+def _extract_text(response) -> str:
+    """Pull text out of a response even when finish_reason != STOP (response.text can return None or raise)."""
+    try:
+        if response.text:
+            return response.text
+    except Exception:
+        pass
+    parts_text: list[str] = []
+    for cand in getattr(response, "candidates", None) or []:
+        content = getattr(cand, "content", None)
+        for part in getattr(content, "parts", None) or []:
+            t = getattr(part, "text", None)
+            if t:
+                parts_text.append(t)
+    return "".join(parts_text)
+
+
+def _finish_reason(response) -> str | None:
+    cands = getattr(response, "candidates", None) or []
+    if not cands:
+        return None
+    fr = getattr(cands[0], "finish_reason", None)
+    return getattr(fr, "name", None) or (str(fr) if fr is not None else None)
+
+
 def _get_client() -> genai.Client:
     global _client
     if _client is None:
@@ -84,7 +109,8 @@ def chat(messages: list[dict], context: str | None = None) -> str:
     config = types.GenerateContentConfig(
         system_instruction=system,
         temperature=0.6,
-        max_output_tokens=8192,
+        max_output_tokens=16384,
+        thinking_config=types.ThinkingConfig(thinking_budget=0),
     )
 
     # Try each model in order — fallback on 503/overload
@@ -97,7 +123,12 @@ def chat(messages: list[dict], context: str | None = None) -> str:
                     contents=contents,
                     config=config,
                 )
-                return response.text or "I couldn't generate a response. Please try again."
+                text = _extract_text(response)
+                finish = _finish_reason(response)
+                if finish == "MAX_TOKENS":
+                    logger.warning("Response hit MAX_TOKENS on model %s", model)
+                    text = (text or "") + "\n\n_[Response truncated — output token limit reached. Ask the assistant to continue.]_"
+                return text or "I couldn't generate a response. Please try again."
             except ServerError as exc:
                 logger.warning(
                     "Model %s unavailable (attempt %d/%d): %s",
