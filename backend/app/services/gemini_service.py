@@ -26,12 +26,14 @@ Response guidelines:
 - Provide ranked differentials with reasoning and key differentiating findings.
 - Use proper veterinary medical terminology — the user is a licensed veterinarian.
 - Format responses in clean Markdown: use tables, bold, lists, and headers for readability.
+- Keep tables compact: cap differential tables at 5–7 rows and keep each cell to one short sentence. Move extended reasoning to bullet points below the table rather than into wide cells.
 - When relevant, mention diagnostic tests, expected lab values, and treatment options.
 - Clarify species when relevant to the clinical context.
 - Frame recommendations as clinical guidance — the veterinarian makes the final decision.
 - Do NOT apologize for providing clinical information — that is your purpose.
 - Do NOT refuse to answer veterinary clinical questions.
-- Keep responses comprehensive but well-structured — use sections and bullet points."""
+- Keep responses comprehensive but well-structured — use sections and bullet points.
+- Finish what you start: never end mid-row, mid-sentence, or mid-table. If you are running long, wrap up cleanly with a short summary instead of starting a new section."""
 
 _CONTEXT_SUFFIXES: dict[str, str] = {
 }
@@ -42,6 +44,9 @@ _MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"]
 # Retry settings for transient failures
 _MAX_RETRIES = 2
 _RETRY_BACKOFF_BASE = 1.5  # seconds
+
+# Auto-continuation when a response hits MAX_TOKENS mid-output
+_MAX_CONTINUATIONS = 2
 
 
 def _extract_text(response) -> str:
@@ -123,11 +128,36 @@ def chat(messages: list[dict], context: str | None = None) -> str:
                     contents=contents,
                     config=config,
                 )
-                text = _extract_text(response)
+                text = _extract_text(response) or ""
                 finish = _finish_reason(response)
+
+                # Auto-continue if we hit the output cap — chain up to _MAX_CONTINUATIONS
+                # follow-up calls so long tables/lists don't get truncated mid-row.
+                cont_attempts = 0
+                while finish == "MAX_TOKENS" and cont_attempts < _MAX_CONTINUATIONS and text:
+                    cont_attempts += 1
+                    logger.info("MAX_TOKENS on %s — auto-continuing (%d/%d)", model, cont_attempts, _MAX_CONTINUATIONS)
+                    cont_contents = contents + [
+                        types.Content(role="model", parts=[types.Part.from_text(text=text)]),
+                        types.Content(role="user", parts=[types.Part.from_text(
+                            text="Continue exactly where you stopped. Do not repeat anything you already wrote. If you were mid-table, resume the next row in the same table format."
+                        )]),
+                    ]
+                    cont_response = client.models.generate_content(
+                        model=model,
+                        contents=cont_contents,
+                        config=config,
+                    )
+                    extra = _extract_text(cont_response) or ""
+                    if not extra:
+                        break
+                    # Glue without inserting blank space if continuation begins mid-line
+                    text = text + ("" if text.endswith(("\n", " ")) or extra.startswith(("\n", " ")) else "") + extra
+                    finish = _finish_reason(cont_response)
+
                 if finish == "MAX_TOKENS":
-                    logger.warning("Response hit MAX_TOKENS on model %s", model)
-                    text = (text or "") + "\n\n_[Response truncated — output token limit reached. Ask the assistant to continue.]_"
+                    logger.warning("Response still truncated after %d continuations on %s", cont_attempts, model)
+                    text = text + "\n\n_[Response truncated — ask the assistant to continue for more detail.]_"
                 return text or "I couldn't generate a response. Please try again."
             except ServerError as exc:
                 logger.warning(
