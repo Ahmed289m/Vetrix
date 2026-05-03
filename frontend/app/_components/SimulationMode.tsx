@@ -477,19 +477,42 @@ export default function SimulationMode({ role }: Props) {
     .map((id) => allDrugs.find((d) => d.drug_id === id))
     .filter(Boolean) as Drug[];
 
-  // ── Drug interaction detection ────────────────────────────────────────────
+  // ── Drug interaction detection (by ID, name, or class) ──────────────────
+  const drugInteractsWith = (a: Drug, b: Drug): boolean => {
+    const refs = a.interactions || [];
+    if (!refs.length) return false;
+    const bNameLow = b.name.toLowerCase();
+    const bClassLow = (b.class || "").toLowerCase();
+    return refs.some((ref) => {
+      const refLow = ref.toLowerCase();
+      return ref === b.drug_id || refLow === bNameLow || (bClassLow && refLow === bClassLow);
+    });
+  };
+
   const interactions = useMemo(() => {
     const pairs: { a: string; b: string }[] = [];
     for (let i = 0; i < selectedDrugs.length; i++) {
       for (let j = i + 1; j < selectedDrugs.length; j++) {
         const a = selectedDrugs[i];
         const b = selectedDrugs[j];
-        const aInteractsB = (a.interactions || []).includes(b.drug_id);
-        const bInteractsA = (b.interactions || []).includes(a.drug_id);
-        if (aInteractsB || bInteractsA) pairs.push({ a: a.name, b: b.name });
+        if (drugInteractsWith(a, b) || drugInteractsWith(b, a))
+          pairs.push({ a: a.name, b: b.name });
       }
     }
     return pairs;
+  }, [selectedDrugs]);
+
+  const interactingDrugIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (let i = 0; i < selectedDrugs.length; i++) {
+      for (let j = i + 1; j < selectedDrugs.length; j++) {
+        const a = selectedDrugs[i]; const b = selectedDrugs[j];
+        if (drugInteractsWith(a, b) || drugInteractsWith(b, a)) {
+          ids.add(a.drug_id); ids.add(b.drug_id);
+        }
+      }
+    }
+    return ids;
   }, [selectedDrugs]);
 
   // ── Lookup helpers ────────────────────────────────────────────────────────
@@ -1506,25 +1529,13 @@ export default function SimulationMode({ role }: Props) {
         {detailVisit &&
           (() => {
             const pet = allPets.find((p) => p.pet_id === detailVisit.pet_id);
-            const doctor = allUsers.find(
-              (u) => u.user_id === detailVisit.doctor_id,
-            );
-            const client = allUsers.find(
-              (u) => u.user_id === detailVisit.client_id,
-            );
-            const doctorName =
-              detailVisit.doctor_name || doctor?.fullname || "Unknown";
-            const drug = getDrugForRx(detailVisit.prescription_id || "");
+            const doctor = allUsers.find((u) => u.user_id === detailVisit.doctor_id);
+            const client = allUsers.find((u) => u.user_id === detailVisit.client_id);
+            const doctorName = detailVisit.doctor_name || doctor?.fullname || "Unknown";
             const sKey = pet ? speciesKey(pet.type) : null;
-            const dosage =
-              sKey && drug
-                ? getDrugDosageForSpecies(drug, sKey)
-                : drug
-                  ? getDrugDosageForSpecies(drug, "dog") ||
-                    getDrugDosageForSpecies(drug, "cat")
-                  : null;
-            const tox = getDrugToxicityForSpecies(drug, sKey);
-            const sev = getDrugSeverityForSpecies(drug, sKey);
+            // Gather ALL drugs for this visit's prescription
+            const rxDrugIds = detailVisit.prescription_id ? getAllDrugIdsForRx(detailVisit.prescription_id) : [];
+            const rxDrugs = rxDrugIds.map((id) => allDrugs.find((d) => d.drug_id === id)).filter(Boolean) as Drug[];
             return (
               <motion.div
                 initial={{ scale: 0.95, opacity: 0, y: 16 }}
@@ -1609,89 +1620,101 @@ export default function SimulationMode({ role }: Props) {
                   </div>
                 )}
 
-                {/* Drug info */}
-                {drug && (
+                {/* Prescription drugs */}
+                {rxDrugs.length > 0 && (
                   <div className="space-y-3">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald flex items-center gap-1">
-                      <Pill className="w-3 h-3" /> Prescribed Drug
+                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald flex items-center gap-1.5">
+                      <Pill className="w-3 h-3" /> Prescribed Medication
+                      <span className="ml-auto text-muted-foreground/60 font-bold normal-case text-[9px]">
+                        {rxDrugs.length} drug{rxDrugs.length > 1 ? "s" : ""}
+                      </span>
                     </p>
-                    <div className="p-4 rounded-xl bg-emerald/5 border border-emerald/15 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-bold text-emerald">{drug.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {drug.class}
-                          </p>
-                        </div>
-                        {sev && <ToxicityBadge severity={sev} />}
-                      </div>
-
-                      {/* Species-specific dosage */}
-                      {dosage && (
-                        <div className="px-3 py-2 rounded-xl bg-cyan/5 border border-cyan/15 text-xs">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-cyan mb-1">
-                            Dosage for {pet?.type || "this species"}
-                          </p>
-                          <p className="font-semibold text-cyan">
-                            {formatDose(dosage)}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Auto-calculated dose */}
-                      {(() => {
-                        const autoDose = pet ? calcAutoDose(drug, pet.weight, pet.type) : null;
-                        if (!autoDose) return null;
+                    <div className="space-y-2">
+                      {rxDrugs.map((d) => {
+                        const sp = sKey ?? "dog";
+                        // Read raw dose entry for this species
+                        const rawDose = d.dose ? (d.dose as Record<string, unknown>)[sp] as { value?: number | null; unit?: string | null; frequency?: string | null } | null | undefined : null;
+                        const dosageEntry = rawDose ?? (d.dose ? (d.dose as Record<string, unknown>)[sp === "dog" ? "cat" : "dog"] as { value?: number | null; unit?: string | null; frequency?: string | null } | null | undefined : null);
+                        const sev = getDrugSeverityForSpecies(d, sKey);
+                        const cl = severityColor(sev);
+                        const calced = calculatedDoses.get(d.drug_id);
+                        const routes: string[] = Array.isArray((d.dose as Record<string, unknown> | null)?.["route"]) ? (d.dose as Record<string, unknown>)["route"] as string[] : [];
                         return (
-                          <div className="px-3 py-2.5 rounded-xl bg-emerald/10 border border-emerald/25 text-xs">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-emerald mb-1 flex items-center gap-1">
-                              <Calculator className="w-3 h-3" /> Calculated Dose
-                            </p>
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-muted-foreground">
-                                {autoDose.mgPerKg} mg/kg × {pet?.weight} kg
-                              </span>
-                              <span className="text-emerald">=</span>
-                              <span className="text-lg font-black text-emerald tabular-nums">
-                                {autoDose.totalMg} mg
-                              </span>
+                          <div key={d.drug_id} className="rounded-xl bg-emerald/5 border border-emerald/15 overflow-hidden">
+                            {/* Drug header */}
+                            <div className="flex items-center justify-between px-4 py-3 border-b border-emerald/10">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Pill className="w-3.5 h-3.5 text-emerald shrink-0" />
+                                <div className="min-w-0">
+                                  <span className="font-black text-sm text-emerald truncate block">{d.name}</span>
+                                  <span className="text-[10px] text-muted-foreground font-medium">{d.class}</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {sev && <ToxicityBadge severity={sev} />}
+                              </div>
+                            </div>
+                            {/* Detail grid */}
+                            <div className="px-4 py-3 space-y-2">
+                              {/* Calculated dose */}
+                              {calced ? (
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="flex items-center gap-1.5 text-muted-foreground font-bold uppercase tracking-widest text-[10px]">
+                                    <Calculator className="w-3 h-3 text-emerald" /> Calculated Dose
+                                  </span>
+                                  <div className="flex items-center gap-1.5 tabular-nums font-black">
+                                    <span className="text-cyan">{calced.totalMg} mg</span>
+                                    <span className="text-muted-foreground/40">→</span>
+                                    <span className="text-emerald">{calced.dose} {calced.doseUnit}</span>
+                                    {calced.concLabel && <span className="text-muted-foreground/50 font-normal text-[10px]">({calced.concLabel})</span>}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground/50 italic">
+                                  <Calculator className="w-3 h-3" /> No calculated dose recorded
+                                </div>
+                              )}
+                              {/* Species dosage */}
+                              {dosageEntry && (
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">
+                                    {pet?.type ?? "Species"} Dosage
+                                  </span>
+                                  <span className="font-bold text-cyan tabular-nums">
+                                    {dosageEntry.value} {dosageEntry.unit}
+                                    {dosageEntry.frequency && (
+                                      <span className="ml-1 text-muted-foreground font-normal">· {dosageEntry.frequency}</span>
+                                    )}
+                                  </span>
+                                </div>
+                              )}
+                              {/* Routes */}
+                              {routes.length > 0 && (
+                                <div className="flex items-center gap-2 text-xs">
+                                  <span className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] shrink-0">Route</span>
+                                  <div className="flex flex-wrap gap-1">
+                                    {routes.map((r) => (
+                                      <span key={r} className="px-1.5 py-0.5 rounded-md bg-cyan/10 border border-cyan/20 text-cyan text-[10px] font-bold">
+                                        {r}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {/* Toxicity note */}
+                              {(() => {
+                                const tox = getDrugToxicityForSpecies(d, sKey);
+                                if (!tox) return null;
+                                return (
+                                  <div className={`mt-1 px-2.5 py-1.5 rounded-lg border text-[10px] font-semibold ${cl.bg} ${cl.border} ${cl.text}`}>
+                                    ⚠ {formatDose(tox)}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           </div>
                         );
-                      })()}
-
-                      {/* Species-specific toxicity */}
-                      {tox && (
-                        <div
-                          className={`px-3 py-2 rounded-xl border text-xs ${severityColor(sev).bg} ${severityColor(sev).border}`}
-                        >
-                          <p
-                            className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${severityColor(sev).text}`}
-                          >
-                            Toxicity for {pet?.type || "this species"}
-                          </p>
-                          <p
-                            className={`font-semibold ${severityColor(sev).text}`}
-                          >
-                            {formatDose(tox)}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Interactions */}
-                      {drug.interactions && drug.interactions.length > 0 && (
-                        <div className="px-3 py-2 rounded-xl bg-amber-500/5 border border-amber-500/15 text-xs">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-amber-400 mb-1 flex items-center gap-1">
-                            <Zap className="w-3 h-3" /> Known Interactions
-                          </p>
-                          <p className="text-amber-400/80 font-medium">
-                            {drug.interactions.map((idOrName) => {
-                              const resolved = allDrugs.find((d) => d.drug_id === idOrName);
-                              return resolved ? resolved.name : idOrName;
-                            }).join(", ")}
-                          </p>
-                        </div>
-                      )}
+                      })}
                     </div>
                   </div>
                 )}
@@ -1879,14 +1902,24 @@ export default function SimulationMode({ role }: Props) {
                       const dose = getDrugDosageForSpecies(drug, sKey);
                       const sev = getDrugSeverityForSpecies(drug, sKey);
                       const isSelected = selectedDrugIds.includes(drug.drug_id);
+                      // Check if this drug interacts with any currently-selected drug
+                      const hasInteraction = isSelected
+                        ? interactingDrugIds.has(drug.drug_id)
+                        : selectedDrugs.some(
+                            (sel) => drugInteractsWith(sel, drug) || drugInteractsWith(drug, sel)
+                          );
                       return (
                         <button
                           key={drug.drug_id}
                           onClick={() => toggleDrug(drug.drug_id)}
                           className={`w-full text-left flex items-start gap-3 p-3 rounded-xl border transition-all text-xs ${
-                            isSelected
-                              ? "bg-emerald/10 border-emerald/30 shadow-sm"
-                              : "bg-tint/3 border-tint/5 hover:bg-tint/5 hover:border-tint/10"
+                            isSelected && hasInteraction
+                              ? "bg-amber-500/10 border-amber-500/30 shadow-sm"
+                              : isSelected
+                                ? "bg-emerald/10 border-emerald/30 shadow-sm"
+                                : hasInteraction && selectedDrugs.length > 0
+                                  ? "bg-amber-500/5 border-amber-500/20 hover:bg-amber-500/10"
+                                  : "bg-tint/3 border-tint/5 hover:bg-tint/5 hover:border-tint/10"
                           }`}
                         >
                           <div
@@ -1903,14 +1936,17 @@ export default function SimulationMode({ role }: Props) {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span
-                                className={`font-bold ${isSelected ? "text-emerald" : ""}`}
+                                className={`font-bold ${isSelected && hasInteraction ? "text-amber-400" : isSelected ? "text-emerald" : ""}`}
                               >
                                 {drug.name}
                               </span>
-                              <span className="text-muted-foreground opacity-60">
-                                {drug.class}
-                              </span>
+                              <span className="text-muted-foreground opacity-60">{drug.class}</span>
                               {sev && <ToxicityBadge severity={sev} />}
+                              {hasInteraction && selectedDrugs.length > 0 && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-md font-black uppercase bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center gap-0.5">
+                                  <ShieldAlert className="w-2.5 h-2.5" /> Interaction
+                                </span>
+                              )}
                             </div>
                             {dose && (
                               <p className="text-muted-foreground mt-0.5">
