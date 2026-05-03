@@ -19,6 +19,11 @@ import {
   Info,
   Upload,
   FileJson,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  XCircle,
+  AlertCircle,
 } from "lucide-react";
 import { useFormik } from "formik";
 
@@ -1486,204 +1491,345 @@ function Field({
 }
 
 /* ── Bulk Import Modal ─────────────────────────────────────────────────── */
-function ImportJsonModal({
-  isOpen,
-  onOpenChange,
-  isAdmin,
-}: {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  isAdmin: boolean;
-}) {
+type ImportDrugResult = { name: string; status: "pending" | "ok" | "fail"; error?: string };
+
+function ImportJsonModal({ isOpen, onOpenChange, isAdmin }: { isOpen: boolean; onOpenChange: (open: boolean) => void; isAdmin: boolean }) {
   const createDrug = useCreateDrug();
   const { t } = useLang();
   const [jsonText, setJsonText] = React.useState("");
-  const [error, setError] = React.useState("");
-  const [isImporting, setIsImporting] = React.useState(false);
+  const [parseError, setParseError] = React.useState("");
+  const [phase, setPhase] = React.useState<"input" | "running" | "done">("input");
+  const [items, setItems] = React.useState<ImportDrugResult[]>([]);
+  const [currentIdx, setCurrentIdx] = React.useState(0);
+  const [startedAt, setStartedAt] = React.useState<number>(0);
+  const [elapsed, setElapsed] = React.useState(0);
+
+  // Tick elapsed time while running
+  React.useEffect(() => {
+    if (phase !== "running") return;
+    const id = setInterval(() => setElapsed(Date.now() - startedAt), 500);
+    return () => clearInterval(id);
+  }, [phase, startedAt]);
+
+  const done = items.filter(i => i.status === "ok").length;
+  const failed = items.filter(i => i.status === "fail").length;
+  const total = items.length;
+  const progress = total > 0 ? Math.round((currentIdx / total) * 100) : 0;
+  const avgMs = currentIdx > 0 ? elapsed / currentIdx : 1200;
+  const remaining = Math.max(0, Math.round(((total - currentIdx) * avgMs) / 1000));
+
+  const resetModal = () => {
+    setPhase("input");
+    setJsonText("");
+    setParseError("");
+    setItems([]);
+    setCurrentIdx(0);
+    setElapsed(0);
+  };
+
+  const buildPayload = (item: UnknownRecord, isAdmin: boolean): DrugCreate | null => {
+    const name = typeof item.name === "string" ? item.name.trim() : "";
+    const cls = typeof item.class === "string" ? item.class.trim() : "";
+    if (!name || !cls) return null;
+
+    const concentrationItems = Array.isArray(item.concentration)
+      ? item.concentration.map((c) => (isRecord(c) ? c : null)).filter((c): c is UnknownRecord => c !== null)
+          .map((c) => ({
+            ...(typeof c.value === "number" ? { value: c.value } : {}),
+            ...(typeof c.unit === "string" && c.unit.trim() ? { unit: c.unit.trim() } : {}),
+            ...(typeof c.form === "string" && c.form.trim() ? { form: c.form.trim() } : {}),
+          }))
+      : [];
+
+    const rawDose = isRecord(item.dose) ? item.dose : {};
+    const normSpecies = (ds: unknown) => {
+      if (!isRecord(ds)) return undefined;
+      return { ...(ds.value != null ? { value: ds.value } : {}), ...(typeof ds.unit === "string" && ds.unit ? { unit: ds.unit.trim() } : {}), ...(typeof ds.frequency === "string" && ds.frequency ? { frequency: ds.frequency.trim() } : {}) };
+    };
+    const rawRoute = rawDose.route;
+    const normalizedRoute = Array.isArray(rawRoute) ? rawRoute.filter(Boolean).join("/") : typeof rawRoute === "string" ? rawRoute.trim() : undefined;
+    const normalizedDose: DrugCreate["dose"] = {
+      ...(rawDose.dog ? { dog: normSpecies(rawDose.dog) as NonNullable<DrugCreate["dose"]>["dog"] } : {}),
+      ...(rawDose.cat ? { cat: normSpecies(rawDose.cat) as NonNullable<DrugCreate["dose"]>["cat"] } : {}),
+      ...(normalizedRoute ? { route: normalizedRoute } : {}),
+    };
+
+    const rawTox = isRecord(item.toxicity) ? item.toxicity : {};
+    const hasDogCat = isRecord(rawTox.dog) || isRecord(rawTox.cat);
+    let normalizedToxicity: DrugCreate["toxicity"] = {};
+    if (hasDogCat) {
+      normalizedToxicity = rawTox as DrugCreate["toxicity"];
+    } else {
+      const flat: Record<string, string> = {};
+      if (typeof rawTox.notes === "string" && rawTox.notes.trim()) flat.notes = rawTox.notes.trim();
+      if (typeof rawTox.severity === "string" && rawTox.severity.trim()) flat.severity = rawTox.severity.trim();
+      if (Object.keys(flat).length > 0) normalizedToxicity = { dog: flat as NonNullable<DrugCreate["toxicity"]>["dog"], cat: flat as NonNullable<DrugCreate["toxicity"]>["cat"] };
+    }
+
+    return {
+      name, class: cls,
+      indications: asStringArray(item.indications),
+      side_effects: asStringArray(item.side_effects),
+      contraindications: asStringArray(item.contraindications),
+      interactions: asStringArray(item.interactions),
+      dose: normalizedDose,
+      concentration: concentrationItems,
+      toxicity: normalizedToxicity,
+      ...(isAdmin && (typeof item.clinic_id === "string" || item.clinic_id === null) && { clinic_id: item.clinic_id }),
+    };
+  };
 
   const handleImport = async () => {
-    setError("");
-    if (!jsonText.trim()) return;
-
+    setParseError("");
     try {
       const parsed: unknown = JSON.parse(jsonText);
-      if (!Array.isArray(parsed)) {
-        throw new Error("The JSON root must be an array of drug objects.");
-      }
-      setIsImporting(true);
+      if (!Array.isArray(parsed)) throw new Error("JSON root must be an array [ ... ]");
+      const initialItems: ImportDrugResult[] = parsed.map((item, i) => ({
+        name: isRecord(item) && typeof item.name === "string" ? item.name.trim() : `Item #${i + 1}`,
+        status: "pending",
+      }));
+      setItems(initialItems);
+      setCurrentIdx(0);
+      setStartedAt(Date.now());
+      setElapsed(0);
+      setPhase("running");
 
-      // Execute all creations in parallel
-      const importPromises = parsed.map(async (item) => {
+      // Sequential — so progress is accurate
+      for (let i = 0; i < parsed.length; i++) {
+        setCurrentIdx(i);
+        const item = parsed[i];
         if (!isRecord(item)) {
-          throw new Error("Each item must be a JSON object.");
+          setItems(prev => { const n = [...prev]; n[i] = { ...n[i], status: "fail", error: "Not a JSON object" }; return n; });
+          continue;
         }
-
-        const name = typeof item.name === "string" ? item.name.trim() : "";
-        const drugClassValue =
-          typeof item.class === "string" ? item.class.trim() : "";
-
-        if (!name || !drugClassValue) {
-          throw new Error(
-            "One or more items missing required 'name' or 'class'.",
-          );
+        const payload = buildPayload(item, isAdmin);
+        if (!payload) {
+          setItems(prev => { const n = [...prev]; n[i] = { ...n[i], status: "fail", error: "Missing name or class" }; return n; });
+          continue;
         }
-
-        const concentrationItems = Array.isArray(item.concentration)
-          ? item.concentration
-              .map((c) => (isRecord(c) ? c : null))
-              .filter((c): c is UnknownRecord => c !== null)
-              .map((c) => ({
-                ...(typeof c.value === "number" ? { value: c.value } : {}),
-                ...(typeof c.unit === "string" && c.unit.trim()
-                  ? { unit: c.unit.trim() }
-                  : {}),
-                ...(typeof c.form === "string" && c.form.trim()
-                  ? { form: c.form.trim() }
-                  : {}),
-              }))
-          : [];
-
-        // ── Normalize dose ─────────────────────────────────────────────
-        // Accept flexible real-world formats:
-        //   - dose.route as array → join with "/"
-        //   - dose.dog.value / dose.cat.value as strings ("11-22") → keep as-is (backend accepts)
-        const rawDose = isRecord(item.dose) ? item.dose : {};
-        const normalizeDoseSpecies = (ds: unknown) => {
-          if (!isRecord(ds)) return undefined;
-          return {
-            ...(ds.value != null ? { value: ds.value } : {}),
-            ...(typeof ds.unit === "string" && ds.unit.trim() ? { unit: ds.unit.trim() } : {}),
-            ...(typeof ds.frequency === "string" && ds.frequency.trim() ? { frequency: ds.frequency.trim() } : {}),
-          };
-        };
-        const rawRoute = rawDose.route;
-        const normalizedRoute = Array.isArray(rawRoute)
-          ? rawRoute.filter(Boolean).join("/")
-          : typeof rawRoute === "string"
-            ? rawRoute.trim()
-            : undefined;
-        const normalizedDose: DrugCreate["dose"] = {
-          ...(rawDose.dog ? { dog: normalizeDoseSpecies(rawDose.dog) as NonNullable<DrugCreate["dose"]>["dog"] } : {}),
-          ...(rawDose.cat ? { cat: normalizeDoseSpecies(rawDose.cat) as NonNullable<DrugCreate["dose"]>["cat"] } : {}),
-          ...(normalizedRoute ? { route: normalizedRoute } : {}),
-        };
-
-        // ── Normalize toxicity ─────────────────────────────────────────
-        // Accept flat format { notes, severity } → promote to { dog: {...}, cat: {...} }
-        const rawTox = isRecord(item.toxicity) ? item.toxicity : {};
-        let normalizedToxicity: DrugCreate["toxicity"] = {};
-        const hasDogCat = isRecord(rawTox.dog) || isRecord(rawTox.cat);
-        if (hasDogCat) {
-          normalizedToxicity = rawTox as DrugCreate["toxicity"];
-        } else {
-          const flat: Record<string, string> = {};
-          if (typeof rawTox.notes === "string" && rawTox.notes.trim()) flat.notes = rawTox.notes.trim();
-          if (typeof rawTox.severity === "string" && rawTox.severity.trim()) flat.severity = rawTox.severity.trim();
-          if (Object.keys(flat).length > 0) {
-            normalizedToxicity = { dog: flat as NonNullable<DrugCreate["toxicity"]>["dog"], cat: flat as NonNullable<DrugCreate["toxicity"]>["cat"] };
-          }
+        try {
+          await createDrug.mutateAsync(payload);
+          setItems(prev => { const n = [...prev]; n[i] = { ...n[i], status: "ok" }; return n; });
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : "API error";
+          setItems(prev => { const n = [...prev]; n[i] = { ...n[i], status: "fail", error: msg }; return n; });
         }
-
-        const payload: DrugCreate = {
-          name,
-          class: drugClassValue,
-          indications: asStringArray(item.indications),
-          side_effects: asStringArray(item.side_effects),
-          contraindications: asStringArray(item.contraindications),
-          interactions: asStringArray(item.interactions),
-          dose: normalizedDose,
-          concentration: concentrationItems,
-          toxicity: normalizedToxicity,
-          ...(isAdmin &&
-            (typeof item.clinic_id === "string" || item.clinic_id === null) && {
-              clinic_id: item.clinic_id,
-            }),
-        };
-
-        return createDrug.mutateAsync(payload);
-      });
-
-      await Promise.all(importPromises);
-
-      setIsImporting(false);
-      onOpenChange(false);
-      setJsonText("");
+      }
+      setCurrentIdx(parsed.length);
+      setPhase("done");
     } catch (e: unknown) {
-      setIsImporting(false);
-      setError(
-        e instanceof Error
-          ? e.message
-          : "Failed to parse JSON. Please check the format.",
-      );
+      setParseError(e instanceof Error ? e.message : "Failed to parse JSON.");
     }
   };
 
+  // Auto-close 2s after a fully-successful import
+  React.useEffect(() => {
+    if (phase !== "done" || failed > 0) return;
+    const id = setTimeout(() => { onOpenChange(false); resetModal(); }, 2000);
+    return () => clearTimeout(id);
+  }, [phase, failed]);
+
+  const handleClose = () => { if (phase === "running") return; onOpenChange(false); resetModal(); };
+
   return (
     <DashboardForm
-      title={t("import_drugs_json")}
-      description={t("import_drugs_desc")}
+      title={phase === "done" ? (failed === 0 ? "Import Complete ✓" : "Import Finished with Errors") : t("import_drugs_json")}
+      description={phase === "input" ? t("import_drugs_desc") : phase === "running" ? `Processing ${currentIdx + 1} of ${total}…` : `${done} imported · ${failed} failed`}
       isOpen={isOpen}
-      onOpenChange={onOpenChange}
-      onSubmit={(e) => {
-        e.preventDefault();
-        handleImport();
-      }}
-      submitLabel={isImporting ? t("importing_drugs") : t("start_import")}
+      onOpenChange={handleClose}
+      onSubmit={(e) => { e.preventDefault(); if (phase === "input") handleImport(); else if (phase === "done") { onOpenChange(false); resetModal(); } }}
+      submitLabel={phase === "running" ? "Importing…" : phase === "done" ? "Close" : t("start_import")}
     >
       <div className="space-y-4">
-        {error && (
-          <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold leading-relaxed shadow-inner">
-            <div className="flex items-center gap-2 mb-1.5">
-              <AlertTriangle className="w-4 h-4" /> {t("error_parsing_payload")}
+
+        {/* ── INPUT PHASE ── */}
+        {phase === "input" && (
+          <>
+            {parseError && (
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /><span>{parseError}</span>
+              </div>
+            )}
+            <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 space-y-3 text-xs">
+              <p className="font-bold flex items-center gap-2 text-blue-400 text-sm"><FileJson className="w-4 h-4" /> {t("json_shape_example")}</p>
+              <pre className="block p-3 bg-black/20 rounded-xl overflow-x-auto text-[10px] text-blue-200/90 font-mono border border-blue-500/10 leading-relaxed">{`[\n  {\n    "name": "Amoxicillin",\n    "class": "Antibiotic",\n    "indications": ["Bacterial infections"],\n    "side_effects": ["Diarrhea"],\n    "contraindications": [],\n    "interactions": [],\n    "dose": {\n      "dog": { "value": "11-22", "unit": "mg/kg", "frequency": "q8-12h" },\n      "cat": { "value": "11-22", "unit": "mg/kg", "frequency": "q8-12h" },\n      "route": ["PO", "IV"]\n    },\n    "concentration": [{ "value": 250, "unit": "mg", "form": "tablet" }],\n    "toxicity": { "severity": "Low", "notes": "LD50 500mg/kg" }\n  }\n]`}</pre>
             </div>
-            {error}
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 ml-1">{t("json_payload")}</Label>
+              <Textarea value={jsonText} onChange={(e) => setJsonText(e.target.value)} rows={10}
+                className="p-4 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-2xl font-mono text-xs resize-none shadow-inner"
+                placeholder="[ { ... }, { ... } ]" />
+            </div>
+          </>
+        )}
+
+        {/* ── RUNNING PHASE ── */}
+        {phase === "running" && (
+          <div className="space-y-4">
+            {/* Header stats */}
+            <div className="grid grid-cols-3 gap-3 text-center">
+              {[
+                { label: "Total", val: total, color: "text-foreground" },
+                { label: "Done", val: done, color: "text-emerald" },
+                { label: "Failed", val: failed, color: failed > 0 ? "text-red-400" : "text-muted-foreground/40" },
+              ].map(s => (
+                <div key={s.label} className="p-3 rounded-xl bg-tint/5 border border-tint/5">
+                  <p className={`text-2xl font-black ${s.color}`}>{s.val}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{s.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Progress bar */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold">
+                <span>{currentIdx} / {total} drugs</span>
+                <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> ~{remaining}s left</span>
+              </div>
+              <div className="h-2.5 rounded-full bg-tint/10 overflow-hidden">
+                <motion.div className="h-full rounded-full bg-gradient-to-r from-emerald to-cyan-400"
+                  initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ ease: "linear", duration: 0.4 }} />
+              </div>
+              <p className="text-[10px] text-muted-foreground text-right">{progress}% · {Math.round(elapsed / 1000)}s elapsed</p>
+            </div>
+
+            {/* Current item */}
+            {currentIdx < total && (
+              <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald/5 border border-emerald/15">
+                <Loader2 className="w-4 h-4 text-emerald animate-spin shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold truncate">{items[currentIdx]?.name}</p>
+                  <p className="text-[10px] text-muted-foreground">Uploading…</p>
+                </div>
+              </div>
+            )}
+
+            {/* Per-item log */}
+            <div className="max-h-48 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
+              {items.slice(0, currentIdx).map((item, i) => (
+                <div key={i} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs ${item.status === "ok" ? "bg-emerald/5 border border-emerald/15" : "bg-red-500/5 border border-red-500/15"}`}>
+                  {item.status === "ok"
+                    ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald shrink-0" />
+                    : <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />}
+                  <span className={`font-semibold flex-1 truncate ${item.status === "ok" ? "text-emerald" : "text-red-400"}`}>{item.name}</span>
+                  {item.error && <span className="text-[10px] text-red-400/70 truncate max-w-[120px]">{item.error}</span>}
+                </div>
+              ))}
+            </div>
           </div>
         )}
-        <div className="p-4 sm:p-5 rounded-2xl bg-blue-500/5 border border-blue-500/10 space-y-3 text-xs font-medium text-blue-300/80">
-          <p className="font-bold flex items-center gap-2.5 text-blue-400 text-sm">
-            <FileJson className="w-5 h-5" /> {t("json_shape_example")}
-          </p>
-          <pre className="block w-full p-3 sm:p-4 mx-0 bg-blue-950/5 dark:bg-black/20 rounded-xl overflow-x-auto text-[10px] text-blue-800 dark:text-blue-200/90 font-mono shadow-inner border border-blue-500/10 dark:border-black/20 leading-relaxed">
-            {`[
-  {
-    "name": "Amoxicillin",
-    "class": "Antibiotic",
-    "indications": ["Bacterial infections"],
-    "side_effects": ["Diarrhea"],
-    "contraindications": [],
-    "interactions": [],
-    "dose": {
-      "dog": { "value": 10, "unit": "mg/kg", "frequency": "q8-12h" },
-      "cat": { "value": 5,  "unit": "mg/kg", "frequency": "q8-12h" },
-      "route": "PO"
-    },
-    "concentration": [
-      { "value": 250, "unit": "mg", "form": "tablet" }
-    ],
-    "toxicity": {
-      "dog": { "severity": "Low", "notes": "LD50 500mg/kg" },
-      "cat": { "severity": "Low", "notes": "LD50 300mg/kg" }
-    }
-  }
-]`}
-          </pre>
-        </div>
-        <div className="space-y-2.5">
-          <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 ml-1">
-            {t("json_payload")}
-          </Label>
-          <Textarea
-            value={jsonText}
-            onChange={(e) => setJsonText(e.target.value)}
-            rows={10}
-            className="p-4 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-2xl font-mono text-xs resize-none shadow-inner"
-            placeholder="[ { ... }, { ... } ]"
-          />
-        </div>
+
+        {/* ── DONE PHASE ── */}
+        {phase === "done" && (
+          <div className="space-y-4">
+            {failed === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-6 text-center">
+                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  className="w-16 h-16 rounded-2xl bg-emerald/15 border border-emerald/25 flex items-center justify-center">
+                  <CheckCircle2 className="w-8 h-8 text-emerald" />
+                </motion.div>
+                <div>
+                  <p className="text-lg font-black text-emerald">All {done} drugs imported!</p>
+                  <p className="text-xs text-muted-foreground mt-1">Closing automatically…</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>{done} succeeded · {failed} failed — review errors below</span>
+                </div>
+                <div className="max-h-56 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
+                  {items.map((item, i) => (
+                    <div key={i} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs ${item.status === "ok" ? "bg-emerald/5 border border-emerald/15" : "bg-red-500/5 border border-red-500/15"}`}>
+                      {item.status === "ok"
+                        ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald shrink-0" />
+                        : <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />}
+                      <span className={`font-semibold flex-1 truncate ${item.status === "ok" ? "text-emerald" : "text-red-400"}`}>{item.name}</span>
+                      {item.error && <span className="text-[10px] text-red-400/70 truncate max-w-[140px]">{item.error}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </DashboardForm>
   );
 }
+
+
+/* ── Delete Confirm Modal ──────────────────────────────────────────────── */
+function DeleteConfirmModal({
+  drug, open, onClose, onConfirm, isPending,
+}: { drug: Drug | null; open: boolean; onClose: () => void; onConfirm: () => void; isPending: boolean; }) {
+  const [done, setDone] = React.useState(false);
+  React.useEffect(() => { if (!open) setDone(false); }, [open]);
+  React.useEffect(() => {
+    if (!isPending && done) { const id = setTimeout(onClose, 1200); return () => clearTimeout(id); }
+  }, [isPending, done]);
+
+  const handleConfirm = () => { setDone(false); onConfirm(); };
+  React.useEffect(() => { if (!isPending && open && done === false && drug) setDone(true); }, [isPending]);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm p-4"
+          onClick={isPending ? undefined : onClose}>
+          <motion.div initial={{ scale: 0.95, y: 12 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 12 }}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-5">
+            {isPending ? (
+              <div className="flex flex-col items-center gap-4 py-4 text-center">
+                <Loader2 className="w-10 h-10 text-red-400 animate-spin" />
+                <div>
+                  <p className="font-black text-base">Deleting…</p>
+                  <p className="text-xs text-muted-foreground mt-1 truncate max-w-xs">Removing <span className="font-bold text-foreground">{drug?.name}</span></p>
+                </div>
+              </div>
+            ) : done ? (
+              <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                className="flex flex-col items-center gap-3 py-4 text-center">
+                <div className="w-14 h-14 rounded-2xl bg-emerald/10 border border-emerald/20 flex items-center justify-center">
+                  <CheckCircle2 className="w-7 h-7 text-emerald" />
+                </div>
+                <p className="font-black text-base text-emerald">Deleted!</p>
+                <p className="text-xs text-muted-foreground">Closing…</p>
+              </motion.div>
+            ) : (
+              <>
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
+                    <Trash2 className="w-5 h-5 text-red-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-base">Delete Drug</h3>
+                    <p className="text-xs text-muted-foreground">This cannot be undone.</p>
+                  </div>
+                </div>
+                <div className="px-4 py-3 rounded-xl bg-red-500/5 border border-red-500/10 text-sm font-bold truncate">{drug?.name}</div>
+                <div className="flex gap-3">
+                  <button onClick={onClose}
+                    className="flex-1 py-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 text-sm font-bold transition-colors">Cancel</button>
+                  <button onClick={handleConfirm}
+                    className="flex-1 py-2.5 rounded-xl bg-red-500/90 hover:bg-red-500 text-white text-sm font-black transition-colors">Delete</button>
+                </div>
+              </>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+
+
+
+
 
 /* ── Main Page ──────────────────────────────────────────────────────────── */
 export default function DrugsPage() {
@@ -1706,6 +1852,12 @@ export default function DrugsPage() {
   const [selectedDrugIds, setSelectedDrugIds] = React.useState<string[]>([]);
   const [ownerClinicFilter, setOwnerClinicFilter] =
     React.useState<string>("all");
+  // Delete confirm modal
+  const [deleteTarget, setDeleteTarget] = React.useState<Drug | null>(null);
+  // Bulk delete progress
+  const [bulkProgress, setBulkProgress] = React.useState<{ open: boolean; total: number; done: number; failed: number; current: string; phase: "running" | "done" }>({
+    open: false, total: 0, done: 0, failed: 0, current: "", phase: "running",
+  });
 
   const { data: drugsData, isLoading, isError } = useDrugs();
   const { data: clinicsData } = useClinics();
@@ -1787,15 +1939,15 @@ export default function DrugsPage() {
   };
 
   const handleDelete = (drug: Drug) => {
-    if (!confirm(`Delete "${drug.name}"? This cannot be undone.`)) return;
-    deleteDrug.mutate(drug.drug_id, {
-      onSuccess: () => {
-        setSelectedDrugIds((prev) =>
-          prev.filter((drugId) => drugId !== drug.drug_id),
-        );
-      },
-    });
+    setDeleteTarget(drug);
     if (selectedDrug?.drug_id === drug.drug_id) setSelectedDrug(null);
+  };
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    deleteDrug.mutate(deleteTarget.drug_id, {
+      onSuccess: () => setSelectedDrugIds(prev => prev.filter(id => id !== deleteTarget.drug_id)),
+    });
   };
 
   const toggleDrugSelection = (drugId: string) => {
@@ -1814,30 +1966,28 @@ export default function DrugsPage() {
 
   const handleBulkDelete = async () => {
     if (selectedDrugIds.length === 0) return;
-    const count = selectedDrugIds.length;
-    if (!confirm(`Delete ${count} selected drug${count > 1 ? "s" : ""}?`)) {
-      return;
-    }
-
     const ids = [...selectedDrugIds];
-    const results = await Promise.allSettled(
-      ids.map((id) => deleteDrug.mutateAsync(id)),
-    );
-
-    const failedIds: string[] = [];
-    let successCount = 0;
-    results.forEach((result, index) => {
-      if (result.status === "fulfilled") {
-        successCount += 1;
-      } else {
-        failedIds.push(ids[index]);
+    setBulkProgress({ open: true, total: ids.length, done: 0, failed: 0, current: "", phase: "running" });
+    let done = 0; let failed = 0;
+    for (const id of ids) {
+      const drug = allDrugs.find(d => d.drug_id === id);
+      setBulkProgress(p => ({ ...p, current: drug?.name ?? id }));
+      try {
+        await deleteDrug.mutateAsync(id);
+        done++;
+        setBulkProgress(p => ({ ...p, done }));
+      } catch {
+        failed++;
+        setBulkProgress(p => ({ ...p, failed }));
       }
-    });
-
-    setSelectedDrugIds(failedIds);
+    }
+    setSelectedDrugIds([]);
+    setBulkProgress(p => ({ ...p, phase: "done", current: "" }));
+    setTimeout(() => setBulkProgress(p => ({ ...p, open: false })), 1800);
   };
 
   const canAdd = level !== "readonly";
+
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-5xl mx-auto">
@@ -2126,6 +2276,63 @@ export default function DrugsPage() {
           isAdmin={isAdmin}
         />
       )}
+
+      {/* ── Delete Confirm Modal ── */}
+      <DeleteConfirmModal
+        drug={deleteTarget}
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        isPending={deleteDrug.isPending}
+      />
+
+      {/* ── Bulk Delete Progress Overlay ── */}
+      <AnimatePresence>
+        {bulkProgress.open && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm p-4">
+            <motion.div initial={{ scale: 0.95, y: 12 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 12 }}
+              className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-5">
+              {bulkProgress.phase === "done" ? (
+                <div className="flex flex-col items-center gap-3 py-3 text-center">
+                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    className="w-14 h-14 rounded-2xl bg-emerald/10 border border-emerald/20 flex items-center justify-center">
+                    <CheckCircle2 className="w-7 h-7 text-emerald" />
+                  </motion.div>
+                  <div>
+                    <p className="font-black text-base text-emerald">{bulkProgress.done} deleted!</p>
+                    {bulkProgress.failed > 0 && <p className="text-xs text-red-400 mt-0.5">{bulkProgress.failed} failed</p>}
+                    <p className="text-xs text-muted-foreground mt-1">Closing…</p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
+                      <Loader2 className="w-5 h-5 text-red-400 animate-spin" />
+                    </div>
+                    <div>
+                      <p className="font-black text-sm">Deleting {bulkProgress.total} drugs…</p>
+                      <p className="text-[10px] text-muted-foreground truncate max-w-xs">{bulkProgress.current}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs text-muted-foreground font-semibold">
+                      <span>{bulkProgress.done + bulkProgress.failed} / {bulkProgress.total}</span>
+                      <span className="text-emerald">{bulkProgress.done} done · <span className="text-red-400">{bulkProgress.failed} failed</span></span>
+                    </div>
+                    <div className="h-2 rounded-full bg-tint/10 overflow-hidden">
+                      <motion.div className="h-full rounded-full bg-gradient-to-r from-red-500 to-red-400"
+                        animate={{ width: `${Math.round(((bulkProgress.done + bulkProgress.failed) / bulkProgress.total) * 100)}%` }}
+                        transition={{ ease: "linear", duration: 0.3 }} />
+                    </div>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
