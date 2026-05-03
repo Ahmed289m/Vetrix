@@ -292,17 +292,34 @@ export function VisitDetailModal({
             <div className="space-y-4">
               {pDrugs.map(({ drug, dose }, idx) => {
                 const sKey = speciesKey(pet?.type);
-                const specDose = sKey ? (drug.dosage as any)?.[sKey] : null;
-                const specToxObj = sKey ? (drug.toxicity as any)?.[sKey] : null;
+                const doseEntry =
+                  sKey && drug.dose
+                    ? (drug.dose as Record<string, unknown>)[sKey]
+                    : null;
+                const doseObj = (doseEntry || null) as
+                  | { value?: number | null; unit?: string | null; frequency?: string | null }
+                  | null;
+                const doseRoute = (drug.dose as { route?: string | null } | undefined)?.route;
+                const specDose = doseObj
+                  ? [
+                      doseObj.value != null ? String(doseObj.value) : null,
+                      doseObj.unit || null,
+                      doseObj.frequency || null,
+                    ]
+                      .filter(Boolean)
+                      .join(" ") +
+                    (doseRoute ? ` (${doseRoute})` : "")
+                  : null;
 
-                const specTox =
-                  typeof specToxObj === "object" && specToxObj !== null
-                    ? specToxObj.description
-                    : specToxObj;
-                const sev =
-                  typeof specToxObj === "object" && specToxObj !== null
-                    ? specToxObj.status
-                    : undefined;
+                const toxEntry =
+                  sKey && drug.toxicity
+                    ? (drug.toxicity as Record<string, unknown>)[sKey]
+                    : null;
+                const toxObj = (toxEntry || null) as
+                  | { severity?: string | null; notes?: string | null }
+                  | null;
+                const specTox = toxObj?.notes || null;
+                const sev = toxObj?.severity || undefined;
                 const styles = severityStyle(sev);
 
                 return (
@@ -327,7 +344,7 @@ export function VisitDetailModal({
                                 {drug.name}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                {drug.drugClass}
+                                {drug.class}
                               </p>
                             </>
                           )}
@@ -371,13 +388,13 @@ export function VisitDetailModal({
                     )}
 
                     {/* Interactions */}
-                    {!isClient && drug.drugInteractions?.length > 0 && (
+                    {!isClient && drug.interactions && drug.interactions.length > 0 && (
                       <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/15">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-amber-400 mb-1.5 flex items-center gap-1">
                           <Zap className="w-3 h-3" /> Known Drug Interactions
                         </p>
                         <div className="flex flex-wrap gap-1.5">
-                          {drug.drugInteractions.map((name, i) => (
+                          {drug.interactions.map((name, i) => (
                             <span
                               key={i}
                               className="px-2 py-0.5 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/15"
@@ -409,14 +426,14 @@ export function VisitDetailModal({
                     )}
 
                     {/* Client side-effects watch */}
-                    {isClient && drug.sideEffects?.length > 0 && (
+                    {isClient && drug.side_effects && drug.side_effects.length > 0 && (
                       <div className="p-3 rounded-xl bg-orange-500/5 border border-orange-500/10">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-orange-400 mb-1.5 flex items-center gap-1">
                           <AlertCircle className="w-3 h-3" /> Watch for these
                           side effects
                         </p>
                         <ul className="space-y-1">
-                          {drug.sideEffects.slice(0, 4).map((se, i) => (
+                          {drug.side_effects.slice(0, 4).map((se, i) => (
                             <li
                               key={i}
                               className="text-xs text-foreground/70 flex items-start gap-1.5"

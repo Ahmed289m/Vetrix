@@ -15,13 +15,49 @@ def _normalize_pet_type(pet_type: str | None) -> str:
     return normalized if normalized in {"dog", "cat"} else ""
 
 
-def _resolve_dosage_for_pet_type(raw_dosage, pet_type: str):
-    if raw_dosage is None:
+def _format_dose_species(species_dose) -> str | None:
+    if not isinstance(species_dose, dict):
         return None
-    if isinstance(raw_dosage, dict) and pet_type:
-        if raw_dosage.get(pet_type) is not None:
-            return raw_dosage.get(pet_type)
-    return raw_dosage
+    value = species_dose.get("value")
+    unit = species_dose.get("unit")
+    frequency = species_dose.get("frequency")
+    parts: list[str] = []
+    if value is not None:
+        parts.append(str(value))
+    if unit:
+        parts.append(str(unit))
+    rendered = " ".join(parts).strip()
+    if frequency:
+        rendered = f"{rendered} {frequency}".strip()
+    return rendered or None
+
+
+def _resolve_dose_for_pet_type(dose, pet_type: str):
+    """
+    Build a human-readable dose string for the given pet type.
+    `dose` is the structured drug.dose dict: {dog, cat, route}.
+    """
+    if not isinstance(dose, dict):
+        return dose
+
+    route = dose.get("route")
+    if pet_type:
+        species_label = _format_dose_species(dose.get(pet_type))
+        if species_label:
+            return f"{species_label} {route}".strip() if route else species_label
+        return None
+
+    dog_label = _format_dose_species(dose.get("dog"))
+    cat_label = _format_dose_species(dose.get("cat"))
+    species_parts = []
+    if dog_label:
+        species_parts.append(f"dog: {dog_label}")
+    if cat_label:
+        species_parts.append(f"cat: {cat_label}")
+    rendered = ", ".join(species_parts)
+    if route:
+        rendered = f"{rendered} ({route})" if rendered else route
+    return rendered or None
 
 
 async def getVisitsInfo(pet_id: str, pet_type: str | None = None):
@@ -67,15 +103,12 @@ async def getVisitsInfo(pet_id: str, pet_type: str | None = None):
                     drugs = await drug_service.list_by_drug_ids(item_drug_ids)
                     for drug in drugs:
                         if normalized_pet_type:
-                            dosage_source = drug.get("dosage")
+                            dose_label = _resolve_dose_for_pet_type(drug.get("dose"), normalized_pet_type)
                         else:
-                            dosage_source = item.get("drugDose") or drug.get("dosage")
+                            dose_label = item.get("drugDose") or _resolve_dose_for_pet_type(drug.get("dose"), "")
                         medications.append({
                             "drug_name": drug.get("name"),
-                            "dosage": _resolve_dosage_for_pet_type(
-                                dosage_source,
-                                normalized_pet_type,
-                            ),
+                            "dose": dose_label,
                         })
 
         result.append({

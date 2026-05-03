@@ -130,6 +130,8 @@ const toDisplayText = (value: unknown): string => {
 
 const extractToxicityDescription = (value: unknown): string => {
   if (isRecord(value)) {
+    const notes = toDisplayText(value.notes);
+    if (notes) return notes;
     const description = toDisplayText(value.description);
     if (description) return description;
     const fallbackValue = toDisplayText(value.value);
@@ -140,9 +142,29 @@ const extractToxicityDescription = (value: unknown): string => {
 
 const extractToxicitySeverity = (value: unknown): string => {
   if (isRecord(value)) {
+    const severity = toDisplayText(value.severity);
+    if (severity) return severity;
     return toDisplayText(value.status);
   }
   return toDisplayText(value);
+};
+
+const formatDoseSpecies = (value: unknown): string => {
+  if (!isRecord(value)) return toDisplayText(value);
+  const valueLabel = toDisplayText(value.value);
+  const unit = toDisplayText(value.unit);
+  const frequency = toDisplayText(value.frequency);
+  const head = [valueLabel, unit].filter(Boolean).join(" ");
+  return [head, frequency].filter(Boolean).join(" ").trim();
+};
+
+const formatConcentrationItem = (value: unknown): string => {
+  if (!isRecord(value)) return toDisplayText(value);
+  const valueLabel = toDisplayText(value.value);
+  const unit = toDisplayText(value.unit);
+  const form = toDisplayText(value.form);
+  const head = [valueLabel, unit].filter(Boolean).join(" ");
+  return [head, form].filter(Boolean).join(" · ").trim();
 };
 
 const getSeverityBadgeTone = (severity: string): string => {
@@ -251,7 +273,7 @@ function DrugRow({
               {drug.name}
             </span>
             <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wide bg-tint/5 text-muted-foreground">
-              {drug.drugClass}
+              {drug.class}
             </span>
             <ScopeBadge drug={drug} clinicName={clinicName} />
             {manageable && (
@@ -328,22 +350,19 @@ function DrugDetailPanel({
   const toxicityData = asObject(drug.toxicity);
   const dogToxicity = extractToxicityDescription(toxicityData.dog);
   const catToxicity = extractToxicityDescription(toxicityData.cat);
-  const dogSeverity =
-    extractToxicitySeverity(toxicityData.severityDog) ||
-    extractToxicitySeverity(toxicityData.dog);
-  const catSeverity =
-    extractToxicitySeverity(toxicityData.severityCat) ||
-    extractToxicitySeverity(toxicityData.cat);
-  const genericToxicityEntries = Object.entries(toxicityData).filter(
-    ([key]) =>
-      key !== "dog" &&
-      key !== "cat" &&
-      key !== "severityDog" &&
-      key !== "severityCat",
-  );
+  const dogSeverity = extractToxicitySeverity(toxicityData.dog);
+  const catSeverity = extractToxicitySeverity(toxicityData.cat);
 
-  const hasToxicityDetails =
-    !!dogToxicity || !!catToxicity || genericToxicityEntries.length > 0;
+  const hasToxicityDetails = !!dogToxicity || !!catToxicity;
+
+  const doseData = asObject(drug.dose);
+  const doseRoute = toDisplayText(doseData.route);
+  const dogDoseLabel = formatDoseSpecies(doseData.dog);
+  const catDoseLabel = formatDoseSpecies(doseData.cat);
+  const hasDoseDetails = !!dogDoseLabel || !!catDoseLabel || !!doseRoute;
+  const concentrationItems = Array.isArray(drug.concentration)
+    ? drug.concentration
+    : [];
 
   return (
     <motion.div
@@ -373,7 +392,7 @@ function DrugDetailPanel({
               </h3>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-tint/5 border border-tint/5 text-muted-foreground">
-                  {drug.drugClass}
+                  {drug.class}
                 </span>
                 <ScopeBadge drug={drug} clinicName={clinicName} />
               </div>
@@ -402,7 +421,7 @@ function DrugDetailPanel({
           <DetailSection
             icon={<AlertTriangle className="w-4 h-4 text-amber-400" />}
             label={t("side_effects")}
-            items={drug.sideEffects}
+            items={drug.side_effects}
           />
           <DetailSection
             icon={<Shield className="w-4 h-4 text-red-400" />}
@@ -412,13 +431,13 @@ function DrugDetailPanel({
           <DetailSection
             icon={<Pill className="w-4 h-4 text-cyan-400" />}
             label={t("drug_interactions_label")}
-            items={drug.drugInteractions?.map((interaction) => {
+            items={drug.interactions?.map((interaction) => {
               const found = allDrugs.find((d) => d.drug_id === interaction);
               return found ? found.name : interaction;
             })}
           />
 
-          {drug.dosage && Object.keys(drug.dosage).length > 0 && (
+          {hasDoseDetails && (
             <div className="p-4 rounded-2xl bg-tint/5 border border-tint/5 space-y-3">
               <div className="flex items-center gap-2 mb-1">
                 <FlaskConical className="w-4 h-4 text-cyan-400" />
@@ -427,21 +446,61 @@ function DrugDetailPanel({
                 </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {Object.entries(drug.dosage as Record<string, string>).map(
-                  ([k, v]) => (
-                    <div
-                      key={k}
-                      className="p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/10"
-                    >
-                      <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-1">
-                        {k}
-                      </p>
-                      <p className="text-sm font-semibold text-foreground">
-                        {String(v)}
-                      </p>
-                    </div>
-                  ),
+                {dogDoseLabel && (
+                  <div className="p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/10">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-1">
+                      Dog
+                    </p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {dogDoseLabel}
+                    </p>
+                  </div>
                 )}
+                {catDoseLabel && (
+                  <div className="p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/10">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-1">
+                      Cat
+                    </p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {catDoseLabel}
+                    </p>
+                  </div>
+                )}
+                {doseRoute && (
+                  <div className="p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/10 sm:col-span-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-1">
+                      Route
+                    </p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {doseRoute}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {concentrationItems.length > 0 && (
+            <div className="p-4 rounded-2xl bg-tint/5 border border-tint/5 space-y-3">
+              <div className="flex items-center gap-2 mb-1">
+                <FlaskConical className="w-4 h-4 text-emerald" />
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Concentration
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {concentrationItems.map((c, i) => {
+                  const label = formatConcentrationItem(c);
+                  if (!label) return null;
+                  return (
+                    <span
+                      key={i}
+                      className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald/10 border border-emerald/20 text-emerald"
+                    >
+                      {label}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -493,24 +552,6 @@ function DrugDetailPanel({
                     </p>
                   </div>
                 )}
-
-                {genericToxicityEntries.map(([k, v]) => {
-                  const value = extractToxicityDescription(v);
-                  if (!value) return null;
-                  return (
-                    <div
-                      key={k}
-                      className="p-3 rounded-xl bg-red-500/5 border border-red-500/10"
-                    >
-                      <p className="text-[10px] font-black uppercase tracking-widest text-red-400 mb-1">
-                        {k}
-                      </p>
-                      <p className="text-sm font-semibold text-foreground">
-                        {value}
-                      </p>
-                    </div>
-                  );
-                })}
               </div>
             </div>
           )}
@@ -579,20 +620,123 @@ function DetailSection({
 }
 
 /* ── CRUD Form ─────────────────────────────────────────────────────────── */
+type ConcentrationFormItem = { value: string; unit: string; form: string };
+
 type DrugFormValues = {
   name: string;
-  drugClass: string;
+  class: string;
   indications: string;
-  sideEffects: string;
+  side_effects: string;
   contraindications: string;
-  drugInteractions: string[];
-  dosageDog: string;
-  dosageCat: string;
-  toxicityDog: string;
-  toxicityCat: string;
-  toxicitySeverityDog: string;
-  toxicitySeverityCat: string;
+  interactions: string[];
+  doseDogValue: string;
+  doseDogUnit: string;
+  doseDogFrequency: string;
+  doseCatValue: string;
+  doseCatUnit: string;
+  doseCatFrequency: string;
+  doseRoute: string;
+  concentration: ConcentrationFormItem[];
+  toxicityDogNotes: string;
+  toxicityCatNotes: string;
+  toxicityDogSeverity: string;
+  toxicityCatSeverity: string;
   clinic_id: string; // "" means null (global), used by admin only
+};
+
+const EMPTY_CONCENTRATION: ConcentrationFormItem = {
+  value: "",
+  unit: "",
+  form: "",
+};
+
+const parseNumber = (raw: string): number | undefined => {
+  if (!raw.trim()) return undefined;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : undefined;
+};
+
+const buildDosePayload = (values: DrugFormValues) => {
+  const dogValue = parseNumber(values.doseDogValue);
+  const catValue = parseNumber(values.doseCatValue);
+  const dog =
+    dogValue !== undefined ||
+    values.doseDogUnit.trim() ||
+    values.doseDogFrequency.trim()
+      ? {
+          ...(dogValue !== undefined ? { value: dogValue } : {}),
+          ...(values.doseDogUnit.trim()
+            ? { unit: values.doseDogUnit.trim() }
+            : {}),
+          ...(values.doseDogFrequency.trim()
+            ? { frequency: values.doseDogFrequency.trim() }
+            : {}),
+        }
+      : undefined;
+  const cat =
+    catValue !== undefined ||
+    values.doseCatUnit.trim() ||
+    values.doseCatFrequency.trim()
+      ? {
+          ...(catValue !== undefined ? { value: catValue } : {}),
+          ...(values.doseCatUnit.trim()
+            ? { unit: values.doseCatUnit.trim() }
+            : {}),
+          ...(values.doseCatFrequency.trim()
+            ? { frequency: values.doseCatFrequency.trim() }
+            : {}),
+        }
+      : undefined;
+  const route = values.doseRoute.trim();
+  return {
+    ...(dog ? { dog } : {}),
+    ...(cat ? { cat } : {}),
+    ...(route ? { route } : {}),
+  };
+};
+
+const buildConcentrationPayload = (values: DrugFormValues) =>
+  values.concentration
+    .map((c) => {
+      const value = parseNumber(c.value);
+      const unit = c.unit.trim();
+      const form = c.form.trim();
+      if (value === undefined && !unit && !form) return null;
+      return {
+        ...(value !== undefined ? { value } : {}),
+        ...(unit ? { unit } : {}),
+        ...(form ? { form } : {}),
+      };
+    })
+    .filter((c): c is { value?: number; unit?: string; form?: string } => !!c);
+
+const buildToxicityPayload = (values: DrugFormValues) => {
+  const dog =
+    values.toxicityDogNotes.trim() || values.toxicityDogSeverity
+      ? {
+          ...(values.toxicityDogSeverity
+            ? { severity: values.toxicityDogSeverity }
+            : {}),
+          ...(values.toxicityDogNotes.trim()
+            ? { notes: values.toxicityDogNotes.trim() }
+            : {}),
+        }
+      : undefined;
+  const cat =
+    values.toxicityCatNotes.trim() || values.toxicityCatSeverity
+      ? {
+          ...(values.toxicityCatSeverity
+            ? { severity: values.toxicityCatSeverity }
+            : {}),
+          ...(values.toxicityCatNotes.trim()
+            ? { notes: values.toxicityCatNotes.trim() }
+            : {}),
+        }
+      : undefined;
+  return {
+    ...(dog ? { dog } : {}),
+    ...(cat ? { cat } : {}),
+  };
 };
 
 function DrugCrudForm({
@@ -630,17 +774,23 @@ function DrugCrudForm({
   const formik = useFormik<DrugFormValues>({
     initialValues: {
       name: "",
-      drugClass: "",
+      class: "",
       indications: "",
-      sideEffects: "",
+      side_effects: "",
       contraindications: "",
-      drugInteractions: [],
-      dosageDog: "",
-      dosageCat: "",
-      toxicityDog: "",
-      toxicityCat: "",
-      toxicitySeverityDog: "",
-      toxicitySeverityCat: "",
+      interactions: [],
+      doseDogValue: "",
+      doseDogUnit: "",
+      doseDogFrequency: "",
+      doseCatValue: "",
+      doseCatUnit: "",
+      doseCatFrequency: "",
+      doseRoute: "",
+      concentration: [],
+      toxicityDogNotes: "",
+      toxicityCatNotes: "",
+      toxicityDogSeverity: "",
+      toxicityCatSeverity: "",
       clinic_id: "",
     },
     onSubmit: (values, { setSubmitting, resetForm }) => {
@@ -648,25 +798,14 @@ function DrugCrudForm({
 
       const payload: DrugCreate = {
         name: values.name.trim(),
-        drugClass: values.drugClass.trim(),
+        class: values.class.trim(),
         indications: parseTagArray(values.indications),
-        sideEffects: parseTagArray(values.sideEffects),
+        side_effects: parseTagArray(values.side_effects),
         contraindications: parseTagArray(values.contraindications),
-        drugInteractions: values.drugInteractions,
-        dosage: {
-          ...(values.dosageDog ? { dog: values.dosageDog.trim() } : {}),
-          ...(values.dosageCat ? { cat: values.dosageCat.trim() } : {}),
-        },
-        toxicity: {
-          ...(values.toxicityDog ? { dog: values.toxicityDog.trim() } : {}),
-          ...(values.toxicityCat ? { cat: values.toxicityCat.trim() } : {}),
-          ...(values.toxicitySeverityDog
-            ? { severityDog: values.toxicitySeverityDog }
-            : {}),
-          ...(values.toxicitySeverityCat
-            ? { severityCat: values.toxicitySeverityCat }
-            : {}),
-        },
+        interactions: values.interactions,
+        dose: buildDosePayload(values),
+        concentration: buildConcentrationPayload(values),
+        toxicity: buildToxicityPayload(values),
         ...(isAdmin && { clinic_id: selectedClinicId }),
         ...(!isAdmin &&
           enableClinicSelectionForOwner &&
@@ -702,23 +841,46 @@ function DrugCrudForm({
   React.useEffect(() => {
     if (isOpen) {
       if (selectedDrug) {
-        const dosage = asObject(selectedDrug.dosage);
+        const dose = asObject(selectedDrug.dose);
+        const dogDose = asObject(dose.dog);
+        const catDose = asObject(dose.cat);
         const toxicity = asObject(selectedDrug.toxicity);
+        const dogTox = asObject(toxicity.dog);
+        const catTox = asObject(toxicity.cat);
+        const concentration: ConcentrationFormItem[] = Array.isArray(
+          selectedDrug.concentration,
+        )
+          ? selectedDrug.concentration.map((c) => {
+              const obj = asObject(c);
+              return {
+                value: asText(obj.value),
+                unit: asText(obj.unit),
+                form: asText(obj.form),
+              };
+            })
+          : [];
+
         formik.setValues({
           name: selectedDrug.name,
-          drugClass: selectedDrug.drugClass,
+          class: selectedDrug.class,
           indications: tagArrayToString(selectedDrug.indications ?? []),
-          sideEffects: tagArrayToString(selectedDrug.sideEffects ?? []),
+          side_effects: tagArrayToString(selectedDrug.side_effects ?? []),
           contraindications: tagArrayToString(
             selectedDrug.contraindications ?? [],
           ),
-          drugInteractions: selectedDrug.drugInteractions ?? [],
-          dosageDog: asText(dosage.dog),
-          dosageCat: asText(dosage.cat),
-          toxicityDog: asText(toxicity.dog),
-          toxicityCat: asText(toxicity.cat),
-          toxicitySeverityDog: asText(toxicity.severityDog),
-          toxicitySeverityCat: asText(toxicity.severityCat),
+          interactions: selectedDrug.interactions ?? [],
+          doseDogValue: asText(dogDose.value),
+          doseDogUnit: asText(dogDose.unit),
+          doseDogFrequency: asText(dogDose.frequency),
+          doseCatValue: asText(catDose.value),
+          doseCatUnit: asText(catDose.unit),
+          doseCatFrequency: asText(catDose.frequency),
+          doseRoute: asText(dose.route),
+          concentration,
+          toxicityDogNotes: asText(dogTox.notes),
+          toxicityCatNotes: asText(catTox.notes),
+          toxicityDogSeverity: asText(dogTox.severity),
+          toxicityCatSeverity: asText(catTox.severity),
           clinic_id: selectedDrug.clinic_id ?? "",
         });
       } else {
@@ -783,8 +945,8 @@ function DrugCrudForm({
           </Field>
           <Field label="Drug Class" required>
             <Input
-              name="drugClass"
-              value={formik.values.drugClass}
+              name="class"
+              value={formik.values.class}
               onChange={formik.handleChange}
               placeholder="e.g. Antibiotic"
               className="h-12 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-xl font-semibold"
@@ -919,8 +1081,8 @@ function DrugCrudForm({
         </Field>
         <Field label={t("side_effects")}>
           <Input
-            name="sideEffects"
-            value={formik.values.sideEffects}
+            name="side_effects"
+            value={formik.values.side_effects}
             onChange={formik.handleChange}
             placeholder="e.g. Nausea, Vomiting, Diarrhea"
             className="h-12 bg-tint/5 border-tint/5 focus:border-amber-400/30 rounded-xl"
@@ -943,8 +1105,8 @@ function DrugCrudForm({
                 role="combobox"
                 className="w-full h-12 bg-tint/5 border-tint/5 focus:border-cyan-400/30 rounded-xl justify-between font-normal text-left px-3 text-muted-foreground"
               >
-                {formik.values.drugInteractions.length > 0
-                  ? `${formik.values.drugInteractions.length} drugs selected`
+                {formik.values.interactions.length > 0
+                  ? `${formik.values.interactions.length} drugs selected`
                   : "Select interactive drugs..."}
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
@@ -962,21 +1124,21 @@ function DrugCrudForm({
                       .filter((d) => d.drug_id !== selectedDrug?.drug_id)
                       .map((d) => {
                         const isSelected =
-                          formik.values.drugInteractions.includes(d.drug_id);
+                          formik.values.interactions.includes(d.drug_id);
                         return (
                           <CommandItem
                             key={d.drug_id}
                             value={d.name}
                             onSelect={() => {
                               const next = isSelected
-                                ? formik.values.drugInteractions.filter(
+                                ? formik.values.interactions.filter(
                                     (id) => id !== d.drug_id,
                                   )
                                 : [
-                                    ...formik.values.drugInteractions,
+                                    ...formik.values.interactions,
                                     d.drug_id,
                                   ];
-                              formik.setFieldValue("drugInteractions", next);
+                              formik.setFieldValue("interactions", next);
                             }}
                             className="cursor-pointer font-medium py-2 px-3 data-[selected=true]:bg-cyan-500/10 data-[selected=true]:text-cyan-400"
                           >
@@ -988,7 +1150,7 @@ function DrugCrudForm({
                             />
                             {d.name}{" "}
                             <span className="ml-2 text-xs opacity-50 font-normal">
-                              ({d.drugClass})
+                              ({d.class})
                             </span>
                           </CommandItem>
                         );
@@ -998,9 +1160,9 @@ function DrugCrudForm({
               </Command>
             </PopoverContent>
           </Popover>
-          {formik.values.drugInteractions.length > 0 && (
+          {formik.values.interactions.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-2">
-              {formik.values.drugInteractions.map((id) => {
+              {formik.values.interactions.map((id) => {
                 const d = allDrugs.find((x) => x.drug_id === id);
                 if (!d) return null;
                 return (
@@ -1014,10 +1176,8 @@ function DrugCrudForm({
                       onClick={(e) => {
                         e.stopPropagation();
                         formik.setFieldValue(
-                          "drugInteractions",
-                          formik.values.drugInteractions.filter(
-                            (x) => x !== id,
-                          ),
+                          "interactions",
+                          formik.values.interactions.filter((x) => x !== id),
                         );
                       }}
                       className="hover:bg-cyan-500/20 rounded-full p-0.5"
@@ -1030,45 +1190,194 @@ function DrugCrudForm({
             </div>
           )}
         </Field>
-        {/* Specific Destructured Dosage */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label={t("dosage_dog")}>
-            <Input
-              name="dosageDog"
-              value={formik.values.dosageDog}
-              onChange={formik.handleChange}
-              placeholder="e.g. 10mg/kg q8-12h"
-              className="h-12 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-xl"
-            />
-          </Field>
-          <Field label={t("dosage_cat")}>
-            <Input
-              name="dosageCat"
-              value={formik.values.dosageCat}
-              onChange={formik.handleChange}
-              placeholder="e.g. 5mg/kg q8-12h"
-              className="h-12 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-xl"
-            />
-          </Field>
+        {/* Structured dose: dog/cat (value, unit, frequency) + route */}
+        <div className="space-y-3">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
+            {t("dosage_dog")}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Field label="Value">
+              <Input
+                name="doseDogValue"
+                type="number"
+                step="any"
+                value={formik.values.doseDogValue}
+                onChange={formik.handleChange}
+                placeholder="10"
+                className="h-12 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-xl"
+              />
+            </Field>
+            <Field label="Unit">
+              <Input
+                name="doseDogUnit"
+                value={formik.values.doseDogUnit}
+                onChange={formik.handleChange}
+                placeholder="mg/kg"
+                className="h-12 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-xl"
+              />
+            </Field>
+            <Field label="Frequency">
+              <Input
+                name="doseDogFrequency"
+                value={formik.values.doseDogFrequency}
+                onChange={formik.handleChange}
+                placeholder="q8-12h"
+                className="h-12 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-xl"
+              />
+            </Field>
+          </div>
+        </div>
+        <div className="space-y-3">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
+            {t("dosage_cat")}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Field label="Value">
+              <Input
+                name="doseCatValue"
+                type="number"
+                step="any"
+                value={formik.values.doseCatValue}
+                onChange={formik.handleChange}
+                placeholder="5"
+                className="h-12 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-xl"
+              />
+            </Field>
+            <Field label="Unit">
+              <Input
+                name="doseCatUnit"
+                value={formik.values.doseCatUnit}
+                onChange={formik.handleChange}
+                placeholder="mg/kg"
+                className="h-12 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-xl"
+              />
+            </Field>
+            <Field label="Frequency">
+              <Input
+                name="doseCatFrequency"
+                value={formik.values.doseCatFrequency}
+                onChange={formik.handleChange}
+                placeholder="q8-12h"
+                className="h-12 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-xl"
+              />
+            </Field>
+          </div>
+        </div>
+        <Field label="Route">
+          <Input
+            name="doseRoute"
+            value={formik.values.doseRoute}
+            onChange={formik.handleChange}
+            placeholder="PO, IV, SC..."
+            className="h-12 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-xl"
+          />
+        </Field>
+
+        {/* Concentration array editor */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+              Concentration
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                formik.setFieldValue("concentration", [
+                  ...formik.values.concentration,
+                  { ...EMPTY_CONCENTRATION },
+                ])
+              }
+              className="h-8 text-emerald hover:bg-emerald/10 gap-1"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add
+            </Button>
+          </div>
+          {formik.values.concentration.length === 0 && (
+            <p className="text-xs text-muted-foreground/50 px-1">
+              No concentrations added yet.
+            </p>
+          )}
+          {formik.values.concentration.map((c, idx) => (
+            <div
+              key={idx}
+              className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end"
+            >
+              <Field label="Value">
+                <Input
+                  type="number"
+                  step="any"
+                  value={c.value}
+                  onChange={(e) => {
+                    const next = [...formik.values.concentration];
+                    next[idx] = { ...c, value: e.target.value };
+                    formik.setFieldValue("concentration", next);
+                  }}
+                  placeholder="250"
+                  className="h-11 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-xl"
+                />
+              </Field>
+              <Field label="Unit">
+                <Input
+                  value={c.unit}
+                  onChange={(e) => {
+                    const next = [...formik.values.concentration];
+                    next[idx] = { ...c, unit: e.target.value };
+                    formik.setFieldValue("concentration", next);
+                  }}
+                  placeholder="mg"
+                  className="h-11 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-xl"
+                />
+              </Field>
+              <Field label="Form">
+                <Input
+                  value={c.form}
+                  onChange={(e) => {
+                    const next = [...formik.values.concentration];
+                    next[idx] = { ...c, form: e.target.value };
+                    formik.setFieldValue("concentration", next);
+                  }}
+                  placeholder="tablet"
+                  className="h-11 bg-tint/5 border-tint/5 focus:border-emerald/30 rounded-xl"
+                />
+              </Field>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  const next = formik.values.concentration.filter(
+                    (_, i) => i !== idx,
+                  );
+                  formik.setFieldValue("concentration", next);
+                }}
+                className="h-11 w-11 rounded-xl text-red-400 hover:bg-red-500/10"
+                title="Remove"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          ))}
         </div>
 
-        {/* Specific Destructured Toxicity */}
+        {/* Toxicity */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label={t("toxicity_dog")}>
             <Input
-              name="toxicityDog"
-              value={formik.values.toxicityDog}
+              name="toxicityDogNotes"
+              value={formik.values.toxicityDogNotes}
               onChange={formik.handleChange}
-              placeholder="e.g. 500mg/kg"
+              placeholder="e.g. LD50 500mg/kg"
               className="h-12 bg-muted/40 border-border focus:border-red-400/30 rounded-xl"
             />
           </Field>
           <Field label={t("toxicity_cat")}>
             <Input
-              name="toxicityCat"
-              value={formik.values.toxicityCat}
+              name="toxicityCatNotes"
+              value={formik.values.toxicityCatNotes}
               onChange={formik.handleChange}
-              placeholder="e.g. 300mg/kg"
+              placeholder="e.g. LD50 300mg/kg"
               className="h-12 bg-muted/40 border-border focus:border-red-400/30 rounded-xl"
             />
           </Field>
@@ -1076,9 +1385,9 @@ function DrugCrudForm({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label={t("toxicity_severity_dog")}>
             <Select
-              value={formik.values.toxicitySeverityDog}
+              value={formik.values.toxicityDogSeverity}
               onValueChange={(val) =>
-                formik.setFieldValue("toxicitySeverityDog", val)
+                formik.setFieldValue("toxicityDogSeverity", val)
               }
             >
               <SelectTrigger className="h-12 bg-muted/40 border-border focus:border-red-400/30 rounded-xl font-semibold">
@@ -1114,9 +1423,9 @@ function DrugCrudForm({
           </Field>
           <Field label={t("toxicity_severity_cat")}>
             <Select
-              value={formik.values.toxicitySeverityCat}
+              value={formik.values.toxicityCatSeverity}
               onValueChange={(val) =>
-                formik.setFieldValue("toxicitySeverityCat", val)
+                formik.setFieldValue("toxicityCatSeverity", val)
               }
             >
               <SelectTrigger className="h-12 bg-muted/40 border-border focus:border-red-400/30 rounded-xl font-semibold">
@@ -1210,24 +1519,42 @@ function ImportJsonModal({
         }
 
         const name = typeof item.name === "string" ? item.name.trim() : "";
-        const drugClass =
-          typeof item.drugClass === "string" ? item.drugClass.trim() : "";
+        const drugClassValue =
+          typeof item.class === "string" ? item.class.trim() : "";
 
-        if (!name || !drugClass) {
+        if (!name || !drugClassValue) {
           throw new Error(
-            "One or more items missing required 'name' or 'drugClass'.",
+            "One or more items missing required 'name' or 'class'.",
           );
         }
 
+        const concentrationItems = Array.isArray(item.concentration)
+          ? item.concentration
+              .map((c) => (isRecord(c) ? c : null))
+              .filter((c): c is UnknownRecord => c !== null)
+              .map((c) => ({
+                ...(typeof c.value === "number" ? { value: c.value } : {}),
+                ...(typeof c.unit === "string" && c.unit.trim()
+                  ? { unit: c.unit.trim() }
+                  : {}),
+                ...(typeof c.form === "string" && c.form.trim()
+                  ? { form: c.form.trim() }
+                  : {}),
+              }))
+          : [];
+
         const payload: DrugCreate = {
           name,
-          drugClass,
+          class: drugClassValue,
           indications: asStringArray(item.indications),
-          sideEffects: asStringArray(item.sideEffects),
+          side_effects: asStringArray(item.side_effects),
           contraindications: asStringArray(item.contraindications),
-          drugInteractions: asStringArray(item.drugInteractions),
-          dosage: asObject(item.dosage),
-          toxicity: asObject(item.toxicity),
+          interactions: asStringArray(item.interactions),
+          dose: isRecord(item.dose) ? (item.dose as DrugCreate["dose"]) : {},
+          concentration: concentrationItems,
+          toxicity: isRecord(item.toxicity)
+            ? (item.toxicity as DrugCreate["toxicity"])
+            : {},
           ...(isAdmin &&
             (typeof item.clinic_id === "string" || item.clinic_id === null) && {
               clinic_id: item.clinic_id,
@@ -1281,13 +1608,23 @@ function ImportJsonModal({
             {`[
   {
     "name": "Amoxicillin",
-    "drugClass": "Antibiotic",
+    "class": "Antibiotic",
     "indications": ["Bacterial infections"],
-    "sideEffects": ["Diarrhea"],
+    "side_effects": ["Diarrhea"],
     "contraindications": [],
-    "drugInteractions": [],
-    "dosage": { "dog": "10mg/kg q8-12h", "cat": "5mg/kg q8-12h" },
-    "toxicity": { "LD50": "500mg/kg", "severity": "Low" }
+    "interactions": [],
+    "dose": {
+      "dog": { "value": 10, "unit": "mg/kg", "frequency": "q8-12h" },
+      "cat": { "value": 5,  "unit": "mg/kg", "frequency": "q8-12h" },
+      "route": "PO"
+    },
+    "concentration": [
+      { "value": 250, "unit": "mg", "form": "tablet" }
+    ],
+    "toxicity": {
+      "dog": { "severity": "Low", "notes": "LD50 500mg/kg" },
+      "cat": { "severity": "Low", "notes": "LD50 300mg/kg" }
+    }
   }
 ]`}
           </pre>
@@ -1360,7 +1697,7 @@ export default function DrugsPage() {
       const matchSearch =
         !q ||
         d.name.toLowerCase().includes(q) ||
-        d.drugClass.toLowerCase().includes(q) ||
+        (d.class ?? "").toLowerCase().includes(q) ||
         d.indications?.some((i) => i.toLowerCase().includes(q));
       const matchScope =
         scopeFilter === "all" ||

@@ -1,8 +1,8 @@
 """
-One-time migration script: Normalize drugInteractions to use drug_id references.
+One-time migration script: Normalize interactions to use drug_id references.
 
 This script scans all drugs in MongoDB and converts any name-based entries
-in the `drugInteractions` array to their corresponding `drug_id` values.
+in the `interactions` array to their corresponding `drug_id` values.
 
 Usage:
     python -m app.scripts.migrate_drug_interactions
@@ -61,7 +61,7 @@ async def migrate():
     for drug in all_drugs:
         drug_id = drug.get("drug_id") or str(drug.get("_id", ""))
         drug_name = drug.get("name", "???")
-        interactions: list = drug.get("drugInteractions", [])
+        interactions: list = drug.get("interactions", [])
 
         if not interactions:
             continue
@@ -99,7 +99,7 @@ async def migrate():
         if changed:
             await collection.update_one(
                 {"drug_id": drug_id},
-                {"$set": {"drugInteractions": new_interactions}},
+                {"$set": {"interactions": new_interactions}},
             )
             updated_count += 1
             logger.info("  Updated %s (%s)", drug_name, drug_id)

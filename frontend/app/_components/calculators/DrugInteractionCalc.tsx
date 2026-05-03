@@ -270,7 +270,7 @@ export default function DrugInteractionCalc() {
             >
               <div>
                 <p className="text-sm font-bold">{d.name}</p>
-                <p className="text-xs text-muted-foreground">{d.drugClass}</p>
+                <p className="text-xs text-muted-foreground">{d.class}</p>
               </div>
 
               {d.indications && d.indications.length > 0 && (
@@ -293,20 +293,20 @@ export default function DrugInteractionCalc() {
                 </div>
               )}
 
-              {d.sideEffects && d.sideEffects.length > 0 && (
+              {d.side_effects && d.side_effects.length > 0 && (
                 <div className="pt-2 border-t border-border/20">
                   <p className="text-[10px] font-bold uppercase text-orange-400 mb-1">
                     Side Effects
                   </p>
                   <ul className="space-y-0.5">
-                    {d.sideEffects.slice(0, 2).map((se, i) => (
+                    {d.side_effects.slice(0, 2).map((se, i) => (
                       <li key={i} className="text-xs text-foreground/70">
                         • {se}
                       </li>
                     ))}
-                    {d.sideEffects.length > 2 && (
+                    {d.side_effects.length > 2 && (
                       <li className="text-[10px] text-muted-foreground italic">
-                        +{d.sideEffects.length - 2} more
+                        +{d.side_effects.length - 2} more
                       </li>
                     )}
                   </ul>

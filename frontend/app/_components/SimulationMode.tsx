@@ -38,7 +38,6 @@ import {
 import { toast } from "sonner";
 import { ChatAssistant } from "@/app/_components/ChatAssistant";
 import { DrugDoseCalculatorModal } from "@/app/dashboard/_components/DrugDoseCalculatorModal";
-import { calcDrugDose } from "@/app/_lib/utils/dosage-calculator";
 import {
   useAppointments,
   useUpdateAppointment,
@@ -136,31 +135,45 @@ const getDrugDosageForSpecies = (
   drug: Drug | undefined,
   key: string | null,
 ): string | null => {
-  if (!drug || !key) return null;
-  const dosage = drug.dosage as Record<string, unknown>;
-  const raw = dosage[key];
-  return raw === undefined || raw === null ? null : formatDose(raw);
+  if (!drug?.dose || !key) return null;
+  const entry = (drug.dose as Record<string, unknown>)[key] as
+    | { value?: number | null; unit?: string | null; frequency?: string | null }
+    | null
+    | undefined;
+  if (!entry) return null;
+  const parts: string[] = [];
+  if (entry.value != null) parts.push(String(entry.value));
+  if (entry.unit) parts.push(String(entry.unit));
+  if (entry.frequency) parts.push(String(entry.frequency));
+  const route = (drug.dose as { route?: string | null }).route;
+  const label = parts.join(" ").trim();
+  if (!label && !route) return null;
+  return route ? `${label}${label ? " " : ""}(${route})` : label;
 };
 
 const getDrugToxicityForSpecies = (
   drug: Drug | undefined,
   key: string | null,
 ): string | null => {
-  if (!drug || !key) return null;
-  const toxicity = drug.toxicity as Record<string, unknown>;
-  const raw = toxicity[key];
-  return raw === undefined || raw === null ? null : formatDose(raw);
+  if (!drug?.toxicity || !key) return null;
+  const entry = (drug.toxicity as Record<string, unknown>)[key] as
+    | { severity?: string | null; notes?: string | null }
+    | null
+    | undefined;
+  if (!entry) return null;
+  return entry.notes ? String(entry.notes) : null;
 };
 
 const getDrugSeverityForSpecies = (
   drug: Drug | undefined,
   key: string | null,
 ): string | undefined => {
-  if (!drug || !key) return undefined;
-  const severityKey = `severity${key.charAt(0).toUpperCase() + key.slice(1)}`;
-  const toxicity = drug.toxicity as Record<string, unknown>;
-  const raw = toxicity[severityKey];
-  return typeof raw === "string" ? raw : undefined;
+  if (!drug?.toxicity || !key) return undefined;
+  const entry = (drug.toxicity as Record<string, unknown>)[key] as
+    | { severity?: string | null }
+    | null
+    | undefined;
+  return entry?.severity ? String(entry.severity) : undefined;
 };
 
 /** Map severity string to Tailwind color tokens */
@@ -407,13 +420,20 @@ export default function SimulationMode({ role }: Props) {
   /** Calculate auto-dose for a drug given pet weight and species */
   const calcAutoDose = (drug: Drug, petWeight: number, petType: string) => {
     const sKey = speciesKey(petType);
-    if (!sKey) return null;
-    const dosage = drug.dosage as Record<string, unknown>;
-    const rawDosage = dosage[sKey];
-    const mgPerKg = parseDosageNumber(rawDosage);
-    if (!mgPerKg || petWeight <= 0) return null;
+    if (!sKey || !drug.dose) return null;
+    const entry = (drug.dose as Record<string, unknown>)[sKey] as
+      | { value?: number | null; unit?: string | null; frequency?: string | null }
+      | null
+      | undefined;
+    if (!entry || entry.value == null) return null;
+    const mgPerKg =
+      typeof entry.value === "number" ? entry.value : parseFloat(String(entry.value));
+    if (!Number.isFinite(mgPerKg) || mgPerKg <= 0 || petWeight <= 0) return null;
     const totalMg = Math.round(petWeight * mgPerKg * 100) / 100;
-    return { mgPerKg, totalMg, rawDosage: String(rawDosage ?? "") };
+    const labelParts: string[] = [String(entry.value)];
+    if (entry.unit) labelParts.push(String(entry.unit));
+    if (entry.frequency) labelParts.push(String(entry.frequency));
+    return { mgPerKg, totalMg, rawDosage: labelParts.join(" ").trim() };
   };
 
   const getCasePrescriptions = (petId: string, clientId: string) =>
@@ -462,8 +482,8 @@ export default function SimulationMode({ role }: Props) {
       for (let j = i + 1; j < selectedDrugs.length; j++) {
         const a = selectedDrugs[i];
         const b = selectedDrugs[j];
-        const aInteractsB = (a.drugInteractions || []).includes(b.drug_id);
-        const bInteractsA = (b.drugInteractions || []).includes(a.drug_id);
+        const aInteractsB = (a.interactions || []).includes(b.drug_id);
+        const bInteractsA = (b.interactions || []).includes(a.drug_id);
         if (aInteractsB || bInteractsA) pairs.push({ a: a.name, b: b.name });
       }
     }
@@ -1427,7 +1447,8 @@ export default function SimulationMode({ role }: Props) {
               sKey && drug
                 ? getDrugDosageForSpecies(drug, sKey)
                 : drug
-                  ? formatDose(drug.dosage)
+                  ? getDrugDosageForSpecies(drug, "dog") ||
+                    getDrugDosageForSpecies(drug, "cat")
                   : null;
             const tox = getDrugToxicityForSpecies(drug, sKey);
             const sev = getDrugSeverityForSpecies(drug, sKey);
@@ -1526,7 +1547,7 @@ export default function SimulationMode({ role }: Props) {
                         <div>
                           <p className="font-bold text-emerald">{drug.name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {drug.drugClass}
+                            {drug.class}
                           </p>
                         </div>
                         {sev && <ToxicityBadge severity={sev} />}
@@ -1585,13 +1606,13 @@ export default function SimulationMode({ role }: Props) {
                       )}
 
                       {/* Interactions */}
-                      {drug.drugInteractions?.length > 0 && (
+                      {drug.interactions && drug.interactions.length > 0 && (
                         <div className="px-3 py-2 rounded-xl bg-amber-500/5 border border-amber-500/15 text-xs">
                           <p className="text-[10px] font-bold uppercase tracking-widest text-amber-400 mb-1 flex items-center gap-1">
                             <Zap className="w-3 h-3" /> Known Interactions
                           </p>
                           <p className="text-amber-400/80 font-medium">
-                            {drug.drugInteractions.map((idOrName) => {
+                            {drug.interactions.map((idOrName) => {
                               const resolved = allDrugs.find((d) => d.drug_id === idOrName);
                               return resolved ? resolved.name : idOrName;
                             }).join(", ")}
@@ -1768,7 +1789,7 @@ export default function SimulationMode({ role }: Props) {
                 ? allDrugs.filter(
                     (d) =>
                       d.name.toLowerCase().includes(drugSearch.toLowerCase()) ||
-                      d.drugClass
+                      (d.class || "")
                         .toLowerCase()
                         .includes(drugSearch.toLowerCase()),
                   )
@@ -1814,7 +1835,7 @@ export default function SimulationMode({ role }: Props) {
                                 {drug.name}
                               </span>
                               <span className="text-muted-foreground opacity-60">
-                                {drug.drugClass}
+                                {drug.class}
                               </span>
                               {sev && <ToxicityBadge severity={sev} />}
                             </div>

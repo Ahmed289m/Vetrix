@@ -12,6 +12,39 @@ from app.services.base_crud_service import BaseCrudService
 from app.utils.mongo_helpers import generate_prefixed_id, normalize_for_mongo, serialize_mongo_doc
 
 
+def _format_dose_for_prescription(dose: dict | None) -> str:
+    """Render the structured drug.dose dict ({dog, cat, route}) as a single human label."""
+    if not isinstance(dose, dict) or not dose:
+        return "See drug info"
+
+    def species_label(species: dict | None) -> str:
+        if not isinstance(species, dict):
+            return ""
+        value = species.get("value")
+        unit = species.get("unit")
+        freq = species.get("frequency")
+        parts: list[str] = []
+        if value is not None:
+            parts.append(str(value))
+        if unit:
+            parts.append(str(unit))
+        rendered = " ".join(parts).strip()
+        if freq:
+            rendered = f"{rendered} {freq}".strip()
+        return rendered
+
+    chunks: list[str] = []
+    for species_key in ("dog", "cat"):
+        label = species_label(dose.get(species_key))
+        if label:
+            chunks.append(f"{species_key}: {label}")
+    route = dose.get("route")
+    rendered = " | ".join(chunks)
+    if route:
+        rendered = f"{rendered} ({route})" if rendered else str(route)
+    return rendered or "See drug info"
+
+
 class PrescriptionService:
     def __init__(
         self,
@@ -105,11 +138,8 @@ class PrescriptionService:
                         )
 
                 first_drug = await self.drug_repository.get_by_id(group[0])
-                dosage_dict = first_drug.get("dosage", {}) if first_drug else {}
-                if isinstance(dosage_dict, dict):
-                    dose_str = " | ".join(f"{k}: {v}" for k, v in dosage_dict.items()) or "See drug info"
-                else:
-                    dose_str = str(dosage_dict) if dosage_dict else "See drug info"
+                dose_dict = first_drug.get("dose") if first_drug else None
+                dose_str = _format_dose_for_prescription(dose_dict)
 
                 item_id = generate_prefixed_id("prescriptionItem")
                 item_model = PrescriptionItem(
@@ -141,11 +171,7 @@ class PrescriptionService:
                     dose_str = draft.drugDose
                 else:
                     first_drug = await self.drug_repository.get_by_id(draft.drug_ids[0])
-                    dosage_dict = first_drug.get("dosage", {}) if first_drug else {}
-                    if isinstance(dosage_dict, dict):
-                        dose_str = " | ".join(f"{k}: {v}" for k, v in dosage_dict.items()) or "See drug info"
-                    else:
-                        dose_str = str(dosage_dict) if dosage_dict else "See drug info"
+                    dose_str = _format_dose_for_prescription(first_drug.get("dose") if first_drug else None)
 
                 item_id = generate_prefixed_id("prescriptionItem")
                 item_model = PrescriptionItem(

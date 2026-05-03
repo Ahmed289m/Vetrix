@@ -74,16 +74,40 @@ import { drugsApi } from "@/app/_lib/api/drugs.api";
 
 type MouseEvent = React.MouseEvent<HTMLDivElement>;
 
+const isPlainObject = (val: unknown): val is Record<string, unknown> =>
+  typeof val === "object" && val !== null && !Array.isArray(val);
+
+const formatDoseSpecies = (val: unknown): string => {
+  if (!isPlainObject(val)) return val == null ? "" : String(val);
+  const value = val.value;
+  const unit = typeof val.unit === "string" ? val.unit : "";
+  const frequency = typeof val.frequency === "string" ? val.frequency : "";
+  const head = [value === undefined || value === null ? "" : String(value), unit]
+    .filter(Boolean)
+    .join(" ");
+  return [head, frequency].filter(Boolean).join(" ").trim();
+};
+
 const formatDose = (val: unknown): string => {
-  if (!val) return "—";
-  if (typeof val === "object") {
-    try {
-      return JSON.stringify(val).replace(/["{}]/g, "").replace(/:/g, ": ");
-    } catch {
-      return String(val);
-    }
+  if (val === null || val === undefined || val === "") return "—";
+  if (typeof val === "string") return val;
+  if (!isPlainObject(val)) return String(val);
+
+  const dog = formatDoseSpecies(val.dog);
+  const cat = formatDoseSpecies(val.cat);
+  const route = typeof val.route === "string" ? val.route : "";
+
+  if (!dog && !cat && !route) {
+    // Fall back to a single-species record like { value, unit, frequency }
+    return formatDoseSpecies(val) || "—";
   }
-  return String(val);
+
+  const parts: string[] = [];
+  if (dog) parts.push(`Dog: ${dog}`);
+  if (cat) parts.push(`Cat: ${cat}`);
+  let rendered = parts.join(" | ");
+  if (route) rendered = rendered ? `${rendered} (${route})` : route;
+  return rendered || "—";
 };
 
 const getSeverityStyle = (severity: string) => {
@@ -214,13 +238,18 @@ export default function PrescriptionsPage() {
     fallbackDose?: string,
   ): string => {
     const petType = getPet(petId)?.type;
-    if (petType && drug.dosage && typeof drug.dosage === "object") {
-      const caseDose = (drug.dosage as Record<string, unknown>)[petType];
-      if (caseDose) return formatDose(caseDose);
+    const dose = drug.dose;
+    if (petType && isPlainObject(dose)) {
+      const caseDose = (dose as Record<string, unknown>)[petType];
+      const speciesLabel = formatDoseSpecies(caseDose);
+      if (speciesLabel) {
+        const route = typeof dose.route === "string" ? dose.route : "";
+        return route ? `${speciesLabel} (${route})` : speciesLabel;
+      }
     }
 
     if (fallbackDose && fallbackDose !== "See drug info") return fallbackDose;
-    return formatDose(drug.dosage);
+    return formatDose(dose);
   };
 
   // ── Filter / search ───────────────────────────────────────────────────────
@@ -334,7 +363,7 @@ export default function PrescriptionsPage() {
     return drugs.filter(
       (d) =>
         d.name.toLowerCase().includes(q) ||
-        d.drugClass.toLowerCase().includes(q),
+        (d.class ?? "").toLowerCase().includes(q),
     );
   }, [drugs, drugSearch]);
 
@@ -666,7 +695,7 @@ export default function PrescriptionsPage() {
                                 </span>
                                 <span className="text-[10px] text-muted-foreground font-medium">
                                   {pDrugs.length > 0
-                                    ? pDrugs[0].drug.drugClass
+                                    ? pDrugs[0].drug.class
                                     : ""}
                                 </span>
                               </div>
@@ -825,7 +854,7 @@ export default function PrescriptionsPage() {
                               {drug.name}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {drug.drugClass}
+                              {drug.class}
                             </p>
                           </div>
                           <Badge className="ml-auto rounded-full px-3 py-1 text-[10px] font-black uppercase bg-emerald/10 text-emerald border-none">
@@ -865,14 +894,14 @@ export default function PrescriptionsPage() {
                         )}
 
                         {/* Side Effects */}
-                        {drug.sideEffects?.length > 0 && (
+                        {drug.side_effects?.length > 0 && (
                           <div className="p-4 rounded-2xl bg-orange-500/5 border border-orange-500/10 space-y-2">
                             <p className="text-[10px] font-black uppercase tracking-widest text-orange-400 flex items-center gap-1.5">
                               <AlertCircle className="w-3.5 h-3.5" /> Side
                               Effects
                             </p>
                             <ul className="space-y-1">
-                              {drug.sideEffects.map((se, i) => (
+                              {drug.side_effects.map((se, i) => (
                                 <li
                                   key={i}
                                   className="text-sm text-foreground/80 flex items-start gap-2"
@@ -1064,7 +1093,7 @@ export default function PrescriptionsPage() {
                             {d.name}
                           </p>
                           <p className="text-[10px] text-muted-foreground truncate">
-                            {d.drugClass}
+                            {d.class}
                           </p>
                         </div>
                         {isSelected && hasWarning && (
@@ -1278,20 +1307,34 @@ export default function PrescriptionsPage() {
                           {drug.name}
                         </p>
                         <span className="text-[10px] text-muted-foreground">
-                          {drug.drugClass}
+                          {drug.class}
                         </span>
                       </div>
-                      {drug.dosage &&
-                        Object.entries(drug.dosage).map(([k, v]) => (
-                          <div key={k} className="flex justify-between text-xs">
+                      {(() => {
+                        const dose = drug.dose;
+                        if (!isPlainObject(dose)) return null;
+                        const rows: { key: string; label: string }[] = [];
+                        const dogLabel = formatDoseSpecies(dose.dog);
+                        const catLabel = formatDoseSpecies(dose.cat);
+                        if (dogLabel) rows.push({ key: "dog", label: dogLabel });
+                        if (catLabel) rows.push({ key: "cat", label: catLabel });
+                        if (typeof dose.route === "string" && dose.route) {
+                          rows.push({ key: "route", label: dose.route });
+                        }
+                        return rows.map((row) => (
+                          <div
+                            key={row.key}
+                            className="flex justify-between text-xs"
+                          >
                             <span className="text-muted-foreground capitalize">
-                              {k}
+                              {row.key}
                             </span>
                             <span className="font-bold text-foreground">
-                              {formatDose(v)}
+                              {row.label}
                             </span>
                           </div>
-                        ))}
+                        ));
+                      })()}
                     </div>
                   ))}
                 </motion.div>

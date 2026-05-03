@@ -23,19 +23,34 @@ import type { Drug } from "@/app/_lib/types/models";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Parse leading numeric value from a dosage string like "10mg/kg q8-12h" or "5-10 mg/kg" */
-function parseDosageNumber(raw: unknown): number | null {
-  if (raw == null) return null;
-  const str = String(raw).trim();
-  // Match leading number (int or float), optionally preceded by whitespace
-  const match = str.match(/^(\d+(?:\.\d+)?)/);
-  return match ? parseFloat(match[1]) : null;
+/** Numeric mg/kg for a structured dose-species entry (or null if unset) */
+function getDoseMgPerKg(drug: Drug | undefined, species: FluidSpecies): number | null {
+  if (!drug?.dose) return null;
+  const entry = drug.dose[species];
+  if (!entry || entry.value == null) return null;
+  const n = typeof entry.value === "number" ? entry.value : parseFloat(String(entry.value));
+  return Number.isFinite(n) ? n : null;
 }
 
-/** Get species-specific dosage string from drug record */
-function getDrugDosageRaw(drug: Drug, species: FluidSpecies): unknown {
-  const dosage = drug.dosage as Record<string, unknown>;
-  return dosage[species] ?? null;
+/** Human label for a dose entry — e.g. "1 mg/kg q24h" */
+function formatDoseLabel(drug: Drug | undefined, species: FluidSpecies): string {
+  if (!drug?.dose) return "";
+  const entry = drug.dose[species];
+  if (!entry) return "";
+  const parts: string[] = [];
+  if (entry.value != null) parts.push(String(entry.value));
+  if (entry.unit) parts.push(entry.unit);
+  if (entry.frequency) parts.push(entry.frequency);
+  return parts.join(" ").trim();
+}
+
+/** Pick a default concentration from drug.concentration[] (mg per mL/tablet) */
+function getDefaultConcentration(drug: Drug | undefined): number | null {
+  if (!drug?.concentration?.length) return null;
+  const first = drug.concentration[0];
+  if (first?.value == null) return null;
+  const n = typeof first.value === "number" ? first.value : parseFloat(String(first.value));
+  return Number.isFinite(n) ? n : null;
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -137,7 +152,7 @@ export function DrugDoseCalculatorModal({
     return drugs.filter(
       (d) =>
         d.name.toLowerCase().includes(q) ||
-        d.drugClass.toLowerCase().includes(q),
+        (d.class || "").toLowerCase().includes(q),
     );
   }, [drugs, drugSearchQuery]);
 
@@ -167,9 +182,10 @@ export function DrugDoseCalculatorModal({
         setSelectedDrugId(firstId);
         const drug = drugs.find((d) => d.drug_id === firstId);
         if (drug) {
-          const rawDosage = getDrugDosageRaw(drug, initialSpecies ?? "dog");
-          const parsed = parseDosageNumber(rawDosage);
-          if (parsed) setDosage(String(parsed));
+          const parsed = getDoseMgPerKg(drug, initialSpecies ?? "dog");
+          if (parsed != null) setDosage(String(parsed));
+          const conc = getDefaultConcentration(drug);
+          if (conc != null) setConcentration(String(conc));
         }
       } else {
         setSelectedDrugId("");
@@ -180,10 +196,13 @@ export function DrugDoseCalculatorModal({
   // ── Auto-fill dosage when drug or species changes ─────────────────────────
   React.useEffect(() => {
     if (selectedDrug) {
-      const rawDosage = getDrugDosageRaw(selectedDrug, species);
-      const parsed = parseDosageNumber(rawDosage);
-      if (parsed) {
+      const parsed = getDoseMgPerKg(selectedDrug, species);
+      if (parsed != null) {
         setDosage(String(parsed));
+      }
+      const conc = getDefaultConcentration(selectedDrug);
+      if (conc != null) {
+        setConcentration(String(conc));
       }
     }
   }, [selectedDrugId, species, selectedDrug]);
@@ -223,28 +242,44 @@ export function DrugDoseCalculatorModal({
   const hasAllInputs = w > 0 && d > 0 && c > 0;
 
   // ── Batch results for preselected drugs ────────────────────────────────────
+  // Each drug uses its OWN stored concentration (drug.concentration[0].value).
+  // Falls back to the manually-entered concentration if the drug has none stored.
   const batchResults = React.useMemo(() => {
-    if (!preselectedDrugIds?.length || !drugs.length || w <= 0 || c <= 0) return [];
+    if (!preselectedDrugIds?.length || !drugs.length || w <= 0) return [];
     return preselectedDrugIds
       .map((drugId) => {
         const drug = drugs.find((dd) => dd.drug_id === drugId);
         if (!drug) return null;
-        const rawDosage = getDrugDosageRaw(drug, species);
-        const parsed = parseDosageNumber(rawDosage);
-        if (!parsed) return null;
-        const res = calculateDose({
-          weightKg: w,
+        const parsed = getDoseMgPerKg(drug, species);
+        if (parsed == null) return null;
+        // Prefer the drug's own stored concentration, fall back to global entry
+        const drugConc = getDefaultConcentration(drug);
+        const effectiveConc = drugConc != null ? drugConc : c > 0 ? c : null;
+        const res =
+          effectiveConc != null
+            ? calculateDose({
+                weightKg: w,
+                dosageMgPerKg: parsed,
+                concentrationMgPerUnit: effectiveConc,
+                unit: doseUnit,
+              })
+            : null;
+        return {
+          drug,
           dosageMgPerKg: parsed,
-          concentrationMgPerUnit: c,
-          unit: doseUnit,
-        });
-        return { drug, dosageMgPerKg: parsed, result: res, rawDosage: String(rawDosage ?? "") };
+          result: res,
+          rawDosage: formatDoseLabel(drug, species),
+          effectiveConc,
+          concSource: drugConc != null ? "db" : c > 0 ? "manual" : "none",
+        };
       })
       .filter(Boolean) as Array<{
       drug: Drug;
       dosageMgPerKg: number;
-      result: ReturnType<typeof calculateDose>;
+      result: ReturnType<typeof calculateDose> | null;
       rawDosage: string;
+      effectiveConc: number | null;
+      concSource: "db" | "manual" | "none";
     }>;
   }, [preselectedDrugIds, drugs, w, c, species, doseUnit]);
 
@@ -352,7 +387,7 @@ export function DrugDoseCalculatorModal({
                       >
                         <span className="truncate">
                           {selectedDrug
-                            ? `${selectedDrug.name} — ${selectedDrug.drugClass}`
+                            ? `${selectedDrug.name} — ${selectedDrug.class || ""}`
                             : "Choose a drug to auto-fill dosage…"}
                         </span>
                         <ChevronDown
@@ -395,11 +430,7 @@ export function DrugDoseCalculatorModal({
                                 </div>
                               ) : (
                                 filteredDrugs.map((drug) => {
-                                  const rawDose = getDrugDosageRaw(
-                                    drug,
-                                    species,
-                                  );
-                                  const parsed = parseDosageNumber(rawDose);
+                                  const parsed = getDoseMgPerKg(drug, species);
                                   const isActive =
                                     drug.drug_id === selectedDrugId;
                                   return (
@@ -421,7 +452,7 @@ export function DrugDoseCalculatorModal({
                                           {drug.name}
                                         </p>
                                         <p className="text-muted-foreground/60 truncate">
-                                          {drug.drugClass}
+                                          {drug.class}
                                         </p>
                                       </div>
                                       {parsed && (
@@ -446,8 +477,7 @@ export function DrugDoseCalculatorModal({
                         Dosage auto-filled from{" "}
                         <span className="font-bold">{selectedDrug.name}</span>{" "}
                         ({species} dose:{" "}
-                        {String(getDrugDosageRaw(selectedDrug, species) ?? "N/A")}
-                        )
+                        {formatDoseLabel(selectedDrug, species) || "N/A"})
                       </p>
                     )}
                   </div>
@@ -605,7 +635,7 @@ export function DrugDoseCalculatorModal({
                       <Calculator className="w-3 h-3" />
                       All Prescription Doses
                     </p>
-                    {batchResults.map(({ drug, dosageMgPerKg, result: res, rawDosage }) => (
+                    {batchResults.map(({ drug, dosageMgPerKg, result: res, rawDosage, effectiveConc, concSource }) => (
                       <div
                         key={drug.drug_id}
                         className="p-3 rounded-xl bg-emerald/5 border border-emerald/15 space-y-1.5"
@@ -614,23 +644,38 @@ export function DrugDoseCalculatorModal({
                           <p className="text-sm font-bold text-emerald">
                             {drug.name}
                           </p>
-                          {res.valid && (
+                          {res?.valid ? (
                             <span className="text-lg font-black text-emerald tabular-nums">
                               {res.dose}{" "}
                               <span className="text-xs text-emerald/60">
                                 {doseUnit}
                               </span>
                             </span>
-                          )}
+                          ) : concSource === "none" ? (
+                            <span className="text-[10px] text-amber-400 font-bold px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                              Enter concentration ↑
+                            </span>
+                          ) : null}
                         </div>
-                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap">
                           <span>
                             Dosage: <span className="font-bold text-cyan">{dosageMgPerKg} mg/kg</span>
                             {rawDosage && (
                               <span className="opacity-60"> ({rawDosage})</span>
                             )}
                           </span>
-                          {res.valid && (
+                          {effectiveConc != null && (
+                            <span>
+                              Conc:{" "}
+                              <span className="font-bold">
+                                {effectiveConc} mg/{doseUnit === "mL" ? "mL" : "tab"}
+                              </span>
+                              {concSource === "db" && (
+                                <span className="ml-1 text-emerald/60">(stored)</span>
+                              )}
+                            </span>
+                          )}
+                          {res?.valid && (
                             <span>
                               Total: <span className="font-bold">{res.totalMg} mg</span>
                             </span>
@@ -646,10 +691,14 @@ export function DrugDoseCalculatorModal({
                   <div className="p-6 rounded-2xl border border-border/30 bg-muted/5 text-center space-y-2">
                     <Calculator className="w-8 h-8 text-muted-foreground/30 mx-auto" />
                     <p className="text-sm text-muted-foreground font-medium">
-                      Enter weight, dosage, and concentration
+                      {preselectedDrugIds?.length
+                        ? "Enter patient weight to calculate all doses"
+                        : "Enter weight, dosage, and concentration"}
                     </p>
                     <p className="text-xs text-muted-foreground/60">
-                      أدخل الوزن والجرعة والتركيز لحساب الجرعة
+                      {preselectedDrugIds?.length
+                        ? "Drug concentrations will be loaded from the database automatically"
+                        : "أدخل الوزن والجرعة والتركيز لحساب الجرعة"}
                     </p>
                   </div>
                 )}

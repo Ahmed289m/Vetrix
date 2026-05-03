@@ -161,40 +161,71 @@ export interface VisitUpdate {
 
 /* ── Drug ─────────────────────────────────────────────────────────── */
 
+export interface DrugDoseSpecies {
+  value?: number | null;
+  unit?: string | null;
+  frequency?: string | null;
+}
+
+export interface DrugDose {
+  dog?: DrugDoseSpecies | null;
+  cat?: DrugDoseSpecies | null;
+  route?: string | null;
+}
+
+export interface DrugConcentration {
+  value?: number | null;
+  unit?: string | null;
+  form?: string | null;
+}
+
+export interface DrugToxicitySpecies {
+  severity?: string | null;
+  notes?: string | null;
+}
+
+export interface DrugToxicity {
+  dog?: DrugToxicitySpecies | null;
+  cat?: DrugToxicitySpecies | null;
+}
+
 export interface Drug {
   drug_id: string;
   name: string;
-  drugClass: string;
+  class: string;
   indications: string[];
-  dosage: Record<string, any>;
-  sideEffects: string[];
+  dose: DrugDose;
+  concentration: DrugConcentration[];
+  side_effects: string[];
   contraindications: string[];
-  drugInteractions: string[];
-  toxicity: Record<string, any>;
+  interactions: string[];
+  toxicity: DrugToxicity;
   clinic_id?: string | null;
 }
 
 export interface DrugCreate {
   name: string;
-  drugClass: string;
-  indications: string[];
-  dosage: Record<string, any>;
-  sideEffects: string[];
-  contraindications: string[];
-  drugInteractions: string[];
-  toxicity: Record<string, any>;
+  class: string;
+  indications?: string[];
+  dose?: DrugDose;
+  concentration?: DrugConcentration[];
+  side_effects?: string[];
+  contraindications?: string[];
+  interactions?: string[];
+  toxicity?: DrugToxicity;
   clinic_id?: string | null;
 }
 
 export interface DrugUpdate {
   name?: string;
-  drugClass?: string;
+  class?: string;
   indications?: string[];
-  dosage?: Record<string, any>;
-  sideEffects?: string[];
+  dose?: DrugDose;
+  concentration?: DrugConcentration[];
+  side_effects?: string[];
   contraindications?: string[];
-  drugInteractions?: string[];
-  toxicity?: Record<string, any>;
+  interactions?: string[];
+  toxicity?: DrugToxicity;
   clinic_id?: string | null;
 }
 

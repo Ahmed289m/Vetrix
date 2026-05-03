@@ -5,7 +5,8 @@ from app.models.drug import Drug
 from app.repositories.drug_repository import DrugRepository
 from app.schemas.drug import DrugCreate, DrugUpdate
 from app.services.base_crud_service import BaseCrudService
-from app.utils.mongo_helpers import serialize_mongo_doc
+from app.utils.mongo_helpers import generate_prefixed_id, normalize_for_mongo, serialize_mongo_doc
+from app.utils.ws import broadcast
 
 
 class DrugService:
@@ -21,12 +22,19 @@ class DrugService:
     async def create_drug(self, request: DrugCreate, current_user: TokenData) -> dict:
         """
         Create a drug. Doctor/owner auto-assigns their clinic_id. Admin can set or omit clinic_id.
+        Persists with the public field name `class` (not `class_`) so the API contract is unified.
         """
-        payload = request.model_dump(exclude_none=True)
-        # Only admin can set clinic_id arbitrarily
+        payload = request.model_dump(by_alias=True, exclude_none=True)
         if not current_user.is_superuser:
             payload["clinic_id"] = current_user.clinic_id
-        return await self.crud.create(Drug(**payload))
+
+        drug_id = generate_prefixed_id("drug")
+        payload["drug_id"] = drug_id
+        payload = normalize_for_mongo(payload)
+
+        created = await self.repository.create(payload)
+        await broadcast("drugs:created", {"id": drug_id})
+        return serialize_mongo_doc(created, "drug_id")
 
     async def list_drugs(self, current_user: TokenData) -> list[dict]:
         """
@@ -37,7 +45,6 @@ class DrugService:
         all_drugs = await self.crud.list()
         if current_user.is_superuser:
             return all_drugs
-        # Filter: show global drugs and drugs for user's clinic
         return [d for d in all_drugs if not d.get("clinic_id") or d.get("clinic_id") == current_user.clinic_id]
 
     async def get_drug(self, drug_id: str, current_user: TokenData) -> dict:
@@ -55,19 +62,24 @@ class DrugService:
 
     async def update_drug(self, drug_id: str, request: DrugUpdate, current_user: TokenData) -> dict:
         """
-        Update a drug:
-        - Admin: any drug
-        - Doctor/owner: only their clinic's drugs
+        Update a drug. Persists with `class` alias to keep the document shape aligned with the API.
         """
-        drug = await self.crud.get(drug_id)
-        if current_user.is_superuser:
-            return await self.crud.update(drug_id, request)
-        if drug.get("clinic_id") == current_user.clinic_id:
-            # Prevent non-admin users from changing clinic_id
-            update_data = request.model_dump(exclude_none=True)
-            update_data.pop("clinic_id", None)
-            return await self.crud.update(drug_id, DrugUpdate(**update_data))
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
+        existing = await self.crud.get(drug_id)
+        if not current_user.is_superuser and existing.get("clinic_id") != current_user.clinic_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
+
+        payload = request.model_dump(by_alias=True, exclude_none=True)
+        if not current_user.is_superuser:
+            payload.pop("clinic_id", None)
+        if not payload:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields provided for update.")
+
+        payload = normalize_for_mongo(payload)
+        updated = await self.repository.update_by_id(drug_id, payload)
+        if not updated:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found.")
+        await broadcast("drugs:updated", {"id": drug_id})
+        return serialize_mongo_doc(updated, "drug_id")
 
     async def delete_drug(self, drug_id: str, current_user: TokenData) -> None:
         """
@@ -83,47 +95,45 @@ class DrugService:
 
     def _assess_severity(self, drug_a: dict, drug_b: dict, matched_reason: str) -> str:
         """
-        Assess severity of drug interaction based on various factors.
+        Assess severity of drug interaction based on contraindication match and keyword scan.
         Returns: "contraindication", "major", "moderate", or "minor"
         """
         reason_lower = matched_reason.lower()
-        
-        # Contraindications take precedence
+
         contraindications_a = [c.lower() for c in drug_a.get("contraindications", [])]
         contraindications_b = [c.lower() for c in drug_b.get("contraindications", [])]
-        
+
         name_b_lower = drug_b.get("name", "").lower()
-        class_b_lower = drug_b.get("drugClass", "").lower()
+        class_b_lower = drug_b.get("class", "").lower()
         name_a_lower = drug_a.get("name", "").lower()
-        class_a_lower = drug_a.get("drugClass", "").lower()
-        
+        class_a_lower = drug_a.get("class", "").lower()
+
         for contra in contraindications_a:
-            if name_b_lower in contra or class_b_lower in contra:
+            if name_b_lower in contra or (class_b_lower and class_b_lower in contra):
                 return "contraindication"
         for contra in contraindications_b:
-            if name_a_lower in contra or class_a_lower in contra:
+            if name_a_lower in contra or (class_a_lower and class_a_lower in contra):
                 return "contraindication"
-        
-        # Assess interaction severity based on keywords
+
         major_keywords = [
             "serotonin", "maoi", "ssri", "interaction", "contraindicated",
             "avoid", "severe", "critical", "hypotension", "hemorrhage",
-            "nephrotoxicity", "hepatotoxicity", "seizure", "arrhythmia"
+            "nephrotoxicity", "hepatotoxicity", "seizure", "arrhythmia",
         ]
         moderate_keywords = [
             "caution", "monitor", "dose", "adjust", "reduce", "increase",
-            "accumulation", "clearance", "metabolism", "synergistic"
+            "accumulation", "clearance", "metabolism", "synergistic",
         ]
-        
+
         reason_keywords = reason_lower.split()
         for keyword in reason_keywords:
             if any(major in keyword for major in major_keywords):
                 return "major"
-        
+
         for keyword in reason_keywords:
             if any(mod in keyword for mod in moderate_keywords):
                 return "moderate"
-        
+
         return "minor"
 
     async def check_interactions(self, drug_ids: list[str], current_user: TokenData) -> dict:
@@ -144,10 +154,10 @@ class DrugService:
         checked: set[tuple[str, str]] = set()
 
         for did_a, drug_a in drugs_map.items():
-            interactions_a = drug_a.get("drugInteractions", [])
+            interactions_a = drug_a.get("interactions", [])
             interactions_a_text = [str(i).lower() for i in interactions_a]
             name_a = drug_a.get("name", "")
-            class_a = drug_a.get("drugClass", "")
+            class_a = drug_a.get("class", "")
 
             for did_b, drug_b in drugs_map.items():
                 if did_a == did_b:
@@ -158,35 +168,31 @@ class DrugService:
                 checked.add(pair)
 
                 name_b = drug_b.get("name", "")
-                class_b = drug_b.get("drugClass", "")
-                interactions_b = drug_b.get("drugInteractions", [])
+                class_b = drug_b.get("class", "")
+                interactions_b = drug_b.get("interactions", [])
                 interactions_b_text = [str(i).lower() for i in interactions_b]
 
                 matched_reason = None
-                
-                # Try matching by explicit ID
+
                 if did_b in interactions_a:
                     matched_reason = f"Explicit interaction noted with {name_b}"
                 elif did_a in interactions_b:
                     matched_reason = f"Explicit interaction noted with {name_a}"
 
-                # Try matching from drug_a interactions
                 if not matched_reason:
                     for entry in interactions_a_text:
                         if (name_b.lower() in entry or entry in name_b.lower() or
-                            class_b.lower() in entry or entry in class_b.lower()):
+                            (class_b and (class_b.lower() in entry or entry in class_b.lower()))):
                             matched_reason = entry
                             break
 
-                # Try matching from drug_b interactions
                 if not matched_reason:
                     for entry in interactions_b_text:
                         if (name_a.lower() in entry or entry in name_a.lower() or
-                            class_a.lower() in entry or entry in class_a.lower()):
+                            (class_a and (class_a.lower() in entry or entry in class_a.lower()))):
                             matched_reason = entry
                             break
 
-                # Assess severity and create warning
                 if matched_reason:
                     severity = self._assess_severity(drug_a, drug_b, matched_reason)
                     warnings.append({
@@ -198,9 +204,7 @@ class DrugService:
                         "severity": severity,
                     })
 
-        # Sort warnings by severity (contraindication > major > moderate > minor)
         severity_order = {"contraindication": 0, "major": 1, "moderate": 2, "minor": 3}
         warnings.sort(key=lambda w: severity_order.get(w.get("severity", "minor"), 4))
 
         return {"has_interactions": len(warnings) > 0, "warnings": warnings}
-
