@@ -295,6 +295,8 @@ export default function SimulationMode({ role }: Props) {
 
   // ── Drug dose calculator modal ────────────────────────────────────────
   const [showDrugCalc, setShowDrugCalc] = useState(false);
+  // Calculated doses keyed by drug_id — populated by onDosesCalculated callback
+  const [calculatedDoses, setCalculatedDoses] = useState<Map<string, { totalMg: number; dose: number; doseUnit: string; concLabel: string; drugName: string }>>(new Map());
 
   // ── Update weight modal ───────────────────────────────────────────────
   const [showUpdateWeight, setShowUpdateWeight] = useState(false);
@@ -527,6 +529,7 @@ export default function SimulationMode({ role }: Props) {
       {
         onSuccess: () => {
           setSessionRxIds(new Set());
+          setCalculatedDoses(new Map());
           toast.success("Case accepted — you are the assigned doctor");
         },
         onError: () => toast.error("Failed to accept case"),
@@ -540,6 +543,7 @@ export default function SimulationMode({ role }: Props) {
       {
         onSuccess: () => {
           setSessionRxIds(new Set());
+          setCalculatedDoses(new Map());
           toast.success("Case completed");
         },
         onError: () => toast.error("Failed to complete case"),
@@ -596,6 +600,23 @@ export default function SimulationMode({ role }: Props) {
   };
 
   const handleSaveVisit = () => {
+    if (visitMode === "create") {
+      const appt = simAppointments.find((a) => a.appointment_id === activeVisitApptId);
+      if (!appt) return;
+      const casePrescriptions = getCasePrescriptions(appt.petId, appt.clientId);
+      const linkedRxId = visitPrescriptionId;
+
+      // Block: prescriptions exist but linked one has no calculated dose
+      if (linkedRxId && casePrescriptions.length > 0) {
+        const rxDrugIds = getAllDrugIdsForRx(linkedRxId);
+        const anyCalculated = rxDrugIds.some((id) => calculatedDoses.has(id));
+        if (!anyCalculated) {
+          toast.error("Please calculate doses in the Drug Dose Calculator before creating this visit.", { duration: 5000 });
+          return;
+        }
+      }
+    }
+
     if (visitMode === "edit") {
       updateVisit.mutate(
         {
@@ -1338,57 +1359,97 @@ export default function SimulationMode({ role }: Props) {
             </div>
           )}
 
-          {/* No prescription warning */}
-          {visitMode === "create" &&
-            visitAppt &&
-            getCasePrescriptions(visitAppt.petId, visitAppt.clientId).length ===
-              0 && (
-              <div className="flex items-start gap-2.5 px-3 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400">
+          {/* ── No prescription warning ── */}
+          {visitMode === "create" && visitAppt && (() => {
+            const hasPrescriptions = getCasePrescriptions(visitAppt.petId, visitAppt.clientId).length > 0;
+            if (hasPrescriptions) return null;
+            return (
+              <div className="flex items-start gap-2.5 px-3 py-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-400">
                 <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span className="font-semibold">
-                  No prescription issued yet. Consider prescribing first.
-                </span>
-              </div>
-            )}
-
-          {/* Link prescription - only unlinked ones from this case */}
-          {visitMode === "create" &&
-            visitAppt &&
-            (() => {
-              const unlinked = getUnlinkedCasePrescriptions(
-                visitAppt.petId,
-                visitAppt.clientId,
-              );
-              if (!unlinked.length) return null;
-              return (
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-emerald uppercase tracking-widest flex items-center gap-1.5">
-                    <Pill className="w-3.5 h-3.5" /> Link Prescription (this
-                    case)
-                  </label>
-                  <select
-                    value={visitPrescriptionId}
-                    onChange={(e) => setVisitPrescriptionId(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50 font-semibold"
-                  >
-                    <option value="">None</option>
-                    {unlinked.map((rx) => {
-                      const drug = getDrugForRx(rx.prescription_id);
-                      return (
-                        <option
-                          key={rx.prescription_id}
-                          value={rx.prescription_id}
-                        >
-                          {drug?.name || "Drug"} · RX-
-                          {rx.prescription_id.slice(0, 6)}
-                        </option>
-                      );
-                    })}
-                  </select>
+                <div>
+                  <p className="font-black">No prescription issued yet</p>
+                  <p className="opacity-80 mt-0.5">Consider prescribing before recording this visit. Proceed only if this is a non-pharmacological visit.</p>
                 </div>
-              );
-            })()}
+              </div>
+            );
+          })()}
 
+          {/* ── Link prescription dropdown ── */}
+          {visitMode === "create" && visitAppt && (() => {
+            const unlinked = getUnlinkedCasePrescriptions(visitAppt.petId, visitAppt.clientId);
+            if (!unlinked.length) return null;
+            return (
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-emerald uppercase tracking-widest flex items-center gap-1.5">
+                  <Pill className="w-3.5 h-3.5" /> Link Prescription (this case)
+                </label>
+                <select
+                  value={visitPrescriptionId}
+                  onChange={(e) => setVisitPrescriptionId(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50 font-semibold"
+                >
+                  <option value="">None</option>
+                  {unlinked.map((rx) => {
+                    const drug = getDrugForRx(rx.prescription_id);
+                    return (
+                      <option key={rx.prescription_id} value={rx.prescription_id}>
+                        {drug?.name || "Drug"} · RX-{rx.prescription_id.slice(0, 6)}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            );
+          })()}
+
+          {/* ── Calculated doses panel ── */}
+          {visitMode === "create" && visitPrescriptionId && (() => {
+            const rxDrugIds = getAllDrugIdsForRx(visitPrescriptionId);
+            const calced = rxDrugIds.map((id) => calculatedDoses.get(id)).filter(Boolean) as Array<{ totalMg: number; dose: number; doseUnit: string; concLabel: string; drugName: string }>;
+            const uncalced = rxDrugIds.filter((id) => !calculatedDoses.has(id)).map((id) => allDrugs.find((d) => d.drug_id === id)?.name || id);
+            return (
+              <div className="space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-emerald flex items-center gap-1.5">
+                  <Calculator className="w-3 h-3" /> Calculated Doses
+                </p>
+                {calced.length > 0 && (
+                  <div className="space-y-1.5">
+                    {calced.map((cd, i) => (
+                      <div key={i} className="flex items-center justify-between px-3 py-2 rounded-xl bg-emerald/5 border border-emerald/15 text-xs">
+                        <div className="flex items-center gap-2">
+                          <Pill className="w-3 h-3 text-emerald shrink-0" />
+                          <span className="font-bold text-emerald">{cd.drugName}</span>
+                          {cd.concLabel && <span className="text-muted-foreground/60">({cd.concLabel})</span>}
+                        </div>
+                        <div className="flex items-center gap-2 font-black tabular-nums">
+                          <span className="text-cyan">{cd.totalMg} mg</span>
+                          <span className="text-muted-foreground/40">→</span>
+                          <span className="text-emerald">{cd.dose} {cd.doseUnit}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {uncalced.length > 0 && (
+                  <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-black">Uncalculated doses: {uncalced.join(", ")}</p>
+                      <p className="opacity-70 mt-0.5">Open the Drug Dose Calculator to calculate before proceeding.</p>
+                    </div>
+                    <button
+                      onClick={() => { setShowVisitModal(false); setShowDrugCalc(true); }}
+                      className="shrink-0 px-2.5 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 font-bold text-[10px] transition-colors"
+                    >
+                      Open Calc
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* ── Clinical Notes ── */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5" /> Clinical Notes
@@ -1402,29 +1463,41 @@ export default function SimulationMode({ role }: Props) {
             />
           </div>
 
-          <div className="flex gap-3 pt-1">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setShowVisitModal(false)}
-              className="flex-1 px-4 py-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 text-sm font-bold transition-colors"
-            >
-              {t("cancel")}
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={handleSaveVisit}
-              disabled={createVisit.isPending || updateVisit.isPending}
-              className="flex-1 px-4 py-2.5 rounded-xl gradient-cyan-blue text-primary-foreground text-sm font-bold disabled:opacity-50"
-            >
-              {createVisit.isPending || updateVisit.isPending
-                ? "Saving…"
-                : visitMode === "edit"
-                  ? "Save Changes"
-                  : t("create_visit")}
-            </motion.button>
-          </div>
+          {/* ── Action buttons ── */}
+          {(() => {
+            // Determine if the Create button should be blocked
+            const rxDrugIds = visitPrescriptionId ? getAllDrugIdsForRx(visitPrescriptionId) : [];
+            const hasUncalculated = rxDrugIds.length > 0 && rxDrugIds.some((id) => !calculatedDoses.has(id));
+            const isBlocked = visitMode === "create" && visitPrescriptionId !== "" && hasUncalculated;
+            return (
+              <div className="flex gap-3 pt-1">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setShowVisitModal(false)}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 text-sm font-bold transition-colors"
+                >
+                  {t("cancel")}
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: isBlocked ? 1 : 1.02 }}
+                  whileTap={{ scale: isBlocked ? 1 : 0.97 }}
+                  onClick={handleSaveVisit}
+                  disabled={createVisit.isPending || updateVisit.isPending || isBlocked}
+                  title={isBlocked ? "Calculate all drug doses first using the Drug Dose Calculator" : undefined}
+                  className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${isBlocked ? "bg-muted/30 text-muted-foreground cursor-not-allowed" : "gradient-cyan-blue text-primary-foreground disabled:opacity-50"}`}
+                >
+                  {createVisit.isPending || updateVisit.isPending
+                    ? "Saving…"
+                    : isBlocked
+                      ? "⚠ Calculate Doses First"
+                      : visitMode === "edit"
+                        ? "Save Changes"
+                        : t("create_visit")}
+                </motion.button>
+              </div>
+            );
+          })()}
         </motion.div>
       </Modal>
 
@@ -2105,6 +2178,13 @@ export default function SimulationMode({ role }: Props) {
             petName={myActiveCase?.petName}
             drugs={allDrugs}
             preselectedDrugIds={preselectedIds.length > 0 ? preselectedIds : undefined}
+            onDosesCalculated={(results) => {
+              setCalculatedDoses((prev) => {
+                const next = new Map(prev);
+                results.forEach((r) => next.set(r.drugId, { totalMg: r.totalMg, dose: r.dose, doseUnit: r.doseUnit, concLabel: r.concLabel, drugName: r.drugName }));
+                return next;
+              });
+            }}
           />
         );
       })()}

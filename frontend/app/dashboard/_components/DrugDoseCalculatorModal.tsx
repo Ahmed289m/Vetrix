@@ -66,6 +66,8 @@ export interface DrugDoseCalculatorModalProps {
   drugs?: Drug[];
   /** Pre-selected drug IDs (from prescriptions) for auto batch calculation */
   preselectedDrugIds?: string[];
+  /** Called whenever batch doses are calculated — used by SimulationMode to track doses */
+  onDosesCalculated?: (results: Array<{ drugId: string; drugName: string; totalMg: number; dose: number; doseUnit: string; concLabel: string }>) => void;
 }
 
 // ── Input Field ───────────────────────────────────────────────────────────────
@@ -124,6 +126,7 @@ export function DrugDoseCalculatorModal({
   petName,
   drugs = [],
   preselectedDrugIds,
+  onDosesCalculated,
 }: DrugDoseCalculatorModalProps) {
   // ── State ─────────────────────────────────────────────────────────────────
   const [species, setSpecies] = React.useState<FluidSpecies>(
@@ -141,6 +144,8 @@ export function DrugDoseCalculatorModal({
   const [drugSearchQuery, setDrugSearchQuery] = React.useState("");
   const [showDrugDropdown, setShowDrugDropdown] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
+  // Per-drug concentration index picker (for drugs with multiple concentrations)
+  const [concIndexOverrides, setConcIndexOverrides] = React.useState<Record<string, number>>({});
 
   const selectedDrug = drugs.find((d) => d.drug_id === selectedDrugId);
 
@@ -197,13 +202,12 @@ export function DrugDoseCalculatorModal({
   React.useEffect(() => {
     if (selectedDrug) {
       const parsed = getDoseMgPerKg(selectedDrug, species);
-      if (parsed != null) {
-        setDosage(String(parsed));
-      }
+      if (parsed != null) setDosage(String(parsed));
+      // Reset concentration to the first stored one on drug change
       const conc = getDefaultConcentration(selectedDrug);
-      if (conc != null) {
-        setConcentration(String(conc));
-      }
+      if (conc != null) setConcentration(String(conc));
+      // Clear any per-drug override for THIS drug in the single-drug calc
+      setConcIndexOverrides((prev) => { const n = { ...prev }; delete n[selectedDrug.drug_id]; return n; });
     }
   }, [selectedDrugId, species, selectedDrug]);
 
@@ -242,8 +246,6 @@ export function DrugDoseCalculatorModal({
   const hasAllInputs = w > 0 && d > 0 && c > 0;
 
   // ── Batch results for preselected drugs ────────────────────────────────────
-  // Each drug uses its OWN stored concentration (drug.concentration[0].value).
-  // Falls back to the manually-entered concentration if the drug has none stored.
   const batchResults = React.useMemo(() => {
     if (!preselectedDrugIds?.length || !drugs.length || w <= 0) return [];
     return preselectedDrugIds
@@ -252,36 +254,49 @@ export function DrugDoseCalculatorModal({
         if (!drug) return null;
         const parsed = getDoseMgPerKg(drug, species);
         if (parsed == null) return null;
-        // Prefer the drug's own stored concentration, fall back to global entry
-        const drugConc = getDefaultConcentration(drug);
+        // Per-drug concentration: use selected index override if set, else first stored, else global manual
+        const concIdx = concIndexOverrides[drugId] ?? 0;
+        const storedConcs = drug.concentration ?? [];
+        const storedConc = storedConcs[concIdx];
+        const storedConcVal = storedConc?.value != null
+          ? (typeof storedConc.value === "number" ? storedConc.value : parseFloat(String(storedConc.value)))
+          : null;
+        const drugConc = storedConcVal != null && Number.isFinite(storedConcVal) ? storedConcVal : null;
         const effectiveConc = drugConc != null ? drugConc : c > 0 ? c : null;
-        const res =
-          effectiveConc != null
-            ? calculateDose({
-                weightKg: w,
-                dosageMgPerKg: parsed,
-                concentrationMgPerUnit: effectiveConc,
-                unit: doseUnit,
-              })
-            : null;
+        const res = effectiveConc != null
+          ? calculateDose({ weightKg: w, dosageMgPerKg: parsed, concentrationMgPerUnit: effectiveConc, unit: doseUnit })
+          : null;
+        const concLabel = storedConc ? `${storedConc.value} mg/${storedConc.form || (doseUnit === "mL" ? "mL" : "tab")}` : effectiveConc ? `${effectiveConc} mg/unit` : "";
         return {
-          drug,
-          dosageMgPerKg: parsed,
-          result: res,
-          rawDosage: formatDoseLabel(drug, species),
-          effectiveConc,
-          concSource: drugConc != null ? "db" : c > 0 ? "manual" : "none",
+          drug, dosageMgPerKg: parsed, result: res, rawDosage: formatDoseLabel(drug, species),
+          effectiveConc, concSource: drugConc != null ? "db" : c > 0 ? "manual" : "none" as "db" | "manual" | "none",
+          storedConcs, concIdx, concLabel,
         };
       })
       .filter(Boolean) as Array<{
-      drug: Drug;
-      dosageMgPerKg: number;
-      result: ReturnType<typeof calculateDose> | null;
-      rawDosage: string;
-      effectiveConc: number | null;
-      concSource: "db" | "manual" | "none";
-    }>;
-  }, [preselectedDrugIds, drugs, w, c, species, doseUnit]);
+        drug: Drug; dosageMgPerKg: number;
+        result: ReturnType<typeof calculateDose> | null;
+        rawDosage: string; effectiveConc: number | null;
+        concSource: "db" | "manual" | "none";
+        storedConcs: NonNullable<Drug["concentration"]>;
+        concIdx: number; concLabel: string;
+      }>;
+  }, [preselectedDrugIds, drugs, w, c, species, doseUnit, concIndexOverrides]);
+
+  // ── Fire callback when batch results change ────────────────────────────────
+  React.useEffect(() => {
+    if (!onDosesCalculated || batchResults.length === 0) return;
+    const valid = batchResults.filter((r) => r.result?.valid);
+    if (!valid.length) return;
+    onDosesCalculated(valid.map((r) => ({
+      drugId: r.drug.drug_id,
+      drugName: r.drug.name,
+      totalMg: r.result!.totalMg,
+      dose: r.result!.dose,
+      doseUnit,
+      concLabel: r.concLabel,
+    })));
+  }, [batchResults, doseUnit]);
 
   if (typeof document === "undefined") return null;
 
@@ -551,14 +566,47 @@ export function DrugDoseCalculatorModal({
                     placeholder="e.g. 10"
                     unit="mg/kg"
                   />
-                  <CalcInput
-                    label={`Concentration — التركيز`}
-                    sublabel={`Drug concentration per ${doseUnit === "mL" ? "mL" : "tablet"}`}
-                    value={concentration}
-                    onChange={setConcentration}
-                    placeholder="e.g. 50"
-                    unit={`mg/${doseUnit === "mL" ? "mL" : "tab"}`}
-                  />
+                  {/* ── Concentration: picker or manual input ── */}
+                  {selectedDrug && (selectedDrug.concentration?.length ?? 0) > 0 ? (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <FlaskConical className="w-3.5 h-3.5 text-emerald" />
+                        <p className="text-xs font-bold text-muted-foreground">Concentration — التركيز</p>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground/70">Select the available formulation</p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedDrug.concentration!.map((conc, i) => {
+                          const val = typeof conc.value === "number" ? conc.value : parseFloat(String(conc.value ?? 0));
+                          const label = `${conc.value} mg/${conc.form || (doseUnit === "mL" ? "mL" : "tab")}`;
+                          const isActive = concentration === String(val);
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => setConcentration(String(val))}
+                              className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
+                                isActive
+                                  ? "bg-emerald/15 border-emerald/40 text-emerald"
+                                  : "bg-muted/30 border-border/50 text-muted-foreground hover:bg-muted/50"
+                              }`}
+                            >
+                              {label}
+                              {conc.form && <span className="ml-1.5 opacity-60 capitalize">{conc.form}</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <CalcInput
+                      label={`Concentration — التركيز`}
+                      sublabel={`Drug concentration per ${doseUnit === "mL" ? "mL" : "tablet"}`}
+                      value={concentration}
+                      onChange={setConcentration}
+                      placeholder="e.g. 50"
+                      unit={`mg/${doseUnit === "mL" ? "mL" : "tab"}`}
+                    />
+                  )}
                 </div>
 
                 {/* ── Result ── */}
@@ -635,21 +683,13 @@ export function DrugDoseCalculatorModal({
                       <Calculator className="w-3 h-3" />
                       All Prescription Doses
                     </p>
-                    {batchResults.map(({ drug, dosageMgPerKg, result: res, rawDosage, effectiveConc, concSource }) => (
-                      <div
-                        key={drug.drug_id}
-                        className="p-3 rounded-xl bg-emerald/5 border border-emerald/15 space-y-1.5"
-                      >
+                    {batchResults.map(({ drug, dosageMgPerKg, result: res, rawDosage, effectiveConc, concSource, storedConcs, concIdx }) => (
+                      <div key={drug.drug_id} className="p-3 rounded-xl bg-emerald/5 border border-emerald/15 space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <p className="text-sm font-bold text-emerald">
-                            {drug.name}
-                          </p>
+                          <p className="text-sm font-bold text-emerald">{drug.name}</p>
                           {res?.valid ? (
                             <span className="text-lg font-black text-emerald tabular-nums">
-                              {res.dose}{" "}
-                              <span className="text-xs text-emerald/60">
-                                {doseUnit}
-                              </span>
+                              {res.dose}{" "}<span className="text-xs text-emerald/60">{doseUnit}</span>
                             </span>
                           ) : concSource === "none" ? (
                             <span className="text-[10px] text-amber-400 font-bold px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
@@ -657,29 +697,34 @@ export function DrugDoseCalculatorModal({
                             </span>
                           ) : null}
                         </div>
+                        {/* Concentration type picker for drugs with multiple formulations */}
+                        {storedConcs.length > 1 && (
+                          <div className="flex flex-wrap gap-1.5 pt-0.5">
+                            {storedConcs.map((conc, i) => {
+                              const lbl = `${conc.value} mg${conc.form ? ` / ${conc.form}` : ""}`;
+                              return (
+                                <button
+                                  key={i}
+                                  type="button"
+                                  onClick={() => setConcIndexOverrides((prev) => ({ ...prev, [drug.drug_id]: i }))}
+                                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                                    concIdx === i
+                                      ? "bg-cyan/15 border-cyan/40 text-cyan"
+                                      : "bg-muted/30 border-border/50 text-muted-foreground hover:bg-muted/50"
+                                  }`}
+                                >
+                                  {lbl}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                         <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap">
-                          <span>
-                            Dosage: <span className="font-bold text-cyan">{dosageMgPerKg} mg/kg</span>
-                            {rawDosage && (
-                              <span className="opacity-60"> ({rawDosage})</span>
-                            )}
-                          </span>
+                          <span>Dosage: <span className="font-bold text-cyan">{dosageMgPerKg} mg/kg</span>{rawDosage && <span className="opacity-60"> ({rawDosage})</span>}</span>
                           {effectiveConc != null && (
-                            <span>
-                              Conc:{" "}
-                              <span className="font-bold">
-                                {effectiveConc} mg/{doseUnit === "mL" ? "mL" : "tab"}
-                              </span>
-                              {concSource === "db" && (
-                                <span className="ml-1 text-emerald/60">(stored)</span>
-                              )}
-                            </span>
+                            <span>Conc: <span className="font-bold">{effectiveConc} mg/{doseUnit === "mL" ? "mL" : "tab"}</span>{concSource === "db" && <span className="ml-1 text-emerald/60">(stored)</span>}</span>
                           )}
-                          {res?.valid && (
-                            <span>
-                              Total: <span className="font-bold">{res.totalMg} mg</span>
-                            </span>
-                          )}
+                          {res?.valid && <span>Total: <span className="font-bold">{res.totalMg} mg</span></span>}
                         </div>
                       </div>
                     ))}
