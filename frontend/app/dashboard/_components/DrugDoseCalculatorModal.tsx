@@ -58,6 +58,8 @@ function getDefaultConcentration(drug: Drug | undefined): number | null {
 export interface DrugDoseCalculatorModalProps {
   open: boolean;
   onClose: () => void;
+  /** 'manual' = normal calculator page, 'simulation' = sim mode with confirm button */
+  mode?: "manual" | "simulation";
   /** Auto-fill from simulation pet */
   initialWeight?: number;
   initialSpecies?: FluidSpecies;
@@ -66,8 +68,8 @@ export interface DrugDoseCalculatorModalProps {
   drugs?: Drug[];
   /** Pre-selected drug IDs (from prescriptions) for auto batch calculation */
   preselectedDrugIds?: string[];
-  /** Called whenever batch doses are calculated — used by SimulationMode to track doses */
-  onDosesCalculated?: (results: Array<{ drugId: string; drugName: string; totalMg: number; dose: number; doseUnit: string; concLabel: string }>) => void;
+  /** Called when doctor confirms doses (simulation mode only) */
+  onDosesCalculated?: (results: Array<{ drugId: string; drugName: string; totalMg: number; dose: number | null; doseUnit: string | null; concLabel: string }>) => void;
 }
 
 // ── Input Field ───────────────────────────────────────────────────────────────
@@ -121,6 +123,7 @@ function CalcInput({
 export function DrugDoseCalculatorModal({
   open,
   onClose,
+  mode = "manual",
   initialWeight,
   initialSpecies,
   petName,
@@ -266,16 +269,19 @@ export function DrugDoseCalculatorModal({
         const res = effectiveConc != null
           ? calculateDose({ weightKg: w, dosageMgPerKg: parsed, concentrationMgPerUnit: effectiveConc, unit: doseUnit })
           : null;
+        // Always compute totalMg even if no concentration is available
+        const totalMg = parseFloat((w * parsed).toFixed(2));
         const concLabel = storedConc ? `${storedConc.value} mg/${storedConc.form || (doseUnit === "mL" ? "mL" : "tab")}` : effectiveConc ? `${effectiveConc} mg/unit` : "";
         return {
-          drug, dosageMgPerKg: parsed, result: res, rawDosage: formatDoseLabel(drug, species),
-          effectiveConc, concSource: drugConc != null ? "db" : c > 0 ? "manual" : "none" as "db" | "manual" | "none",
+          drug, dosageMgPerKg: parsed, result: res, totalMg, rawDosage: formatDoseLabel(drug, species),
+          effectiveConc, concSource: (drugConc != null ? "db" : c > 0 ? "manual" : "none") as "db" | "manual" | "none",
           storedConcs, concIdx, concLabel,
         };
       })
       .filter(Boolean) as Array<{
         drug: Drug; dosageMgPerKg: number;
         result: ReturnType<typeof calculateDose> | null;
+        totalMg: number;
         rawDosage: string; effectiveConc: number | null;
         concSource: "db" | "manual" | "none";
         storedConcs: NonNullable<Drug["concentration"]>;
@@ -283,20 +289,25 @@ export function DrugDoseCalculatorModal({
       }>;
   }, [preselectedDrugIds, drugs, w, c, species, doseUnit, concIndexOverrides]);
 
-  // ── Fire callback when batch results change ────────────────────────────────
-  React.useEffect(() => {
+  // ── Confirm handler for simulation mode ────────────────────────────────
+  // Only fires when doctor explicitly presses "Confirm" — NOT automatically.
+  const handleConfirmDoses = React.useCallback(() => {
     if (!onDosesCalculated || batchResults.length === 0) return;
-    const valid = batchResults.filter((r) => r.result?.valid);
-    if (!valid.length) return;
-    onDosesCalculated(valid.map((r) => ({
-      drugId: r.drug.drug_id,
-      drugName: r.drug.name,
-      totalMg: r.result!.totalMg,
-      dose: r.result!.dose,
-      doseUnit,
-      concLabel: r.concLabel,
-    })));
-  }, [batchResults, doseUnit]);
+    onDosesCalculated(
+      batchResults.map((r) => ({
+        drugId: r.drug.drug_id,
+        drugName: r.drug.name,
+        totalMg: r.totalMg,
+        dose: r.result?.valid ? r.result.dose : null,
+        doseUnit: r.result?.valid ? doseUnit : null,
+        concLabel: r.concLabel,
+      }))
+    );
+    onClose();
+  }, [batchResults, doseUnit, onDosesCalculated, onClose]);
+
+  const isSimulation = mode === "simulation";
+  const hasBatchDoses = batchResults.length > 0;
 
   if (typeof document === "undefined") return null;
 
@@ -344,11 +355,18 @@ export function DrugDoseCalculatorModal({
                         Drug Dose Calculator
                       </h2>
                       <p className="text-[10px] sm:text-xs text-muted-foreground">
-                        {petName
-                          ? `Patient: ${petName}`
-                          : "Dose = Weight × Dosage ÷ Concentration"}
+                        {isSimulation && petName
+                          ? `Patient: ${petName} — Enter weight to calculate all prescription doses`
+                          : petName
+                            ? `Patient: ${petName}`
+                            : "Dose = Weight × Dosage ÷ Concentration"}
                       </p>
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        {isSimulation && (
+                          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase bg-emerald/10 border border-emerald/20 text-emerald">
+                            Simulation
+                          </span>
+                        )}
                         <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase bg-cyan/10 border border-cyan/20 text-cyan">
                           {species === "dog" ? "Canine" : "Feline"}
                         </span>
@@ -381,8 +399,8 @@ export function DrugDoseCalculatorModal({
                   </p>
                 </div>
 
-                {/* ── Drug Selector ── */}
-                {drugs.length > 0 && (
+                {/* ── Drug Selector (manual mode only) ── */}
+                {!isSimulation && drugs.length > 0 && (
                   <div className="space-y-2" ref={dropdownRef}>
                     <div className="flex items-center gap-1.5">
                       <Pill className="w-3.5 h-3.5 text-emerald" />
@@ -554,62 +572,68 @@ export function DrugDoseCalculatorModal({
                     placeholder="e.g. 25"
                     unit="kg"
                   />
-                  <CalcInput
-                    label="Dosage — الجرعة"
-                    sublabel={
-                      selectedDrug
-                        ? `Auto-filled from ${selectedDrug.name}`
-                        : "Prescribed dose per kg"
-                    }
-                    value={dosage}
-                    onChange={setDosage}
-                    placeholder="e.g. 10"
-                    unit="mg/kg"
-                  />
-                  {/* ── Concentration: picker or manual input ── */}
-                  {selectedDrug && (selectedDrug.concentration?.length ?? 0) > 0 ? (
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <FlaskConical className="w-3.5 h-3.5 text-emerald" />
-                        <p className="text-xs font-bold text-muted-foreground">Concentration — التركيز</p>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground/70">Select the available formulation</p>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedDrug.concentration!.map((conc, i) => {
-                          const val = typeof conc.value === "number" ? conc.value : parseFloat(String(conc.value ?? 0));
-                          const label = `${conc.value} mg/${conc.form || (doseUnit === "mL" ? "mL" : "tab")}`;
-                          const isActive = concentration === String(val);
-                          return (
-                            <button
-                              key={i}
-                              type="button"
-                              onClick={() => setConcentration(String(val))}
-                              className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
-                                isActive
-                                  ? "bg-emerald/15 border-emerald/40 text-emerald"
-                                  : "bg-muted/30 border-border/50 text-muted-foreground hover:bg-muted/50"
-                              }`}
-                            >
-                              {label}
-                              {conc.form && <span className="ml-1.5 opacity-60 capitalize">{conc.form}</span>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : (
-                    <CalcInput
-                      label={`Concentration — التركيز`}
-                      sublabel={`Drug concentration per ${doseUnit === "mL" ? "mL" : "tablet"}`}
-                      value={concentration}
-                      onChange={setConcentration}
-                      placeholder="e.g. 50"
-                      unit={`mg/${doseUnit === "mL" ? "mL" : "tab"}`}
-                    />
+                  {/* Dosage + Concentration: manual mode only */}
+                  {!isSimulation && (
+                    <>
+                      <CalcInput
+                        label="Dosage — الجرعة"
+                        sublabel={
+                          selectedDrug
+                            ? `Auto-filled from ${selectedDrug.name}`
+                            : "Prescribed dose per kg"
+                        }
+                        value={dosage}
+                        onChange={setDosage}
+                        placeholder="e.g. 10"
+                        unit="mg/kg"
+                      />
+                      {/* ── Concentration: picker or manual input ── */}
+                      {selectedDrug && (selectedDrug.concentration?.length ?? 0) > 0 ? (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <FlaskConical className="w-3.5 h-3.5 text-emerald" />
+                            <p className="text-xs font-bold text-muted-foreground">Concentration — التركيز</p>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground/70">Select the available formulation</p>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedDrug.concentration!.map((conc, i) => {
+                              const val = typeof conc.value === "number" ? conc.value : parseFloat(String(conc.value ?? 0));
+                              const label = `${conc.value} mg/${conc.form || (doseUnit === "mL" ? "mL" : "tab")}`;
+                              const isActive = concentration === String(val);
+                              return (
+                                <button
+                                  key={i}
+                                  type="button"
+                                  onClick={() => setConcentration(String(val))}
+                                  className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
+                                    isActive
+                                      ? "bg-emerald/15 border-emerald/40 text-emerald"
+                                      : "bg-muted/30 border-border/50 text-muted-foreground hover:bg-muted/50"
+                                  }`}
+                                >
+                                  {label}
+                                  {conc.form && <span className="ml-1.5 opacity-60 capitalize">{conc.form}</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <CalcInput
+                          label={`Concentration — التركيز`}
+                          sublabel={`Drug concentration per ${doseUnit === "mL" ? "mL" : "tablet"}`}
+                          value={concentration}
+                          onChange={setConcentration}
+                          placeholder="e.g. 50"
+                          unit={`mg/${doseUnit === "mL" ? "mL" : "tab"}`}
+                        />
+                      )}
+                    </>
                   )}
                 </div>
 
-                {/* ── Result ── */}
+                {/* ── Manual result (manual mode only) ── */}
+                {!isSimulation && (
                 <AnimatePresence>
                   {hasAllInputs && result.valid && (
                     <motion.div
@@ -675,6 +699,7 @@ export function DrugDoseCalculatorModal({
                     </motion.div>
                   )}
                 </AnimatePresence>
+                )}
 
                 {/* ── Batch results for prescription drugs ── */}
                 {batchResults.length > 0 && (
@@ -744,6 +769,32 @@ export function DrugDoseCalculatorModal({
                       {preselectedDrugIds?.length
                         ? "Drug concentrations will be loaded from the database automatically"
                         : "أدخل الوزن والجرعة والتركيز لحساب الجرعة"}
+                    </p>
+                  </div>
+                )}
+
+                {/* ── Simulation mode: Confirm button ── */}
+                {isSimulation && hasBatchDoses && (
+                  <motion.button
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={handleConfirmDoses}
+                    className="w-full py-3.5 rounded-xl gradient-emerald-cyan text-primary-foreground text-sm font-black tracking-wide shadow-lg shadow-emerald/20 transition-all"
+                  >
+                    ✓ Confirm & Save Doses ({batchResults.length} drug{batchResults.length > 1 ? "s" : ""})
+                  </motion.button>
+                )}
+
+                {isSimulation && !hasBatchDoses && w <= 0 && (
+                  <div className="p-6 rounded-2xl border border-border/30 bg-muted/5 text-center space-y-2">
+                    <Calculator className="w-8 h-8 text-muted-foreground/30 mx-auto" />
+                    <p className="text-sm text-muted-foreground font-medium">
+                      Enter patient weight above to calculate all prescription doses
+                    </p>
+                    <p className="text-xs text-muted-foreground/60">
+                      Dosage and concentration will be loaded automatically from the drug database
                     </p>
                   </div>
                 )}

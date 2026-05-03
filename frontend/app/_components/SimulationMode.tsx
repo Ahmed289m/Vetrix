@@ -296,7 +296,7 @@ export default function SimulationMode({ role }: Props) {
   // ── Drug dose calculator modal ────────────────────────────────────────
   const [showDrugCalc, setShowDrugCalc] = useState(false);
   // Calculated doses keyed by drug_id — populated by onDosesCalculated callback
-  const [calculatedDoses, setCalculatedDoses] = useState<Map<string, { totalMg: number; dose: number; doseUnit: string; concLabel: string; drugName: string }>>(new Map());
+  const [calculatedDoses, setCalculatedDoses] = useState<Map<string, { totalMg: number; dose: number | null; doseUnit: string | null; concLabel: string; drugName: string }>>(new Map());
 
   // ── Update weight modal ───────────────────────────────────────────────
   const [showUpdateWeight, setShowUpdateWeight] = useState(false);
@@ -629,12 +629,13 @@ export default function SimulationMode({ role }: Props) {
       const casePrescriptions = getCasePrescriptions(appt.petId, appt.clientId);
       const linkedRxId = visitPrescriptionId;
 
-      // Block: prescriptions exist but linked one has no calculated dose
+      // Block: prescription is linked but none of its drugs have been run through the calculator at all
       if (linkedRxId && casePrescriptions.length > 0) {
         const rxDrugIds = getAllDrugIdsForRx(linkedRxId);
-        const anyCalculated = rxDrugIds.some((id) => calculatedDoses.has(id));
+        // A drug is "calculated" when totalMg > 0 (even if concentration was missing)
+        const anyCalculated = rxDrugIds.some((id) => (calculatedDoses.get(id)?.totalMg ?? 0) > 0);
         if (!anyCalculated) {
-          toast.error("Please calculate doses in the Drug Dose Calculator before creating this visit.", { duration: 5000 });
+          toast.error("Please open the Drug Dose Calculator first to calculate doses.", { duration: 5000 });
           return;
         }
       }
@@ -1428,8 +1429,10 @@ export default function SimulationMode({ role }: Props) {
           {/* ── Calculated doses panel ── */}
           {visitMode === "create" && visitPrescriptionId && (() => {
             const rxDrugIds = getAllDrugIdsForRx(visitPrescriptionId);
-            const calced = rxDrugIds.map((id) => calculatedDoses.get(id)).filter(Boolean) as Array<{ totalMg: number; dose: number; doseUnit: string; concLabel: string; drugName: string }>;
-            const uncalced = rxDrugIds.filter((id) => !calculatedDoses.has(id)).map((id) => allDrugs.find((d) => d.drug_id === id)?.name || id);
+            const calced = rxDrugIds.map((id) => calculatedDoses.get(id)).filter(Boolean) as Array<{ totalMg: number; dose: number | null; doseUnit: string | null; concLabel: string; drugName: string }>;
+            // Only flag as uncalculated when the drug has NEVER been through the calculator (totalMg = 0 or absent)
+            const uncalced = rxDrugIds.filter((id) => (calculatedDoses.get(id)?.totalMg ?? 0) === 0)
+              .map((id) => allDrugs.find((d) => d.drug_id === id)?.name || id);
             return (
               <div className="space-y-2">
                 <p className="text-[10px] font-black uppercase tracking-widest text-emerald flex items-center gap-1.5">
@@ -1446,8 +1449,14 @@ export default function SimulationMode({ role }: Props) {
                         </div>
                         <div className="flex items-center gap-2 font-black tabular-nums">
                           <span className="text-cyan">{cd.totalMg} mg</span>
-                          <span className="text-muted-foreground/40">→</span>
-                          <span className="text-emerald">{cd.dose} {cd.doseUnit}</span>
+                          {cd.dose != null && cd.doseUnit ? (
+                            <>
+                              <span className="text-muted-foreground/40">→</span>
+                              <span className="text-emerald">{cd.dose} {cd.doseUnit}</span>
+                            </>
+                          ) : (
+                            <span className="text-muted-foreground/50 font-normal text-[10px]">total</span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1457,8 +1466,8 @@ export default function SimulationMode({ role }: Props) {
                   <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
                     <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                     <div className="flex-1">
-                      <p className="font-black">Uncalculated doses: {uncalced.join(", ")}</p>
-                      <p className="opacity-70 mt-0.5">Open the Drug Dose Calculator to calculate before proceeding.</p>
+                      <p className="font-black">Not yet calculated: {uncalced.join(", ")}</p>
+                      <p className="opacity-70 mt-0.5">Open the Drug Dose Calculator and enter patient weight to calculate.</p>
                     </div>
                     <button
                       onClick={() => { setShowVisitModal(false); setShowDrugCalc(true); }}
@@ -1488,9 +1497,9 @@ export default function SimulationMode({ role }: Props) {
 
           {/* ── Action buttons ── */}
           {(() => {
-            // Determine if the Create button should be blocked
+            // Blocked only when prescription is linked AND none of its drugs have totalMg > 0
             const rxDrugIds = visitPrescriptionId ? getAllDrugIdsForRx(visitPrescriptionId) : [];
-            const hasUncalculated = rxDrugIds.length > 0 && rxDrugIds.some((id) => !calculatedDoses.has(id));
+            const hasUncalculated = rxDrugIds.length > 0 && rxDrugIds.every((id) => (calculatedDoses.get(id)?.totalMg ?? 0) === 0);
             const isBlocked = visitMode === "create" && visitPrescriptionId !== "" && hasUncalculated;
             return (
               <div className="flex gap-3 pt-1">
@@ -2205,6 +2214,7 @@ export default function SimulationMode({ role }: Props) {
           <DrugDoseCalculatorModal
             open={showDrugCalc}
             onClose={() => setShowDrugCalc(false)}
+            mode="simulation"
             initialWeight={activePet?.weight}
             initialSpecies={
               activePet?.type === "dog" || activePet?.type === "cat"
@@ -2217,7 +2227,13 @@ export default function SimulationMode({ role }: Props) {
             onDosesCalculated={(results) => {
               setCalculatedDoses((prev) => {
                 const next = new Map(prev);
-                results.forEach((r) => next.set(r.drugId, { totalMg: r.totalMg, dose: r.dose, doseUnit: r.doseUnit, concLabel: r.concLabel, drugName: r.drugName }));
+                results.forEach((r) => next.set(r.drugId, {
+                  totalMg: r.totalMg,
+                  dose: r.dose,
+                  doseUnit: r.doseUnit,
+                  concLabel: r.concLabel,
+                  drugName: r.drugName,
+                }));
                 return next;
               });
             }}
