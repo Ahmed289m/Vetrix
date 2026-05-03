@@ -1311,26 +1311,39 @@ export default function SimulationMode({ role }: Props) {
           initial={{ scale: 0.95, opacity: 0, y: 16 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 16 }}
-          className="bg-card border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
+          className="bg-card border border-border/50 rounded-2xl max-w-lg w-full shadow-2xl shadow-black/20 max-h-[90vh] overflow-y-auto"
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl gradient-cyan-blue flex items-center justify-center">
-                <Stethoscope className="w-4 h-4 text-primary-foreground" />
+          {/* Header with gradient accent */}
+          <div className="sticky top-0 z-10 border-b border-border/30 bg-card/95 backdrop-blur-xl px-5 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="absolute -inset-0.5 bg-gradient-to-br from-cyan/30 to-emerald/20 rounded-xl blur-sm" />
+                  <div className="relative w-9 h-9 rounded-xl gradient-cyan-blue flex items-center justify-center">
+                    <Stethoscope className="w-4 h-4 text-primary-foreground" />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-base font-black tracking-tight">
+                    {visitMode === "edit" ? "Edit Visit" : t("create_visit")}
+                  </h3>
+                  {visitMode === "create" && visitAppt && (
+                    <p className="text-[10px] text-muted-foreground/60 font-mono">{visitAppt.caseNumber}</p>
+                  )}
+                </div>
               </div>
-              <h3 className="text-base font-bold">
-                {visitMode === "edit" ? "Edit Visit" : t("create_visit")}
-              </h3>
+              <button
+                onClick={() => setShowVisitModal(false)}
+                className="p-2 hover:bg-muted rounded-xl transition-colors text-muted-foreground/40 hover:text-muted-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <button
-              onClick={() => setShowVisitModal(false)}
-              className="p-2 hover:bg-muted rounded-xl transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </div>
 
+          <div className="p-5 space-y-4">
+          {/* Patient + Doctor + Date strip */}
           {visitMode === "create" && visitAppt && (
             <div className="flex items-center gap-3 p-3 rounded-xl bg-tint/5 border border-tint/5">
               <div className="w-9 h-9 rounded-lg bg-muted/40 flex items-center justify-center shrink-0">
@@ -1342,43 +1355,13 @@ export default function SimulationMode({ role }: Props) {
                   <FlaskConical className="w-5 h-5" />
                 )}
               </div>
-              <div className="min-w-0">
-                <p className="text-sm font-bold truncate">
-                  {visitAppt.petName}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {visitAppt.ownerName} · {visitAppt.complaint}
-                </p>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold truncate">{visitAppt.petName}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{visitAppt.ownerName} · {visitAppt.complaint}</p>
               </div>
-              <span className="text-[10px] font-mono text-muted-foreground shrink-0">
-                {visitAppt.caseNumber}
-              </span>
-            </div>
-          )}
-
-          {visitMode === "create" && (
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-cyan/5 border border-cyan/15 text-xs">
-                <UserIcon className="w-3.5 h-3.5 text-cyan shrink-0" />
-                <div>
-                  <p className="text-[10px] text-muted-foreground font-bold uppercase">
-                    Doctor
-                  </p>
-                  <p className="font-bold text-cyan truncate">
-                    {user?.fullname || "—"}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-tint/5 border border-tint/5 text-xs">
-                <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                <div>
-                  <p className="text-[10px] text-muted-foreground font-bold uppercase">
-                    Date
-                  </p>
-                  <p className="font-bold">
-                    {fmtDate(new Date().toISOString())}
-                  </p>
-                </div>
+              <div className="shrink-0 text-right text-[10px]">
+                <p className="font-bold text-cyan">Dr. {user?.fullname?.split(" ")[0] || "—"}</p>
+                <p className="text-muted-foreground/60">{fmtDate(new Date().toISOString())}</p>
               </div>
             </div>
           )}
@@ -1530,6 +1513,7 @@ export default function SimulationMode({ role }: Props) {
               </div>
             );
           })()}
+          </div>
         </motion.div>
       </Modal>
 

@@ -391,13 +391,15 @@ export function DrugDoseCalculatorModal({
 
               {/* ── Body ── */}
               <div className="relative p-4 sm:p-5 space-y-5">
-                {/* Formula reference */}
-                <div className="p-3 rounded-xl bg-emerald/5 border border-emerald/15 text-center">
-                  <p className="text-xs font-bold text-emerald">
-                    Dose ({doseUnit}) = Weight (kg) × Dosage (mg/kg) ÷
-                    Concentration (mg/{doseUnit === "mL" ? "mL" : "tablet"})
-                  </p>
-                </div>
+                {/* Formula reference (manual mode only) */}
+                {!isSimulation && (
+                  <div className="p-3 rounded-xl bg-emerald/5 border border-emerald/15 text-center">
+                    <p className="text-xs font-bold text-emerald">
+                      Dose ({doseUnit}) = Weight (kg) × Dosage (mg/kg) ÷
+                      Concentration (mg/{doseUnit === "mL" ? "mL" : "tablet"})
+                    </p>
+                  </div>
+                )}
 
                 {/* ── Drug Selector (manual mode only) ── */}
                 {!isSimulation && drugs.length > 0 && (
@@ -516,7 +518,8 @@ export function DrugDoseCalculatorModal({
                   </div>
                 )}
 
-                {/* Species toggle */}
+                {/* Species toggle (manual mode only) */}
+                {!isSimulation && (
                 <div className="flex gap-2">
                   {(["dog", "cat"] as const).map((s) => (
                     <button
@@ -539,8 +542,10 @@ export function DrugDoseCalculatorModal({
                     </button>
                   ))}
                 </div>
+                )}
 
-                {/* Unit toggle */}
+                {/* Unit toggle (manual mode only) */}
+                {!isSimulation && (
                 <div className="flex gap-2">
                   {(["mL", "tablets"] as const).map((u) => (
                     <button
@@ -561,6 +566,7 @@ export function DrugDoseCalculatorModal({
                     </button>
                   ))}
                 </div>
+                )}
 
                 {/* Inputs */}
                 <div className="space-y-4">
@@ -707,24 +713,44 @@ export function DrugDoseCalculatorModal({
                     <p className="text-[10px] font-black uppercase tracking-widest text-emerald flex items-center gap-1">
                       <Calculator className="w-3 h-3" />
                       All Prescription Doses
+                      <span className="ml-auto text-muted-foreground/60 font-bold normal-case">
+                        {batchResults.length} drug{batchResults.length > 1 ? "s" : ""}
+                      </span>
                     </p>
-                    {batchResults.map(({ drug, dosageMgPerKg, result: res, rawDosage, effectiveConc, concSource, storedConcs, concIdx }) => (
-                      <div key={drug.drug_id} className="p-3 rounded-xl bg-emerald/5 border border-emerald/15 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-bold text-emerald">{drug.name}</p>
-                          {res?.valid ? (
-                            <span className="text-lg font-black text-emerald tabular-nums">
-                              {res.dose}{" "}<span className="text-xs text-emerald/60">{doseUnit}</span>
-                            </span>
-                          ) : concSource === "none" ? (
-                            <span className="text-[10px] text-amber-400 font-bold px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                              Enter concentration ↑
-                            </span>
-                          ) : null}
+                    {batchResults.map(({ drug, dosageMgPerKg, result: res, totalMg, rawDosage, effectiveConc, concSource, storedConcs, concIdx }) => (
+                      <div key={drug.drug_id} className="p-3.5 rounded-xl bg-emerald/5 border border-emerald/15 space-y-2">
+                        {/* Drug name + result */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-black text-emerald truncate">{drug.name}</p>
+                            <p className="text-[10px] text-muted-foreground/60">{drug.class}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            {res?.valid ? (
+                              <div>
+                                <span className="text-lg font-black text-emerald tabular-nums">
+                                  {res.dose} <span className="text-xs text-emerald/60">{doseUnit}</span>
+                                </span>
+                                <p className="text-[10px] text-cyan font-bold tabular-nums">{totalMg} mg total</p>
+                              </div>
+                            ) : (
+                              <div>
+                                <span className="text-lg font-black text-cyan tabular-nums">
+                                  {totalMg} <span className="text-xs text-cyan/60">mg</span>
+                                </span>
+                                {concSource === "none" && !isSimulation && (
+                                  <p className="text-[9px] text-amber-400 font-bold">Enter concentration ↑</p>
+                                )}
+                                {concSource === "none" && isSimulation && (
+                                  <p className="text-[9px] text-muted-foreground/50">No concentration stored</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                         {/* Concentration type picker for drugs with multiple formulations */}
                         {storedConcs.length > 1 && (
-                          <div className="flex flex-wrap gap-1.5 pt-0.5">
+                          <div className="flex flex-wrap gap-1.5">
                             {storedConcs.map((conc, i) => {
                               const lbl = `${conc.value} mg${conc.form ? ` / ${conc.form}` : ""}`;
                               return (
@@ -744,12 +770,12 @@ export function DrugDoseCalculatorModal({
                             })}
                           </div>
                         )}
-                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap">
+                        {/* Detail row */}
+                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap pt-0.5 border-t border-emerald/10">
                           <span>Dosage: <span className="font-bold text-cyan">{dosageMgPerKg} mg/kg</span>{rawDosage && <span className="opacity-60"> ({rawDosage})</span>}</span>
                           {effectiveConc != null && (
                             <span>Conc: <span className="font-bold">{effectiveConc} mg/{doseUnit === "mL" ? "mL" : "tab"}</span>{concSource === "db" && <span className="ml-1 text-emerald/60">(stored)</span>}</span>
                           )}
-                          {res?.valid && <span>Total: <span className="font-bold">{res.totalMg} mg</span></span>}
                         </div>
                       </div>
                     ))}
