@@ -1543,6 +1543,47 @@ function ImportJsonModal({
               }))
           : [];
 
+        // ── Normalize dose ─────────────────────────────────────────────
+        // Accept flexible real-world formats:
+        //   - dose.route as array → join with "/"
+        //   - dose.dog.value / dose.cat.value as strings ("11-22") → keep as-is (backend accepts)
+        const rawDose = isRecord(item.dose) ? item.dose : {};
+        const normalizeDoseSpecies = (ds: unknown) => {
+          if (!isRecord(ds)) return undefined;
+          return {
+            ...(ds.value != null ? { value: ds.value } : {}),
+            ...(typeof ds.unit === "string" && ds.unit.trim() ? { unit: ds.unit.trim() } : {}),
+            ...(typeof ds.frequency === "string" && ds.frequency.trim() ? { frequency: ds.frequency.trim() } : {}),
+          };
+        };
+        const rawRoute = rawDose.route;
+        const normalizedRoute = Array.isArray(rawRoute)
+          ? rawRoute.filter(Boolean).join("/")
+          : typeof rawRoute === "string"
+            ? rawRoute.trim()
+            : undefined;
+        const normalizedDose: DrugCreate["dose"] = {
+          ...(rawDose.dog ? { dog: normalizeDoseSpecies(rawDose.dog) as NonNullable<DrugCreate["dose"]>["dog"] } : {}),
+          ...(rawDose.cat ? { cat: normalizeDoseSpecies(rawDose.cat) as NonNullable<DrugCreate["dose"]>["cat"] } : {}),
+          ...(normalizedRoute ? { route: normalizedRoute } : {}),
+        };
+
+        // ── Normalize toxicity ─────────────────────────────────────────
+        // Accept flat format { notes, severity } → promote to { dog: {...}, cat: {...} }
+        const rawTox = isRecord(item.toxicity) ? item.toxicity : {};
+        let normalizedToxicity: DrugCreate["toxicity"] = {};
+        const hasDogCat = isRecord(rawTox.dog) || isRecord(rawTox.cat);
+        if (hasDogCat) {
+          normalizedToxicity = rawTox as DrugCreate["toxicity"];
+        } else {
+          const flat: Record<string, string> = {};
+          if (typeof rawTox.notes === "string" && rawTox.notes.trim()) flat.notes = rawTox.notes.trim();
+          if (typeof rawTox.severity === "string" && rawTox.severity.trim()) flat.severity = rawTox.severity.trim();
+          if (Object.keys(flat).length > 0) {
+            normalizedToxicity = { dog: flat as NonNullable<DrugCreate["toxicity"]>["dog"], cat: flat as NonNullable<DrugCreate["toxicity"]>["cat"] };
+          }
+        }
+
         const payload: DrugCreate = {
           name,
           class: drugClassValue,
@@ -1550,11 +1591,9 @@ function ImportJsonModal({
           side_effects: asStringArray(item.side_effects),
           contraindications: asStringArray(item.contraindications),
           interactions: asStringArray(item.interactions),
-          dose: isRecord(item.dose) ? (item.dose as DrugCreate["dose"]) : {},
+          dose: normalizedDose,
           concentration: concentrationItems,
-          toxicity: isRecord(item.toxicity)
-            ? (item.toxicity as DrugCreate["toxicity"])
-            : {},
+          toxicity: normalizedToxicity,
           ...(isAdmin &&
             (typeof item.clinic_id === "string" || item.clinic_id === null) && {
               clinic_id: item.clinic_id,

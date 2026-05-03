@@ -1,12 +1,34 @@
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class DoseSpecies(BaseModel):
-    value: float | None = None
+    value: float | str | None = None
     unit: str | None = None
     frequency: str | None = None
 
     model_config = ConfigDict(extra="ignore")
+
+    @field_validator("value", mode="before")
+    @classmethod
+    def coerce_value(cls, v: Any) -> float | str | None:
+        """Accept numeric values AND range strings like '11-22'."""
+        if v is None:
+            return None
+        if isinstance(v, (int, float)):
+            return float(v)
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return None
+            # Try to parse as a plain float first
+            try:
+                return float(v)
+            except ValueError:
+                # Keep range strings like "11-22" as-is
+                return v
+        return None
 
 
 class Dose(BaseModel):
@@ -15,6 +37,19 @@ class Dose(BaseModel):
     route: str | None = None
 
     model_config = ConfigDict(extra="ignore")
+
+    @field_validator("route", mode="before")
+    @classmethod
+    def coerce_route(cls, v: Any) -> str | None:
+        """Accept a route array like ['PO','IV','SC'] and join it into 'PO/IV/SC'."""
+        if v is None:
+            return None
+        if isinstance(v, list):
+            joined = "/".join(str(x).strip() for x in v if x)
+            return joined or None
+        if isinstance(v, str):
+            return v.strip() or None
+        return None
 
 
 class ToxicitySpecies(BaseModel):
@@ -29,6 +64,28 @@ class Toxicity(BaseModel):
     cat: ToxicitySpecies | None = None
 
     model_config = ConfigDict(extra="ignore")
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_flat_toxicity(cls, data: Any) -> Any:
+        """
+        Accept flat toxicity format: { "notes": "...", "severity": "Low" }
+        and promote it to both dog and cat entries automatically.
+        """
+        if not isinstance(data, dict):
+            return data
+        has_dog_cat = "dog" in data or "cat" in data
+        if has_dog_cat:
+            return data
+        # Flat format detected — extract notes/severity and apply to both species
+        flat: dict[str, Any] = {}
+        if isinstance(data.get("notes"), str) and data["notes"].strip():
+            flat["notes"] = data["notes"].strip()
+        if isinstance(data.get("severity"), str) and data["severity"].strip():
+            flat["severity"] = data["severity"].strip()
+        if flat:
+            return {"dog": flat, "cat": flat}
+        return data
 
 
 class Concentration(BaseModel):
