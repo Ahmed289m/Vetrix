@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "@/app/_components/fast-motion";
 import {
   Cat,
@@ -11,12 +11,13 @@ import {
   Clock,
   Dog,
   ChevronRight,
-  Volume2,
   CheckCircle2,
   Play,
   Stethoscope,
   X,
   MessageSquareText,
+  Hash,
+  MonitorPlay,
 } from "lucide-react";
 import { fadeUp, stagger } from "@/app/_lib/utils/shared-animations";
 import { useLang } from "@/app/_hooks/useLanguage";
@@ -63,97 +64,6 @@ export function ClientDashboard() {
   const { user } = useAuth();
   const [showTracker, setShowTracker] = useState(false);
   const [showChat, setShowChat] = useState(false);
-  const hasAnnounced = useRef(false);
-  const announcedForPos = useRef<string | null>(null);
-
-  // ── TTS announcement: fires when client's case becomes in-progress ──
-  const playAnnouncement = useCallback(() => {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
-
-    // ── Airport-style 3-tone chime via Web Audio API ──
-    const playChime = (): Promise<void> => {
-      return new Promise((resolve) => {
-        try {
-          const ctx = new (
-            window.AudioContext || (window as any).webkitAudioContext
-          )();
-          const tones = [
-            { freq: 880, start: 0, dur: 0.35 }, // A5
-            { freq: 740, start: 0.3, dur: 0.35 }, // F#5
-            { freq: 587, start: 0.58, dur: 0.55 }, // D5 (resolving)
-          ];
-          tones.forEach(({ freq, start, dur }) => {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = "sine";
-            osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
-            gain.gain.setValueAtTime(0, ctx.currentTime + start);
-            gain.gain.linearRampToValueAtTime(
-              0.22,
-              ctx.currentTime + start + 0.02,
-            );
-            gain.gain.exponentialRampToValueAtTime(
-              0.001,
-              ctx.currentTime + start + dur,
-            );
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start(ctx.currentTime + start);
-            osc.stop(ctx.currentTime + start + dur);
-          });
-          // Resolve after all tones finish + small buffer
-          setTimeout(() => {
-            ctx.close();
-            resolve();
-          }, 1300);
-        } catch {
-          resolve(); // Web Audio not supported — skip silently
-        }
-      });
-    };
-
-    const synth = window.speechSynthesis;
-    synth.cancel();
-
-    const EN_TEXT = "Your turn is now. Please proceed to the doctor room.";
-    const AR_TEXT =
-      "حان دورك الآن. من فضلك توجه إلى غرفة الطبيب.";
-
-    const makeUtterance = (text: string, lang: string) => {
-      const utt = new SpeechSynthesisUtterance(text);
-      utt.lang = lang;
-      utt.rate = 0.88;
-      utt.pitch = 1.05;
-      utt.volume = 1;
-      const voices = synth.getVoices();
-      const female =
-        voices.find(
-          (v) =>
-            v.lang === lang &&
-            /female|zira|samantha|karen|moira|victoria|tessa/i.test(v.name),
-        ) ??
-        voices.find((v) => v.lang === lang) ??
-        voices.find((v) => v.lang.startsWith(lang.split("-")[0]));
-      if (female) utt.voice = female;
-      return utt;
-    };
-
-    const doSpeak = () => {
-      const enUtt = makeUtterance(EN_TEXT, "en-US");
-      const arUtt = makeUtterance(AR_TEXT, "ar-SA");
-      enUtt.onend = () => setTimeout(() => synth.speak(arUtt), 150); // 150ms gap
-      synth.speak(enUtt);
-    };
-
-    // Play chime first, then speak
-    playChime().then(() => {
-      if (synth.getVoices().length === 0) {
-        synth.addEventListener("voiceschanged", doSpeak, { once: true } as any);
-      } else {
-        doSpeak();
-      }
-    });
-  }, []);
 
   // ── Data (NO useUsers – clients get 403 on /users) ──────────────────────
   const { data: appointmentsData } = useAppointments();
@@ -251,25 +161,7 @@ export function ClientDashboard() {
   // Total waiting (excluding the case currently in-progress)
   const totalWaiting = waitingCases.length;
 
-  // Auto-trigger announcement when client's case becomes "in-progress" (doctor accepted)
-  useEffect(() => {
-    const triggerKey = myCase ? `${myCase.id}:in-progress` : null;
-    if (
-      myCase?.status === "in-progress" &&
-      showTracker &&
-      announcedForPos.current !== triggerKey
-    ) {
-      announcedForPos.current = triggerKey;
-      const t = setTimeout(() => playAnnouncement(), 800);
-      return () => clearTimeout(t);
-    }
-    // Reset if case is no longer in-progress so it can re-fire if needed
-    if (!myCase || myCase.status !== "in-progress") {
-      if (announcedForPos.current?.endsWith(":in-progress")) {
-        announcedForPos.current = null;
-      }
-    }
-  }, [myCase?.status, myCase?.id, showTracker, playAnnouncement]);
+
 
   // ── Stat cards ─────────────────────────────────────────────────────────────
   const statCards = [
@@ -408,6 +300,91 @@ export function ClientDashboard() {
                     )}
                   </div>
                 </div>
+
+                {/* ── Queue Board: Now Serving / Your Number ── */}
+                {(() => {
+                  const serving = caseQueue.find(
+                    (c) => c.status === "in-progress",
+                  );
+                  const isMyTurn = serving?.isMyAppointment === true;
+                  return (
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Now Serving */}
+                      <div
+                        className={`p-4 rounded-xl border-2 text-center transition-all ${
+                          isMyTurn
+                            ? "border-cyan/60 bg-cyan/10 shadow-[0_0_24px_-6px_rgba(34,211,238,0.35)]"
+                            : serving
+                              ? "border-cyan/25 bg-cyan/5"
+                              : "border-border/30 bg-muted/5"
+                        }`}
+                      >
+                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-2 flex items-center justify-center gap-1">
+                          <MonitorPlay className="w-3 h-3" /> Now Serving
+                        </p>
+                        {serving ? (
+                          <>
+                            <p
+                              className={`text-xl font-black font-mono ${
+                                isMyTurn ? "text-cyan" : "text-foreground"
+                              }`}
+                            >
+                              {serving.caseNumber}
+                            </p>
+                            <div className="flex items-center justify-center gap-1 mt-1.5">
+                              <span className="w-2 h-2 rounded-full bg-cyan animate-pulse" />
+                              <span className="text-[10px] text-cyan font-bold">
+                                {isMyTurn ? "Your turn!" : "In Progress"}
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <p className="text-sm text-muted-foreground/60 italic">
+                            No active case
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Your Number */}
+                      <div
+                        className={`p-4 rounded-xl border-2 text-center transition-all ${
+                          myCase?.status === "in-progress"
+                            ? "border-emerald/60 bg-emerald/10 shadow-[0_0_24px_-6px_rgba(16,185,129,0.3)]"
+                            : myCase
+                              ? "border-emerald/30 bg-emerald/5"
+                              : "border-border/30 bg-muted/5"
+                        }`}
+                      >
+                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-2 flex items-center justify-center gap-1">
+                          <Hash className="w-3 h-3" /> Your Number
+                        </p>
+                        {myCase ? (
+                          <>
+                            <p className="text-xl font-black font-mono text-emerald">
+                              {myCase.caseNumber}
+                            </p>
+                            <div className="mt-1.5">
+                              {myCase.status === "in-progress" ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-lg bg-cyan text-primary-foreground font-black uppercase">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-primary-foreground animate-pulse" />
+                                  That&apos;s You!
+                                </span>
+                              ) : myQueuePosition !== null ? (
+                                <span className="text-[10px] text-muted-foreground font-semibold">
+                                  #{myQueuePosition} in queue
+                                </span>
+                              ) : null}
+                            </div>
+                          </>
+                        ) : (
+                          <p className="text-sm text-muted-foreground/60 italic">
+                            No appointment
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* No active appointment / Completion state */}
                 {!myCase && (
@@ -553,19 +530,7 @@ export function ClientDashboard() {
                                 : t("your_appointment")}
                             </span>
 
-                            {/* Replay announcement button */}
-                            {isActive && (
-                              <motion.button
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.92 }}
-                                onClick={playAnnouncement}
-                                title="Replay announcement (EN + AR)"
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-cyan/15 border border-cyan/30 text-cyan hover:bg-cyan/25 transition-colors text-[10px] font-bold shrink-0"
-                              >
-                                <Volume2 className="w-3.5 h-3.5" />
-                                <span className="hidden sm:inline">Replay</span>
-                              </motion.button>
-                            )}
+
                           </div>
 
                           {/* Pet info */}
