@@ -2228,6 +2228,10 @@ export default function SimulationMode({ role }: Props) {
         const preselectedIds = sessionCasePrescriptions.flatMap((rx) =>
           getAllDrugIdsForRx(rx.prescription_id),
         );
+        // Only show prescribed drugs in the dose calculator
+        const prescribedDrugs = preselectedIds.length > 0
+          ? allDrugs.filter((d) => preselectedIds.includes(d.drug_id))
+          : [];
         return (
           <DrugDoseCalculatorModal
             open={showDrugCalc}
@@ -2240,7 +2244,7 @@ export default function SimulationMode({ role }: Props) {
                 : "dog"
             }
             petName={myActiveCase?.petName}
-            drugs={allDrugs}
+            drugs={prescribedDrugs}
             preselectedDrugIds={preselectedIds.length > 0 ? preselectedIds : undefined}
             onDosesCalculated={(results) => {
               setCalculatedDoses((prev) => {

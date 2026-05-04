@@ -696,14 +696,22 @@ export function DrugDoseCalculatorModal({
                           </span>
                         )}
                       </p>
-                      {simSelectedDrugIds.length > 0 && (
+                      <div className="flex items-center gap-2">
                         <button
-                          onClick={() => setSimSelectedDrugIds([])}
-                          className="text-[10px] text-muted-foreground hover:text-red-400 font-bold uppercase tracking-widest transition-colors"
+                          onClick={() => setSimSelectedDrugIds(drugs.map((d) => d.drug_id))}
+                          className="text-[10px] text-emerald hover:text-emerald/80 font-bold uppercase tracking-widest transition-colors"
                         >
-                          Clear
+                          Select All
                         </button>
-                      )}
+                        {simSelectedDrugIds.length > 0 && (
+                          <button
+                            onClick={() => setSimSelectedDrugIds([])}
+                            className="text-[10px] text-muted-foreground hover:text-red-400 font-bold uppercase tracking-widest transition-colors"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
@@ -991,12 +999,12 @@ export function DrugDoseCalculatorModal({
                     <p className="text-sm text-muted-foreground font-medium">
                       {drugs.length > 0
                         ? "Select drugs above to calculate doses"
-                        : "No drugs available in the system"}
+                        : "No prescribed drugs for this visit"}
                     </p>
                     <p className="text-xs text-muted-foreground/60">
                       {drugs.length > 0
                         ? "Or create a prescription first, then open the calculator"
-                        : "Add drugs to the formulary to use the dose calculator"}
+                        : "Create a prescription first, then open the dose calculator"}
                     </p>
                   </div>
                 )}
