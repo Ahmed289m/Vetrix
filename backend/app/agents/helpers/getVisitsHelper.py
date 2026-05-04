@@ -86,30 +86,35 @@ async def getVisitsInfo(pet_id: str, pet_type: str | None = None):
     for visit in visits:
         medications = []
 
-        prescription_id = visit.get("prescription_id")
-        if prescription_id:
+        prescription_ids = visit.get("prescription_ids")
+        if not isinstance(prescription_ids, list) or not prescription_ids:
+            legacy_prescription_id = visit.get("prescription_id")
+            prescription_ids = [legacy_prescription_id] if legacy_prescription_id else []
+
+        for prescription_id in prescription_ids:
             prescription = await prescription_service.get_by_prescription_id(prescription_id)
 
-            if prescription:
-                item_ids = prescription.get("prescriptionItem_ids", [])
+            if not prescription:
+                continue
 
-                items = await prescription_item_service.list_by_prescription_item_ids(item_ids)
+            item_ids = prescription.get("prescriptionItem_ids", [])
+            items = await prescription_item_service.list_by_prescription_item_ids(item_ids)
 
-                for item in items:
-                    item_drug_ids = item.get("drug_ids") or []
-                    if not item_drug_ids:
-                        continue
+            for item in items:
+                item_drug_ids = item.get("drug_ids") or []
+                if not item_drug_ids:
+                    continue
 
-                    drugs = await drug_service.list_by_drug_ids(item_drug_ids)
-                    for drug in drugs:
-                        if normalized_pet_type:
-                            dose_label = _resolve_dose_for_pet_type(drug.get("dose"), normalized_pet_type)
-                        else:
-                            dose_label = item.get("drugDose") or _resolve_dose_for_pet_type(drug.get("dose"), "")
-                        medications.append({
-                            "drug_name": drug.get("name"),
-                            "dose": dose_label,
-                        })
+                drugs = await drug_service.list_by_drug_ids(item_drug_ids)
+                for drug in drugs:
+                    if normalized_pet_type:
+                        dose_label = _resolve_dose_for_pet_type(drug.get("dose"), normalized_pet_type)
+                    else:
+                        dose_label = item.get("drugDose") or _resolve_dose_for_pet_type(drug.get("dose"), "")
+                    medications.append({
+                        "drug_name": drug.get("name"),
+                        "dose": dose_label,
+                    })
 
         result.append({
             "visit_notes": visit.get("notes"),

@@ -175,6 +175,10 @@ export function VisitDetailModal({
   const doctorName = visit.doctor_name || doctor?.fullname || "Not assigned";
   const owner = getUser(visit.client_id);
   const pDrugs = getDrugsForVisit(visit);
+  const hasLinkedPrescription =
+    Boolean(visit.prescription_id) ||
+    (Array.isArray(visit.prescription_ids) &&
+      visit.prescription_ids.length > 0);
 
   const PetIcon =
     pet?.type === "cat" ? Cat : pet?.type === "dog" ? Dog : FlaskConical;
@@ -296,10 +300,14 @@ export function VisitDetailModal({
                   sKey && drug.dose
                     ? (drug.dose as Record<string, unknown>)[sKey]
                     : null;
-                const doseObj = (doseEntry || null) as
-                  | { value?: number | null; unit?: string | null; frequency?: string | null }
-                  | null;
-                const doseRoute = (drug.dose as { route?: string | null } | undefined)?.route;
+                const doseObj = (doseEntry || null) as {
+                  value?: number | null;
+                  unit?: string | null;
+                  frequency?: string | null;
+                } | null;
+                const doseRoute = (
+                  drug.dose as { route?: string | null } | undefined
+                )?.route;
                 const specDose = doseObj
                   ? [
                       doseObj.value != null ? String(doseObj.value) : null,
@@ -307,17 +315,17 @@ export function VisitDetailModal({
                       doseObj.frequency || null,
                     ]
                       .filter(Boolean)
-                      .join(" ") +
-                    (doseRoute ? ` (${doseRoute})` : "")
+                      .join(" ") + (doseRoute ? ` (${doseRoute})` : "")
                   : null;
 
                 const toxEntry =
                   sKey && drug.toxicity
                     ? (drug.toxicity as Record<string, unknown>)[sKey]
                     : null;
-                const toxObj = (toxEntry || null) as
-                  | { severity?: string | null; notes?: string | null }
-                  | null;
+                const toxObj = (toxEntry || null) as {
+                  severity?: string | null;
+                  notes?: string | null;
+                } | null;
                 const specTox = toxObj?.notes || null;
                 const sev = toxObj?.severity || undefined;
                 const styles = severityStyle(sev);
@@ -388,23 +396,25 @@ export function VisitDetailModal({
                     )}
 
                     {/* Interactions */}
-                    {!isClient && drug.interactions && drug.interactions.length > 0 && (
-                      <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/15">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-amber-400 mb-1.5 flex items-center gap-1">
-                          <Zap className="w-3 h-3" /> Known Drug Interactions
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {drug.interactions.map((name, i) => (
-                            <span
-                              key={i}
-                              className="px-2 py-0.5 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/15"
-                            >
-                              {name}
-                            </span>
-                          ))}
+                    {!isClient &&
+                      drug.interactions &&
+                      drug.interactions.length > 0 && (
+                        <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/15">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-amber-400 mb-1.5 flex items-center gap-1">
+                            <Zap className="w-3 h-3" /> Known Drug Interactions
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {drug.interactions.map((name, i) => (
+                              <span
+                                key={i}
+                                className="px-2 py-0.5 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/15"
+                              >
+                                {name}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
                     {/* Contraindications */}
                     {!isClient && drug.contraindications?.length > 0 && (
@@ -426,31 +436,33 @@ export function VisitDetailModal({
                     )}
 
                     {/* Client side-effects watch */}
-                    {isClient && drug.side_effects && drug.side_effects.length > 0 && (
-                      <div className="p-3 rounded-xl bg-orange-500/5 border border-orange-500/10">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-orange-400 mb-1.5 flex items-center gap-1">
-                          <AlertCircle className="w-3 h-3" /> Watch for these
-                          side effects
-                        </p>
-                        <ul className="space-y-1">
-                          {drug.side_effects.slice(0, 4).map((se, i) => (
-                            <li
-                              key={i}
-                              className="text-xs text-foreground/70 flex items-start gap-1.5"
-                            >
-                              <ChevronRight className="w-3 h-3 text-orange-400 shrink-0 mt-0.5" />
-                              {se}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                    {isClient &&
+                      drug.side_effects &&
+                      drug.side_effects.length > 0 && (
+                        <div className="p-3 rounded-xl bg-orange-500/5 border border-orange-500/10">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-orange-400 mb-1.5 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" /> Watch for these
+                            side effects
+                          </p>
+                          <ul className="space-y-1">
+                            {drug.side_effects.slice(0, 4).map((se, i) => (
+                              <li
+                                key={i}
+                                className="text-xs text-foreground/70 flex items-start gap-1.5"
+                              >
+                                <ChevronRight className="w-3 h-3 text-orange-400 shrink-0 mt-0.5" />
+                                {se}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                   </div>
                 );
               })}
             </div>
           </div>
-        ) : visit.prescription_id ? (
+        ) : hasLinkedPrescription ? (
           <div className="flex items-center gap-3 p-4 rounded-2xl bg-muted/10 border border-border/30 text-sm text-muted-foreground">
             <Pill className="w-4 h-4 shrink-0" />
             <span>Prescription linked — drug details unavailable</span>

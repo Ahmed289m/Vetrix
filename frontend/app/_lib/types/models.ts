@@ -131,6 +131,7 @@ export interface ClinicUpdate {
 export interface Visit {
   visit_id: string;
   prescription_id?: string;
+  prescription_ids?: string[];
   clinic_id: string;
   client_id: string;
   client_name?: string;
@@ -143,6 +144,7 @@ export interface Visit {
 
 export interface VisitCreate {
   prescription_id?: string;
+  prescription_ids?: string[];
   client_id: string;
   notes?: string;
   pet_id: string;
@@ -152,6 +154,7 @@ export interface VisitCreate {
 
 export interface VisitUpdate {
   prescription_id?: string;
+  prescription_ids?: string[];
   client_id?: string;
   notes?: string;
   pet_id?: string;

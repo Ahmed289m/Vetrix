@@ -7,7 +7,8 @@ from app.repositories.user_repository import UserRepository
 from app.repositories.visit_repository import VisitRepository
 from app.schemas.visit import VisitCreate, VisitUpdate
 from app.services.base_crud_service import BaseCrudService
-from app.utils.mongo_helpers import serialize_mongo_doc
+from app.utils.mongo_helpers import normalize_for_mongo, serialize_mongo_doc
+from app.utils.ws import broadcast
 
 
 class VisitService:
@@ -15,6 +16,43 @@ class VisitService:
         self.crud = BaseCrudService(repository, Visit, id_field="visit_id", id_prefix="visit")
         self.repository = repository
         self.user_repository = user_repository
+
+    @staticmethod
+    def _normalize_prescription_ids(data: dict) -> dict:
+        raw_ids = data.get("prescription_ids")
+        if isinstance(raw_ids, list):
+            normalized_ids = [
+                value.strip()
+                for value in raw_ids
+                if isinstance(value, str) and value.strip()
+            ]
+        else:
+            normalized_ids = []
+
+        legacy_id = data.get("prescription_id")
+        if isinstance(legacy_id, str) and legacy_id.strip() and not normalized_ids:
+            normalized_ids = [legacy_id.strip()]
+
+        deduped_ids: list[str] = []
+        seen: set[str] = set()
+        for prescription_id in normalized_ids:
+            if prescription_id in seen:
+                continue
+            deduped_ids.append(prescription_id)
+            seen.add(prescription_id)
+
+        if "prescription_ids" in data:
+            data["prescription_ids"] = deduped_ids
+            data["prescription_id"] = deduped_ids[0] if deduped_ids else None
+        elif "prescription_id" in data and deduped_ids:
+            data["prescription_ids"] = deduped_ids
+            data["prescription_id"] = deduped_ids[0]
+
+        return data
+
+    def _normalize_visit_record(self, visit: dict) -> dict:
+        normalized = dict(visit)
+        return self._normalize_prescription_ids(normalized)
 
     async def create_visit(self, request: VisitCreate, current_user: TokenData) -> dict:
         """
@@ -39,8 +77,10 @@ class VisitService:
             )
 
         payload = request.model_dump(exclude_none=True)
+        payload = self._normalize_prescription_ids(payload)
         payload["clinic_id"] = clinic_id
-        return await self.crud.create(Visit(**payload))
+        created = await self.crud.create(Visit(**payload))
+        return self._normalize_visit_record(created)
 
     async def list_visits(self, current_user: TokenData) -> list[dict]:
         """
@@ -57,7 +97,8 @@ class VisitService:
                 key=lambda v: v.get("date") or "",
                 reverse=True,
             )
-            return await self._attach_user_names(sorted_visits)
+            normalized = [self._normalize_visit_record(visit) for visit in sorted_visits]
+            return await self._attach_user_names(normalized)
 
         if current_user.role == UserRole.CLIENT:
             # CLIENT has no clinic_id in JWT — look it up from user record
@@ -72,7 +113,10 @@ class VisitService:
                 return []
             visits = await self.repository.list_by_clinic(current_user.clinic_id)
 
-        serialized = [serialize_mongo_doc(visit, "visit_id") for visit in visits]
+        serialized = [
+            self._normalize_visit_record(serialize_mongo_doc(visit, "visit_id"))
+            for visit in visits
+        ]
         return await self._attach_user_names(serialized)
 
     async def list_visits_by_pet(self, pet_id: str) -> list[dict]:
@@ -82,7 +126,10 @@ class VisitService:
             return []
 
         visits = await self.repository.list_by_pet(normalized_pet_id)
-        serialized = [serialize_mongo_doc(visit, "visit_id") for visit in visits]
+        serialized = [
+            self._normalize_visit_record(serialize_mongo_doc(visit, "visit_id"))
+            for visit in visits
+        ]
         return await self._attach_user_names(serialized)
 
     async def get_visit(self, visit_id: str, current_user: TokenData) -> dict:
@@ -110,7 +157,8 @@ class VisitService:
                         detail="Access denied",
                     )
 
-        enriched_list = await self._attach_user_names([visit])
+        normalized_visit = self._normalize_visit_record(visit)
+        enriched_list = await self._attach_user_names([normalized_visit])
         return enriched_list[0]
 
     async def _attach_user_names(self, visits: list[dict]) -> list[dict]:
@@ -159,7 +207,23 @@ class VisitService:
                     detail="Access denied",
                 )
         
-        return await self.crud.update(visit_id, request)
+        payload = self._normalize_prescription_ids(request.model_dump(exclude_none=True))
+        if not payload:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No fields provided for update.",
+            )
+
+        updated = await self.repository.update_by_id(
+            visit_id,
+            normalize_for_mongo(payload),
+        )
+        if not updated:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found.")
+
+        await broadcast("visits:updated", {"id": visit_id})
+        serialized = serialize_mongo_doc(updated, "visit_id")
+        return self._normalize_visit_record(serialized)
 
     async def delete_visit(self, visit_id: str, current_user: TokenData) -> None:
         """

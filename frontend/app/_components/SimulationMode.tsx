@@ -278,7 +278,9 @@ export default function SimulationMode({ role }: Props) {
   const [activeVisitApptId, setActiveVisitApptId] = useState("");
   const [editingVisitId, setEditingVisitId] = useState("");
   const [visitNotes, setVisitNotes] = useState("");
-  const [visitPrescriptionId, setVisitPrescriptionId] = useState("");
+  const [visitPrescriptionIds, setVisitPrescriptionIds] = useState<string[]>(
+    [],
+  );
 
   // ── AI assistant panel ───────────────────────────────────────────────
   const [showAiAssistant, setShowAiAssistant] = useState(false);
@@ -296,7 +298,21 @@ export default function SimulationMode({ role }: Props) {
   // ── Dose calculator modal ────────────────────────────────────────────
   const [showDrugCalc, setShowDrugCalc] = useState(false);
   // Calculated doses keyed by drug_id — populated by onDosesCalculated callback
-  const [calculatedDoses, setCalculatedDoses] = useState<Map<string, { totalMg: number; dose: number | null; doseUnit: string | null; concLabel: string; drugName: string; drugClass: string; frequency: string | null; route: string | null }>>(new Map());
+  const [calculatedDoses, setCalculatedDoses] = useState<
+    Map<
+      string,
+      {
+        totalMg: number;
+        dose: number | null;
+        doseUnit: string | null;
+        concLabel: string;
+        drugName: string;
+        drugClass: string;
+        frequency: string | null;
+        route: string | null;
+      }
+    >
+  >(new Map());
 
   // ── Update weight modal ───────────────────────────────────────────────
   const [showUpdateWeight, setShowUpdateWeight] = useState(false);
@@ -424,13 +440,20 @@ export default function SimulationMode({ role }: Props) {
     const sKey = speciesKey(petType);
     if (!sKey || !drug.dose) return null;
     const entry = (drug.dose as Record<string, unknown>)[sKey] as
-      | { value?: number | null; unit?: string | null; frequency?: string | null }
+      | {
+          value?: number | null;
+          unit?: string | null;
+          frequency?: string | null;
+        }
       | null
       | undefined;
     if (!entry || entry.value == null) return null;
     const mgPerKg =
-      typeof entry.value === "number" ? entry.value : parseFloat(String(entry.value));
-    if (!Number.isFinite(mgPerKg) || mgPerKg <= 0 || petWeight <= 0) return null;
+      typeof entry.value === "number"
+        ? entry.value
+        : parseFloat(String(entry.value));
+    if (!Number.isFinite(mgPerKg) || mgPerKg <= 0 || petWeight <= 0)
+      return null;
     const totalMg = Math.round(petWeight * mgPerKg * 100) / 100;
     const labelParts: string[] = [String(entry.value)];
     if (entry.unit) labelParts.push(String(entry.unit));
@@ -443,27 +466,38 @@ export default function SimulationMode({ role }: Props) {
       (rx) => rx.pet_id === petId && rx.client_id === clientId,
     );
 
+  const getVisitPrescriptionIds = (visit: Visit): string[] => {
+    const fromList = Array.isArray(visit.prescription_ids)
+      ? visit.prescription_ids.filter(Boolean)
+      : [];
+    if (fromList.length > 0) return [...new Set(fromList)];
+    return visit.prescription_id ? [visit.prescription_id] : [];
+  };
+
   const getUnlinkedCasePrescriptions = (petId: string, clientId: string) => {
     const linked = new Set(
-      allVisits.map((v) => v.prescription_id).filter(Boolean),
+      allVisits.flatMap((visit) => getVisitPrescriptionIds(visit)),
     );
     return getCasePrescriptions(petId, clientId).filter(
       (rx) => !linked.has(rx.prescription_id),
     );
   };
 
-  const getAutoLinkedPrescriptionId = (petId: string, clientId: string) => {
+  const getAutoLinkedPrescriptionIds = (
+    petId: string,
+    clientId: string,
+  ): string[] => {
     const unlinked = getUnlinkedCasePrescriptions(petId, clientId);
-    if (!unlinked.length) return "";
+    if (!unlinked.length) return [];
     const unlinkedIds = new Set(unlinked.map((rx) => rx.prescription_id));
     const sessionOrder = Array.from(sessionRxIds);
     for (let i = sessionOrder.length - 1; i >= 0; i--) {
       const rxId = sessionOrder[i];
       if (unlinkedIds.has(rxId)) {
-        return rxId;
+        return [rxId];
       }
     }
-    return unlinked[0]?.prescription_id || "";
+    return unlinked[0]?.prescription_id ? [unlinked[0].prescription_id] : [];
   };
 
   // ── Session Rx list ───────────────────────────────────────────────────────
@@ -485,7 +519,11 @@ export default function SimulationMode({ role }: Props) {
     const bClassLow = (b.class || "").toLowerCase();
     return refs.some((ref) => {
       const refLow = ref.toLowerCase();
-      return ref === b.drug_id || refLow === bNameLow || (bClassLow && refLow === bClassLow);
+      return (
+        ref === b.drug_id ||
+        refLow === bNameLow ||
+        (bClassLow && refLow === bClassLow)
+      );
     });
   };
 
@@ -506,9 +544,11 @@ export default function SimulationMode({ role }: Props) {
     const ids = new Set<string>();
     for (let i = 0; i < selectedDrugs.length; i++) {
       for (let j = i + 1; j < selectedDrugs.length; j++) {
-        const a = selectedDrugs[i]; const b = selectedDrugs[j];
+        const a = selectedDrugs[i];
+        const b = selectedDrugs[j];
         if (drugInteractsWith(a, b) || drugInteractsWith(b, a)) {
-          ids.add(a.drug_id); ids.add(b.drug_id);
+          ids.add(a.drug_id);
+          ids.add(b.drug_id);
         }
       }
     }
@@ -596,7 +636,7 @@ export default function SimulationMode({ role }: Props) {
     setVisitMode("create");
     setActiveVisitApptId(apptId);
     setEditingVisitId("");
-    setVisitPrescriptionId(getAutoLinkedPrescriptionId(petId, clientId));
+    setVisitPrescriptionIds(getAutoLinkedPrescriptionIds(petId, clientId));
     setVisitNotes("");
     setShowVisitModal(true);
   };
@@ -618,24 +658,35 @@ export default function SimulationMode({ role }: Props) {
     setEditingVisitId(visit.visit_id);
     setActiveVisitApptId("");
     setVisitNotes(visit.notes || "");
-    setVisitPrescriptionId(visit.prescription_id || "");
+    setVisitPrescriptionIds(getVisitPrescriptionIds(visit));
     setShowVisitModal(true);
   };
 
   const handleSaveVisit = () => {
     if (visitMode === "create") {
-      const appt = simAppointments.find((a) => a.appointment_id === activeVisitApptId);
+      const appt = simAppointments.find(
+        (a) => a.appointment_id === activeVisitApptId,
+      );
       if (!appt) return;
       const casePrescriptions = getCasePrescriptions(appt.petId, appt.clientId);
-      const linkedRxId = visitPrescriptionId;
+      const linkedRxIds = visitPrescriptionIds;
 
-      // Block: prescription is linked but none of its drugs have been run through the calculator at all
-      if (linkedRxId && casePrescriptions.length > 0) {
-        const rxDrugIds = getAllDrugIdsForRx(linkedRxId);
-        // A drug is "calculated" when totalMg > 0 (even if concentration was missing)
-        const anyCalculated = rxDrugIds.some((id) => (calculatedDoses.get(id)?.totalMg ?? 0) > 0);
-        if (!anyCalculated) {
-          toast.error("Please open the Dose Calculator first to calculate doses.", { duration: 5000 });
+      // Block when any selected prescription has no calculated doses yet.
+      if (linkedRxIds.length > 0 && casePrescriptions.length > 0) {
+        const hasUncalculatedSelection = linkedRxIds.some((rxId) => {
+          const rxDrugIds = getAllDrugIdsForRx(rxId);
+          return (
+            rxDrugIds.length > 0 &&
+            rxDrugIds.every(
+              (id) => (calculatedDoses.get(id)?.totalMg ?? 0) === 0,
+            )
+          );
+        });
+        if (hasUncalculatedSelection) {
+          toast.error(
+            "Please open the Dose Calculator first to calculate doses.",
+            { duration: 5000 },
+          );
           return;
         }
       }
@@ -647,7 +698,7 @@ export default function SimulationMode({ role }: Props) {
           id: editingVisitId,
           data: {
             notes: visitNotes,
-            prescription_id: visitPrescriptionId || undefined,
+            prescription_ids: visitPrescriptionIds,
           },
         },
         {
@@ -670,7 +721,9 @@ export default function SimulationMode({ role }: Props) {
         doctor_id: appt.doctor_id || user.userId,
         notes: visitNotes || "Visit created from simulation mode",
         date: new Date().toISOString(),
-        ...(visitPrescriptionId && { prescription_id: visitPrescriptionId }),
+        ...(visitPrescriptionIds.length > 0 && {
+          prescription_ids: visitPrescriptionIds,
+        }),
       };
       createVisit.mutate(payload, {
         onSuccess: () => {
@@ -741,7 +794,7 @@ export default function SimulationMode({ role }: Props) {
             setActiveVisitApptId(activePressApptId);
             setEditingVisitId("");
             setVisitNotes("");
-            setVisitPrescriptionId(rxId);
+            setVisitPrescriptionIds([rxId]);
             setShowVisitModal(true);
           }
         },
@@ -912,302 +965,324 @@ export default function SimulationMode({ role }: Props) {
           {/* ── My active case ── */}
           {myActiveCase && (
             <>
-            <motion.div
-              key={myActiveCase.appointment_id}
-              initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="p-5 rounded-xl border-2 border-cyan/30 bg-cyan/5 space-y-4"
-            >
-              <div className="flex items-center gap-1.5">
-                <motion.div
-                  animate={{ scale: [1, 1.4, 1] }}
-                  transition={{ repeat: Infinity, duration: 1.2 }}
-                  className="w-2 h-2 rounded-full bg-cyan"
-                />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-cyan">
-                  {t("current_case")} — {t("in_progress")}
-                </span>
-              </div>
-
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
+              <motion.div
+                key={myActiveCase.appointment_id}
+                initial={{ opacity: 0, scale: 0.97 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="p-5 rounded-xl border-2 border-cyan/30 bg-cyan/5 space-y-4"
+              >
+                <div className="flex items-center gap-1.5">
                   <motion.div
-                    animate={{ scale: [1, 1.08, 1] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                    className="w-12 h-12 rounded-xl bg-muted/40 flex items-center justify-center"
-                  >
-                    {myActiveCase.species === "dog" ? (
-                      <Dog className="w-6 h-6" />
-                    ) : myActiveCase.species === "cat" ? (
-                      <Cat className="w-6 h-6" />
-                    ) : (
-                      <FlaskConical className="w-6 h-6" />
-                    )}
-                  </motion.div>
-                  <div>
-                    <p className="text-lg font-extrabold">
-                      {myActiveCase.petName}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {myActiveCase.breed} · {myActiveCase.ownerName}
-                    </p>
-                    <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
-                      {myActiveCase.caseNumber}
-                    </p>
-                  </div>
-                </div>
-                {myActiveCase.appointment_date && (
-                  <span className="text-[10px] text-muted-foreground">
-                    {fmtDate(myActiveCase.appointment_date)}
+                    animate={{ scale: [1, 1.4, 1] }}
+                    transition={{ repeat: Infinity, duration: 1.2 }}
+                    className="w-2 h-2 rounded-full bg-cyan"
+                  />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-cyan">
+                    {t("current_case")} — {t("in_progress")}
                   </span>
-                )}
-              </div>
+                </div>
 
-              <p className="text-sm text-foreground/80">
-                {myActiveCase.complaint}
-              </p>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <motion.div
+                      animate={{ scale: [1, 1.08, 1] }}
+                      transition={{ repeat: Infinity, duration: 2 }}
+                      className="w-12 h-12 rounded-xl bg-muted/40 flex items-center justify-center"
+                    >
+                      {myActiveCase.species === "dog" ? (
+                        <Dog className="w-6 h-6" />
+                      ) : myActiveCase.species === "cat" ? (
+                        <Cat className="w-6 h-6" />
+                      ) : (
+                        <FlaskConical className="w-6 h-6" />
+                      )}
+                    </motion.div>
+                    <div>
+                      <p className="text-lg font-extrabold">
+                        {myActiveCase.petName}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {myActiveCase.breed} · {myActiveCase.ownerName}
+                      </p>
+                      <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                        {myActiveCase.caseNumber}
+                      </p>
+                    </div>
+                  </div>
+                  {myActiveCase.appointment_date && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {fmtDate(myActiveCase.appointment_date)}
+                    </span>
+                  )}
+                </div>
 
-              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-cyan/10 border border-cyan/20 text-xs text-cyan">
-                <UserCheck className="w-3.5 h-3.5" />
-                <span className="font-bold">
-                  Assigned to you · Dr. {user?.fullname}
-                </span>
-              </div>
+                <p className="text-sm text-foreground/80">
+                  {myActiveCase.complaint}
+                </p>
 
-              {/* Session prescriptions */}
-              {(() => {
-                const rxs = sessionCasePrescriptions;
-                if (!rxs.length)
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-cyan/10 border border-cyan/20 text-xs text-cyan">
+                  <UserCheck className="w-3.5 h-3.5" />
+                  <span className="font-bold">
+                    Assigned to you · Dr. {user?.fullname}
+                  </span>
+                </div>
+
+                {/* Session prescriptions */}
+                {(() => {
+                  const rxs = sessionCasePrescriptions;
+                  if (!rxs.length)
+                    return (
+                      <div className="text-xs text-muted-foreground/60 italic px-1">
+                        No prescriptions issued this session yet.
+                      </div>
+                    );
                   return (
-                    <div className="text-xs text-muted-foreground/60 italic px-1">
-                      No prescriptions issued this session yet.
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-emerald flex items-center gap-1">
+                        <Pill className="w-3 h-3" /> Session prescriptions
+                      </p>
+                      {rxs.map((rx) => {
+                        const drug = getDrugForRx(rx.prescription_id);
+                        const sKey = speciesKey(myActiveCase.petType);
+                        const sev = getDrugSeverityForSpecies(drug, sKey);
+                        const activePetForDose = allPets.find(
+                          (p) => p.pet_id === myActiveCase.petId,
+                        );
+                        const autoDose =
+                          drug && activePetForDose
+                            ? calcAutoDose(
+                                drug,
+                                activePetForDose.weight,
+                                myActiveCase.petType,
+                              )
+                            : null;
+                        return (
+                          <div
+                            key={rx.prescription_id}
+                            className="px-3 py-2 rounded-xl bg-emerald/5 border border-emerald/15 text-xs group space-y-1"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Pill className="w-3.5 h-3.5 text-emerald shrink-0" />
+                              <span className="font-bold text-emerald flex-1 truncate">
+                                {drug?.name || "Drug"}
+                              </span>
+                              {sev && <ToxicityBadge severity={sev} />}
+                              <button
+                                onClick={() => {
+                                  setDetailVisit(null);
+                                  setShowVisitDetail(false);
+                                }}
+                                className="sr-only"
+                              />
+                              <button
+                                onClick={() =>
+                                  handleDeletePrescription(rx.prescription_id)
+                                }
+                                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/10 rounded-lg transition-all"
+                              >
+                                <Trash2 className="w-3 h-3 text-red-400" />
+                              </button>
+                            </div>
+                            {autoDose && (
+                              <div className="flex items-center gap-2 text-[10px] text-muted-foreground ml-5">
+                                <Calculator className="w-3 h-3 text-cyan shrink-0" />
+                                <span>
+                                  <span className="font-bold text-cyan">
+                                    {autoDose.mgPerKg} mg/kg
+                                  </span>
+                                  <span className="mx-1">×</span>
+                                  <span className="font-bold">
+                                    {activePetForDose?.weight} kg
+                                  </span>
+                                  <span className="mx-1">=</span>
+                                  <span className="font-black text-emerald">
+                                    {autoDose.totalMg} mg
+                                  </span>
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   );
-                return (
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald flex items-center gap-1">
-                      <Pill className="w-3 h-3" /> Session prescriptions
-                    </p>
-                    {rxs.map((rx) => {
-                      const drug = getDrugForRx(rx.prescription_id);
-                      const sKey = speciesKey(myActiveCase.petType);
-                      const sev = getDrugSeverityForSpecies(drug, sKey);
-                      const activePetForDose = allPets.find((p) => p.pet_id === myActiveCase.petId);
-                      const autoDose = drug && activePetForDose ? calcAutoDose(drug, activePetForDose.weight, myActiveCase.petType) : null;
-                      return (
-                        <div
-                          key={rx.prescription_id}
-                          className="px-3 py-2 rounded-xl bg-emerald/5 border border-emerald/15 text-xs group space-y-1"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Pill className="w-3.5 h-3.5 text-emerald shrink-0" />
-                            <span className="font-bold text-emerald flex-1 truncate">
-                              {drug?.name || "Drug"}
-                            </span>
-                            {sev && <ToxicityBadge severity={sev} />}
-                            <button
-                              onClick={() => {
-                                setDetailVisit(null);
-                                setShowVisitDetail(false);
-                              }}
-                              className="sr-only"
-                            />
-                            <button
-                              onClick={() =>
-                                handleDeletePrescription(rx.prescription_id)
-                              }
-                              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/10 rounded-lg transition-all"
-                            >
-                              <Trash2 className="w-3 h-3 text-red-400" />
-                            </button>
-                          </div>
-                          {autoDose && (
-                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground ml-5">
-                              <Calculator className="w-3 h-3 text-cyan shrink-0" />
-                              <span>
-                                <span className="font-bold text-cyan">{autoDose.mgPerKg} mg/kg</span>
-                                <span className="mx-1">×</span>
-                                <span className="font-bold">{activePetForDose?.weight} kg</span>
-                                <span className="mx-1">=</span>
-                                <span className="font-black text-emerald">{autoDose.totalMg} mg</span>
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
+                })()}
 
-              {/* Doctor action buttons */}
-              {(() => {
-                const activePet = allPets.find(
-                  (p) => p.pet_id === myActiveCase.petId,
-                );
-                return (
-                  <div className="flex items-center gap-2.5 flex-wrap pt-1">
-                    {/* Update Weight */}
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => {
-                        setNewWeightInput(String(activePet?.weight ?? ""));
-                        setShowUpdateWeight(true);
-                      }}
-                      className="flex items-center gap-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 px-4 py-2.5 rounded-xl text-sm font-bold border border-amber-500/20 transition-colors"
-                    >
-                      <Scale className="w-4 h-4" />
-                      Update Weight
-                    </motion.button>
+                {/* Doctor action buttons */}
+                {(() => {
+                  const activePet = allPets.find(
+                    (p) => p.pet_id === myActiveCase.petId,
+                  );
+                  return (
+                    <div className="flex items-center gap-2.5 flex-wrap pt-1">
+                      {/* Update Weight */}
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => {
+                          setNewWeightInput(String(activePet?.weight ?? ""));
+                          setShowUpdateWeight(true);
+                        }}
+                        className="flex items-center gap-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 px-4 py-2.5 rounded-xl text-sm font-bold border border-amber-500/20 transition-colors"
+                      >
+                        <Scale className="w-4 h-4" />
+                        Update Weight
+                      </motion.button>
 
-                    {/* Create Visit */}
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() =>
-                        openCreateVisit(
-                          myActiveCase.appointment_id,
-                          myActiveCase.petId,
-                          myActiveCase.clientId,
-                        )
-                      }
-                      className="flex items-center gap-2 gradient-cyan-blue text-primary-foreground px-4 py-2.5 rounded-xl text-sm font-bold glow-cyan"
-                    >
-                      <Plus className="w-4 h-4" />
-                      {t("create_visit")}
-                    </motion.button>
+                      {/* Create Visit */}
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() =>
+                          openCreateVisit(
+                            myActiveCase.appointment_id,
+                            myActiveCase.petId,
+                            myActiveCase.clientId,
+                          )
+                        }
+                        className="flex items-center gap-2 gradient-cyan-blue text-primary-foreground px-4 py-2.5 rounded-xl text-sm font-bold glow-cyan"
+                      >
+                        <Plus className="w-4 h-4" />
+                        {t("create_visit")}
+                      </motion.button>
 
-                    {/* Prescribe */}
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() =>
-                        openCreatePrescription(myActiveCase.appointment_id)
-                      }
-                      className="flex items-center gap-2 gradient-emerald-cyan text-primary-foreground px-4 py-2.5 rounded-xl text-sm font-bold glow-emerald"
-                    >
-                      <Plus className="w-4 h-4" />
-                      {t("prescribe")}
-                    </motion.button>
+                      {/* Prescribe */}
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() =>
+                          openCreatePrescription(myActiveCase.appointment_id)
+                        }
+                        className="flex items-center gap-2 gradient-emerald-cyan text-primary-foreground px-4 py-2.5 rounded-xl text-sm font-bold glow-emerald"
+                      >
+                        <Plus className="w-4 h-4" />
+                        {t("prescribe")}
+                      </motion.button>
 
-                    {/* Fluid Therapy */}
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => setShowFluidTherapy(true)}
-                      className="flex items-center gap-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 px-4 py-2.5 rounded-xl text-sm font-bold border border-blue-500/20 transition-colors"
-                    >
-                      <Droplets className="w-4 h-4" />
-                      Fluid Therapy
-                    </motion.button>
+                      {/* Fluid Therapy */}
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => setShowFluidTherapy(true)}
+                        className="flex items-center gap-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 px-4 py-2.5 rounded-xl text-sm font-bold border border-blue-500/20 transition-colors"
+                      >
+                        <Droplets className="w-4 h-4" />
+                        Fluid Therapy
+                      </motion.button>
 
-                    {/* Dose Calculator */}
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => setShowDrugCalc(true)}
-                      className="flex items-center gap-2 bg-emerald/10 hover:bg-emerald/20 text-emerald px-4 py-2.5 rounded-xl text-sm font-bold border border-emerald/20 transition-colors"
-                    >
-                      <Calculator className="w-4 h-4" />
-                      Dose Calculator
-                    </motion.button>
+                      {/* Dose Calculator */}
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => setShowDrugCalc(true)}
+                        className="flex items-center gap-2 bg-emerald/10 hover:bg-emerald/20 text-emerald px-4 py-2.5 rounded-xl text-sm font-bold border border-emerald/20 transition-colors"
+                      >
+                        <Calculator className="w-4 h-4" />
+                        Dose Calculator
+                      </motion.button>
 
-                    {/* Case History */}
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={openCaseHistory}
-                      className="flex items-center gap-2 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 px-4 py-2.5 rounded-xl text-sm font-bold border border-violet-500/20 transition-colors"
-                    >
-                      <BookOpen className="w-4 h-4" />
-                      {t("case_history") || "Case History"}
-                    </motion.button>
+                      {/* Case History */}
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={openCaseHistory}
+                        className="flex items-center gap-2 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 px-4 py-2.5 rounded-xl text-sm font-bold border border-violet-500/20 transition-colors"
+                      >
+                        <BookOpen className="w-4 h-4" />
+                        {t("case_history") || "Case History"}
+                      </motion.button>
 
-                    {/* Ask AI */}
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => setShowAiAssistant((v) => !v)}
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
-                        showAiAssistant
-                          ? "bg-emerald/15 text-emerald border-emerald/30"
-                          : "bg-muted/30 text-muted-foreground hover:bg-emerald/10 hover:text-emerald border-border/50"
-                      }`}
-                    >
-                      <Bot className="w-4 h-4" />
-                      Ask AI
-                    </motion.button>
+                      {/* Ask AI */}
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => setShowAiAssistant((v) => !v)}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
+                          showAiAssistant
+                            ? "bg-emerald/15 text-emerald border-emerald/30"
+                            : "bg-muted/30 text-muted-foreground hover:bg-emerald/10 hover:text-emerald border-border/50"
+                        }`}
+                      >
+                        <Bot className="w-4 h-4" />
+                        Ask AI
+                      </motion.button>
 
-                    {/* Complete */}
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() =>
-                        handleComplete(myActiveCase.appointment_id)
-                      }
-                      disabled={updateAppointment.isPending}
-                      className="flex items-center gap-2 bg-emerald/90 hover:bg-emerald text-primary-foreground px-4 py-2.5 rounded-xl text-sm font-bold disabled:opacity-50"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      {t("complete")}
-                    </motion.button>
-                  </div>
-                );
-              })()}
-            </motion.div>
-
-            {/* AI Assistant Modal — portal to body, unrestricted by simulation box */}
-            <Modal open={showAiAssistant} onBgClick={() => setShowAiAssistant(false)}>
-              <motion.div
-                key="ai-modal"
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
-                onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                className="relative w-full max-w-2xl h-[80vh] rounded-2xl bg-background/95 backdrop-blur-2xl border border-border/30 shadow-2xl shadow-black/30 flex flex-col overflow-hidden"
-              >
-                {/* Ambient glow */}
-                <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
-                  <div className="absolute -top-20 left-1/4 w-72 h-72 bg-emerald/[0.06] rounded-full blur-[100px]" />
-                  <div className="absolute -bottom-16 right-1/3 w-60 h-60 bg-cyan/[0.04] rounded-full blur-[80px]" />
-                </div>
-                {/* Gradient top edge */}
-                <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-emerald/40 to-transparent" />
-
-                {/* Modal header */}
-                <div className="shrink-0 relative z-10 flex items-center justify-between px-5 py-3.5 border-b border-border/20">
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <div className="absolute -inset-0.5 bg-gradient-to-br from-emerald/30 to-cyan/20 rounded-xl blur-sm" />
-                      <div className="relative w-8 h-8 rounded-xl gradient-emerald-cyan flex items-center justify-center shadow-md shadow-emerald/15">
-                        <Bot className="w-4 h-4 text-primary-foreground" />
-                      </div>
+                      {/* Complete */}
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() =>
+                          handleComplete(myActiveCase.appointment_id)
+                        }
+                        disabled={updateAppointment.isPending}
+                        className="flex items-center gap-2 bg-emerald/90 hover:bg-emerald text-primary-foreground px-4 py-2.5 rounded-xl text-sm font-bold disabled:opacity-50"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        {t("complete")}
+                      </motion.button>
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-bold gradient-text">Vetrix AI</p>
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald/8 border border-emerald/15 text-[8px] font-bold text-emerald/70 uppercase tracking-wider">
-                          Simulation
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground/50">Differential diagnoses</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowAiAssistant(false)}
-                    className="p-2 rounded-xl hover:bg-muted/30 transition-all duration-200 text-muted-foreground/30 hover:text-muted-foreground"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                {/* Chat fills remaining height */}
-                <div className="flex-1 min-h-0 relative z-10">
-                  <ChatAssistant role="doctor" context="simulation_mode" />
-                </div>
+                  );
+                })()}
               </motion.div>
-            </Modal>
+
+              {/* AI Assistant Modal — portal to body, unrestricted by simulation box */}
+              <Modal
+                open={showAiAssistant}
+                onBgClick={() => setShowAiAssistant(false)}
+              >
+                <motion.div
+                  key="ai-modal"
+                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                  transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
+                  onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                  className="relative w-full max-w-2xl h-[80vh] rounded-2xl bg-background/95 backdrop-blur-2xl border border-border/30 shadow-2xl shadow-black/30 flex flex-col overflow-hidden"
+                >
+                  {/* Ambient glow */}
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
+                    <div className="absolute -top-20 left-1/4 w-72 h-72 bg-emerald/[0.06] rounded-full blur-[100px]" />
+                    <div className="absolute -bottom-16 right-1/3 w-60 h-60 bg-cyan/[0.04] rounded-full blur-[80px]" />
+                  </div>
+                  {/* Gradient top edge */}
+                  <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-emerald/40 to-transparent" />
+
+                  {/* Modal header */}
+                  <div className="shrink-0 relative z-10 flex items-center justify-between px-5 py-3.5 border-b border-border/20">
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <div className="absolute -inset-0.5 bg-gradient-to-br from-emerald/30 to-cyan/20 rounded-xl blur-sm" />
+                        <div className="relative w-8 h-8 rounded-xl gradient-emerald-cyan flex items-center justify-center shadow-md shadow-emerald/15">
+                          <Bot className="w-4 h-4 text-primary-foreground" />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-bold gradient-text">
+                            Vetrix AI
+                          </p>
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald/8 border border-emerald/15 text-[8px] font-bold text-emerald/70 uppercase tracking-wider">
+                            Simulation
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground/50">
+                          Differential diagnoses
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowAiAssistant(false)}
+                      className="p-2 rounded-xl hover:bg-muted/30 transition-all duration-200 text-muted-foreground/30 hover:text-muted-foreground"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {/* Chat fills remaining height */}
+                  <div className="flex-1 min-h-0 relative z-10">
+                    <ChatAssistant role="doctor" context="simulation_mode" />
+                  </div>
+                </motion.div>
+              </Modal>
             </>
           )}
 
@@ -1329,7 +1404,9 @@ export default function SimulationMode({ role }: Props) {
                     {visitMode === "edit" ? "Edit Visit" : t("create_visit")}
                   </h3>
                   {visitMode === "create" && visitAppt && (
-                    <p className="text-[10px] text-muted-foreground/60 font-mono">{visitAppt.caseNumber}</p>
+                    <p className="text-[10px] text-muted-foreground/60 font-mono">
+                      {visitAppt.caseNumber}
+                    </p>
                   )}
                 </div>
               </div>
@@ -1343,193 +1420,303 @@ export default function SimulationMode({ role }: Props) {
           </div>
 
           <div className="p-5 space-y-4">
-          {/* Patient + Doctor + Date strip */}
-          {visitMode === "create" && visitAppt && (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-tint/5 border border-tint/5">
-              <div className="w-9 h-9 rounded-lg bg-muted/40 flex items-center justify-center shrink-0">
-                {visitAppt.species === "dog" ? (
-                  <Dog className="w-5 h-5" />
-                ) : visitAppt.species === "cat" ? (
-                  <Cat className="w-5 h-5" />
-                ) : (
-                  <FlaskConical className="w-5 h-5" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold truncate">{visitAppt.petName}</p>
-                <p className="text-[10px] text-muted-foreground truncate">{visitAppt.ownerName} · {visitAppt.complaint}</p>
-              </div>
-              <div className="shrink-0 text-right text-[10px]">
-                <p className="font-bold text-cyan">Dr. {user?.fullname?.split(" ")[0] || "—"}</p>
-                <p className="text-muted-foreground/60">{fmtDate(new Date().toISOString())}</p>
-              </div>
-            </div>
-          )}
-
-          {/* ── No prescription warning ── */}
-          {visitMode === "create" && visitAppt && (() => {
-            const hasPrescriptions = getCasePrescriptions(visitAppt.petId, visitAppt.clientId).length > 0;
-            if (hasPrescriptions) return null;
-            return (
-              <div className="flex items-start gap-2.5 px-3 py-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-400">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-black">No prescription issued yet</p>
-                  <p className="opacity-80 mt-0.5">Consider prescribing before recording this visit. Proceed only if this is a non-pharmacological visit.</p>
+            {/* Patient + Doctor + Date strip */}
+            {visitMode === "create" && visitAppt && (
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-tint/5 border border-tint/5">
+                <div className="w-9 h-9 rounded-lg bg-muted/40 flex items-center justify-center shrink-0">
+                  {visitAppt.species === "dog" ? (
+                    <Dog className="w-5 h-5" />
+                  ) : visitAppt.species === "cat" ? (
+                    <Cat className="w-5 h-5" />
+                  ) : (
+                    <FlaskConical className="w-5 h-5" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold truncate">
+                    {visitAppt.petName}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground truncate">
+                    {visitAppt.ownerName} · {visitAppt.complaint}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right text-[10px]">
+                  <p className="font-bold text-cyan">
+                    Dr. {user?.fullname?.split(" ")[0] || "—"}
+                  </p>
+                  <p className="text-muted-foreground/60">
+                    {fmtDate(new Date().toISOString())}
+                  </p>
                 </div>
               </div>
-            );
-          })()}
+            )}
 
-          {/* ── Link prescription dropdown ── */}
-          {visitMode === "create" && visitAppt && (() => {
-            const unlinked = getUnlinkedCasePrescriptions(visitAppt.petId, visitAppt.clientId);
-            if (!unlinked.length) return null;
-            return (
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-emerald uppercase tracking-widest flex items-center gap-1.5">
-                  <Pill className="w-3.5 h-3.5" /> Link Prescription (this case)
-                </label>
-                <select
-                  value={visitPrescriptionId}
-                  onChange={(e) => setVisitPrescriptionId(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50 font-semibold"
-                >
-                  <option value="">None</option>
-                  {unlinked.map((rx) => {
-                    const drug = getDrugForRx(rx.prescription_id);
-                    return (
-                      <option key={rx.prescription_id} value={rx.prescription_id}>
-                        {drug?.name || "Drug"} · RX-{rx.prescription_id.slice(0, 6)}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-            );
-          })()}
+            {/* ── No prescription warning ── */}
+            {visitMode === "create" &&
+              visitAppt &&
+              (() => {
+                const hasPrescriptions =
+                  getCasePrescriptions(visitAppt.petId, visitAppt.clientId)
+                    .length > 0;
+                if (hasPrescriptions) return null;
+                return (
+                  <div className="flex items-start gap-2.5 px-3 py-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-400">
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-black">No prescription issued yet</p>
+                      <p className="opacity-80 mt-0.5">
+                        Consider prescribing before recording this visit.
+                        Proceed only if this is a non-pharmacological visit.
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
 
-          {/* ── Calculated doses panel ── */}
-          {visitMode === "create" && visitPrescriptionId && (() => {
-            const rxDrugIds = getAllDrugIdsForRx(visitPrescriptionId);
-            const calced = rxDrugIds.map((id) => calculatedDoses.get(id)).filter(Boolean) as Array<{ totalMg: number; dose: number | null; doseUnit: string | null; concLabel: string; drugName: string; drugClass: string; frequency: string | null; route: string | null }>;
-            const uncalced = rxDrugIds.filter((id) => (calculatedDoses.get(id)?.totalMg ?? 0) === 0)
-              .map((id) => allDrugs.find((d) => d.drug_id === id)?.name || id);
-            return (
-              <div className="space-y-2">
-                <p className="text-[10px] font-black uppercase tracking-widest text-emerald flex items-center gap-1.5">
-                  <Calculator className="w-3 h-3" /> Calculated Doses
-                </p>
-                {calced.length > 0 && (
+            {/* ── Link prescription dropdown ── */}
+            {visitMode === "create" &&
+              visitAppt &&
+              (() => {
+                const unlinked = getUnlinkedCasePrescriptions(
+                  visitAppt.petId,
+                  visitAppt.clientId,
+                );
+                if (!unlinked.length) return null;
+                return (
                   <div className="space-y-2">
-                    {calced.map((cd, i) => (
-                      <div key={i} className="rounded-xl bg-emerald/5 border border-emerald/15 overflow-hidden">
-                        {/* Drug header */}
-                        <div className="flex items-center justify-between px-3 py-2 border-b border-emerald/10">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Pill className="w-3 h-3 text-emerald shrink-0" />
-                            <div className="min-w-0">
-                              <span className="font-black text-xs text-emerald truncate block">{cd.drugName}</span>
-                              {cd.drugClass && <span className="text-[9px] text-muted-foreground/60">{cd.drugClass}</span>}
+                    <label className="text-xs font-bold text-emerald uppercase tracking-widest flex items-center gap-1.5">
+                      <Pill className="w-3.5 h-3.5" /> Link Prescription(s)
+                      (this case)
+                    </label>
+                    <div className="space-y-2 rounded-xl bg-muted/20 border border-border p-2.5">
+                      {unlinked.map((rx) => {
+                        const drug = getDrugForRx(rx.prescription_id);
+                        const selected = visitPrescriptionIds.includes(
+                          rx.prescription_id,
+                        );
+                        return (
+                          <label
+                            key={rx.prescription_id}
+                            className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/60 px-2.5 py-2 cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selected}
+                              onChange={(e) => {
+                                const next = e.target.checked
+                                  ? [
+                                      ...visitPrescriptionIds,
+                                      rx.prescription_id,
+                                    ]
+                                  : visitPrescriptionIds.filter(
+                                      (id) => id !== rx.prescription_id,
+                                    );
+                                setVisitPrescriptionIds([...new Set(next)]);
+                              }}
+                              className="h-4 w-4 accent-emerald"
+                            />
+                            <span className="text-sm font-semibold">
+                              {drug?.name || "Drug"} · RX-
+                              {rx.prescription_id.slice(0, 6)}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
+            {/* ── Calculated doses panel ── */}
+            {visitMode === "create" &&
+              visitPrescriptionIds.length > 0 &&
+              (() => {
+                const rxDrugIds = [
+                  ...new Set(
+                    visitPrescriptionIds.flatMap((id) =>
+                      getAllDrugIdsForRx(id),
+                    ),
+                  ),
+                ];
+                const calced = rxDrugIds
+                  .map((id) => calculatedDoses.get(id))
+                  .filter(Boolean) as Array<{
+                  totalMg: number;
+                  dose: number | null;
+                  doseUnit: string | null;
+                  concLabel: string;
+                  drugName: string;
+                  drugClass: string;
+                  frequency: string | null;
+                  route: string | null;
+                }>;
+                const uncalced = rxDrugIds
+                  .filter((id) => (calculatedDoses.get(id)?.totalMg ?? 0) === 0)
+                  .map(
+                    (id) => allDrugs.find((d) => d.drug_id === id)?.name || id,
+                  );
+                return (
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald flex items-center gap-1.5">
+                      <Calculator className="w-3 h-3" /> Calculated Doses
+                    </p>
+                    {calced.length > 0 && (
+                      <div className="space-y-2">
+                        {calced.map((cd, i) => (
+                          <div
+                            key={i}
+                            className="rounded-xl bg-emerald/5 border border-emerald/15 overflow-hidden"
+                          >
+                            {/* Drug header */}
+                            <div className="flex items-center justify-between px-3 py-2 border-b border-emerald/10">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Pill className="w-3 h-3 text-emerald shrink-0" />
+                                <div className="min-w-0">
+                                  <span className="font-black text-xs text-emerald truncate block">
+                                    {cd.drugName}
+                                  </span>
+                                  {cd.drugClass && (
+                                    <span className="text-[9px] text-muted-foreground/60">
+                                      {cd.drugClass}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5 font-black tabular-nums text-xs shrink-0">
+                                <span className="text-cyan">
+                                  {cd.totalMg} mg
+                                </span>
+                                {cd.dose != null && cd.doseUnit && (
+                                  <>
+                                    <span className="text-muted-foreground/40">
+                                      →
+                                    </span>
+                                    <span className="text-emerald">
+                                      {cd.dose} {cd.doseUnit}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            {/* Drug details */}
+                            <div className="flex items-center gap-3 px-3 py-1.5 text-[10px] text-muted-foreground">
+                              {cd.frequency && (
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-2.5 h-2.5" />
+                                  <span className="font-bold">
+                                    {cd.frequency}
+                                  </span>
+                                </span>
+                              )}
+                              {cd.route && (
+                                <span className="px-1.5 py-0.5 rounded-md bg-cyan/10 border border-cyan/15 text-cyan font-bold text-[9px]">
+                                  {cd.route}
+                                </span>
+                              )}
+                              {cd.concLabel && (
+                                <span className="opacity-60">
+                                  {cd.concLabel}
+                                </span>
+                              )}
                             </div>
                           </div>
-                          <div className="flex items-center gap-1.5 font-black tabular-nums text-xs shrink-0">
-                            <span className="text-cyan">{cd.totalMg} mg</span>
-                            {cd.dose != null && cd.doseUnit && (
-                              <>
-                                <span className="text-muted-foreground/40">→</span>
-                                <span className="text-emerald">{cd.dose} {cd.doseUnit}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        {/* Drug details */}
-                        <div className="flex items-center gap-3 px-3 py-1.5 text-[10px] text-muted-foreground">
-                          {cd.frequency && (
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-2.5 h-2.5" />
-                              <span className="font-bold">{cd.frequency}</span>
-                            </span>
-                          )}
-                          {cd.route && (
-                            <span className="px-1.5 py-0.5 rounded-md bg-cyan/10 border border-cyan/15 text-cyan font-bold text-[9px]">
-                              {cd.route}
-                            </span>
-                          )}
-                          {cd.concLabel && <span className="opacity-60">{cd.concLabel}</span>}
-                        </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
+                    {uncalced.length > 0 && (
+                      <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="font-black">
+                            Not yet calculated: {uncalced.join(", ")}
+                          </p>
+                          <p className="opacity-70 mt-0.5">
+                            Open the Dose Calculator and enter patient weight to
+                            calculate.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setShowVisitModal(false);
+                            setShowDrugCalc(true);
+                          }}
+                          className="shrink-0 px-2.5 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 font-bold text-[10px] transition-colors"
+                        >
+                          Open Calc
+                        </button>
+                      </div>
+                    )}
                   </div>
-                )}
-                {uncalced.length > 0 && (
-                  <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
-                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="font-black">Not yet calculated: {uncalced.join(", ")}</p>
-                      <p className="opacity-70 mt-0.5">Open the Dose Calculator and enter patient weight to calculate.</p>
-                    </div>
-                    <button
-                      onClick={() => { setShowVisitModal(false); setShowDrugCalc(true); }}
-                      className="shrink-0 px-2.5 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 font-bold text-[10px] transition-colors"
-                    >
-                      Open Calc
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
+                );
+              })()}
 
-          {/* ── Clinical Notes ── */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5" /> Clinical Notes
-            </label>
-            <textarea
-              value={visitNotes}
-              onChange={(e) => setVisitNotes(e.target.value)}
-              placeholder="Symptoms, diagnosis, treatment notes…"
-              className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan/50 resize-none"
-              rows={4}
-            />
-          </div>
+            {/* ── Clinical Notes ── */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5" /> Clinical Notes
+              </label>
+              <textarea
+                value={visitNotes}
+                onChange={(e) => setVisitNotes(e.target.value)}
+                placeholder="Symptoms, diagnosis, treatment notes…"
+                className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan/50 resize-none"
+                rows={4}
+              />
+            </div>
 
-          {/* ── Action buttons ── */}
-          {(() => {
-            // Blocked only when prescription is linked AND none of its drugs have totalMg > 0
-            const rxDrugIds = visitPrescriptionId ? getAllDrugIdsForRx(visitPrescriptionId) : [];
-            const hasUncalculated = rxDrugIds.length > 0 && rxDrugIds.every((id) => (calculatedDoses.get(id)?.totalMg ?? 0) === 0);
-            const isBlocked = visitMode === "create" && visitPrescriptionId !== "" && hasUncalculated;
-            return (
-              <div className="flex gap-3 pt-1">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => setShowVisitModal(false)}
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 text-sm font-bold transition-colors"
-                >
-                  {t("cancel")}
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: isBlocked ? 1 : 1.02 }}
-                  whileTap={{ scale: isBlocked ? 1 : 0.97 }}
-                  onClick={handleSaveVisit}
-                  disabled={createVisit.isPending || updateVisit.isPending || isBlocked}
-                  title={isBlocked ? "Calculate all drug doses first using the Dose Calculator" : undefined}
-                  className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${isBlocked ? "bg-muted/30 text-muted-foreground cursor-not-allowed" : "gradient-cyan-blue text-primary-foreground disabled:opacity-50"}`}
-                >
-                  {createVisit.isPending || updateVisit.isPending
-                    ? "Saving…"
-                    : isBlocked
-                      ? "⚠ Calculate Doses First"
-                      : visitMode === "edit"
-                        ? "Save Changes"
-                        : t("create_visit")}
-                </motion.button>
-              </div>
-            );
-          })()}
+            {/* ── Action buttons ── */}
+            {(() => {
+              // Blocked only when prescription is linked AND none of its drugs have totalMg > 0
+              const hasUncalculated = visitPrescriptionIds.some((rxId) => {
+                const rxDrugIds = getAllDrugIdsForRx(rxId);
+                return (
+                  rxDrugIds.length > 0 &&
+                  rxDrugIds.every(
+                    (id) => (calculatedDoses.get(id)?.totalMg ?? 0) === 0,
+                  )
+                );
+              });
+              const isBlocked =
+                visitMode === "create" &&
+                visitPrescriptionIds.length > 0 &&
+                hasUncalculated;
+              return (
+                <div className="flex gap-3 pt-1">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => setShowVisitModal(false)}
+                    className="flex-1 px-4 py-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 text-sm font-bold transition-colors"
+                  >
+                    {t("cancel")}
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: isBlocked ? 1 : 1.02 }}
+                    whileTap={{ scale: isBlocked ? 1 : 0.97 }}
+                    onClick={handleSaveVisit}
+                    disabled={
+                      createVisit.isPending ||
+                      updateVisit.isPending ||
+                      isBlocked
+                    }
+                    title={
+                      isBlocked
+                        ? "Calculate all drug doses first using the Dose Calculator"
+                        : undefined
+                    }
+                    className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${isBlocked ? "bg-muted/30 text-muted-foreground cursor-not-allowed" : "gradient-cyan-blue text-primary-foreground disabled:opacity-50"}`}
+                  >
+                    {createVisit.isPending || updateVisit.isPending
+                      ? "Saving…"
+                      : isBlocked
+                        ? "⚠ Calculate Doses First"
+                        : visitMode === "edit"
+                          ? "Save Changes"
+                          : t("create_visit")}
+                  </motion.button>
+                </div>
+              );
+            })()}
           </div>
         </motion.div>
       </Modal>
@@ -1539,13 +1726,23 @@ export default function SimulationMode({ role }: Props) {
         {detailVisit &&
           (() => {
             const pet = allPets.find((p) => p.pet_id === detailVisit.pet_id);
-            const doctor = allUsers.find((u) => u.user_id === detailVisit.doctor_id);
-            const client = allUsers.find((u) => u.user_id === detailVisit.client_id);
-            const doctorName = detailVisit.doctor_name || doctor?.fullname || "Unknown";
+            const doctor = allUsers.find(
+              (u) => u.user_id === detailVisit.doctor_id,
+            );
+            const client = allUsers.find(
+              (u) => u.user_id === detailVisit.client_id,
+            );
+            const doctorName =
+              detailVisit.doctor_name || doctor?.fullname || "Unknown";
             const sKey = pet ? speciesKey(pet.type) : null;
-            // Gather ALL drugs for this visit's prescription
-            const rxDrugIds = detailVisit.prescription_id ? getAllDrugIdsForRx(detailVisit.prescription_id) : [];
-            const rxDrugs = rxDrugIds.map((id) => allDrugs.find((d) => d.drug_id === id)).filter(Boolean) as Drug[];
+            // Gather all drugs for this visit's linked prescription(s)
+            const linkedRxIds = getVisitPrescriptionIds(detailVisit);
+            const rxDrugIds = [
+              ...new Set(linkedRxIds.flatMap((id) => getAllDrugIdsForRx(id))),
+            ];
+            const rxDrugs = rxDrugIds
+              .map((id) => allDrugs.find((d) => d.drug_id === id))
+              .filter(Boolean) as Drug[];
             return (
               <motion.div
                 initial={{ scale: 0.95, opacity: 0, y: 16 }}
@@ -1642,24 +1839,58 @@ export default function SimulationMode({ role }: Props) {
                     <div className="space-y-2">
                       {rxDrugs.map((d) => {
                         const sp = sKey ?? "dog";
-                        const rawDose = d.dose ? (d.dose as Record<string, unknown>)[sp] as { value?: number | null; unit?: string | null; frequency?: string | null } | null | undefined : null;
-                        const dosageEntry = rawDose ?? (d.dose ? (d.dose as Record<string, unknown>)[sp === "dog" ? "cat" : "dog"] as { value?: number | null; unit?: string | null; frequency?: string | null } | null | undefined : null);
+                        const rawDose = d.dose
+                          ? ((d.dose as Record<string, unknown>)[sp] as
+                              | {
+                                  value?: number | null;
+                                  unit?: string | null;
+                                  frequency?: string | null;
+                                }
+                              | null
+                              | undefined)
+                          : null;
+                        const dosageEntry =
+                          rawDose ??
+                          (d.dose
+                            ? ((d.dose as Record<string, unknown>)[
+                                sp === "dog" ? "cat" : "dog"
+                              ] as
+                                | {
+                                    value?: number | null;
+                                    unit?: string | null;
+                                    frequency?: string | null;
+                                  }
+                                | null
+                                | undefined)
+                            : null);
                         const sev = getDrugSeverityForSpecies(d, sKey);
                         const cl = severityColor(sev);
                         const calced = calculatedDoses.get(d.drug_id);
                         // Frequency: prefer calculated (from dose calc confirm), fall back to drug model
-                        const freq = calced?.frequency || dosageEntry?.frequency || null;
+                        const freq =
+                          calced?.frequency || dosageEntry?.frequency || null;
                         // Route: prefer calculated, fall back to drug model
-                        const routeStr = calced?.route || (typeof d.dose?.route === "string" ? d.dose.route : null);
+                        const routeStr =
+                          calced?.route ||
+                          (typeof d.dose?.route === "string"
+                            ? d.dose.route
+                            : null);
                         return (
-                          <div key={d.drug_id} className="rounded-xl bg-emerald/5 border border-emerald/15 overflow-hidden">
+                          <div
+                            key={d.drug_id}
+                            className="rounded-xl bg-emerald/5 border border-emerald/15 overflow-hidden"
+                          >
                             {/* Drug header — name, class, toxicity badge */}
                             <div className="flex items-center justify-between px-4 py-3 border-b border-emerald/10">
                               <div className="flex items-center gap-2.5 min-w-0">
                                 <Pill className="w-3.5 h-3.5 text-emerald shrink-0" />
                                 <div className="min-w-0">
-                                  <span className="font-black text-sm text-emerald truncate block">{d.name}</span>
-                                  <span className="text-[10px] text-muted-foreground font-medium">{d.class}</span>
+                                  <span className="font-black text-sm text-emerald truncate block">
+                                    {d.name}
+                                  </span>
+                                  <span className="text-[10px] text-muted-foreground font-medium">
+                                    {d.class}
+                                  </span>
                                 </div>
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
@@ -1673,22 +1904,34 @@ export default function SimulationMode({ role }: Props) {
                               {calced ? (
                                 <div className="flex items-center justify-between text-xs">
                                   <span className="flex items-center gap-1.5 text-muted-foreground font-bold uppercase tracking-widest text-[10px]">
-                                    <Calculator className="w-3 h-3 text-emerald" /> Calculated Dose
+                                    <Calculator className="w-3 h-3 text-emerald" />{" "}
+                                    Calculated Dose
                                   </span>
                                   <div className="flex items-center gap-1.5 tabular-nums font-black">
-                                    <span className="text-cyan">{calced.totalMg} mg</span>
+                                    <span className="text-cyan">
+                                      {calced.totalMg} mg
+                                    </span>
                                     {calced.dose != null && calced.doseUnit && (
                                       <>
-                                        <span className="text-muted-foreground/40">→</span>
-                                        <span className="text-emerald">{calced.dose} {calced.doseUnit}</span>
+                                        <span className="text-muted-foreground/40">
+                                          →
+                                        </span>
+                                        <span className="text-emerald">
+                                          {calced.dose} {calced.doseUnit}
+                                        </span>
                                       </>
                                     )}
-                                    {calced.concLabel && <span className="text-muted-foreground/50 font-normal text-[10px]">({calced.concLabel})</span>}
+                                    {calced.concLabel && (
+                                      <span className="text-muted-foreground/50 font-normal text-[10px]">
+                                        ({calced.concLabel})
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground/50 italic">
-                                  <Calculator className="w-3 h-3" /> No calculated dose recorded
+                                  <Calculator className="w-3 h-3" /> No
+                                  calculated dose recorded
                                 </div>
                               )}
 
@@ -1698,13 +1941,19 @@ export default function SimulationMode({ role }: Props) {
                                   {freq && (
                                     <div className="flex items-center gap-1.5">
                                       <Clock className="w-3 h-3 text-cyan" />
-                                      <span className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">Frequency</span>
-                                      <span className="font-bold text-cyan">{freq}</span>
+                                      <span className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">
+                                        Frequency
+                                      </span>
+                                      <span className="font-bold text-cyan">
+                                        {freq}
+                                      </span>
                                     </div>
                                   )}
                                   {routeStr && (
                                     <div className="flex items-center gap-1.5">
-                                      <span className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">Route</span>
+                                      <span className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">
+                                        Route
+                                      </span>
                                       <span className="px-1.5 py-0.5 rounded-md bg-cyan/10 border border-cyan/20 text-cyan text-[10px] font-bold">
                                         {routeStr}
                                       </span>
@@ -1722,7 +1971,9 @@ export default function SimulationMode({ role }: Props) {
                                   <span className="font-bold text-cyan tabular-nums">
                                     {dosageEntry.value} {dosageEntry.unit}
                                     {dosageEntry.frequency && (
-                                      <span className="ml-1 text-muted-foreground font-normal">· {dosageEntry.frequency}</span>
+                                      <span className="ml-1 text-muted-foreground font-normal">
+                                        · {dosageEntry.frequency}
+                                      </span>
                                     )}
                                   </span>
                                 </div>
@@ -1733,7 +1984,9 @@ export default function SimulationMode({ role }: Props) {
                                 const tox = getDrugToxicityForSpecies(d, sKey);
                                 if (!tox) return null;
                                 return (
-                                  <div className={`mt-1 px-2.5 py-1.5 rounded-lg border text-[10px] font-semibold ${cl.bg} ${cl.border} ${cl.text}`}>
+                                  <div
+                                    className={`mt-1 px-2.5 py-1.5 rounded-lg border text-[10px] font-semibold ${cl.bg} ${cl.border} ${cl.text}`}
+                                  >
                                     ⚠ {formatDose(tox)}
                                   </div>
                                 );
@@ -1933,7 +2186,9 @@ export default function SimulationMode({ role }: Props) {
                       const hasInteraction = isSelected
                         ? interactingDrugIds.has(drug.drug_id)
                         : selectedDrugs.some(
-                            (sel) => drugInteractsWith(sel, drug) || drugInteractsWith(drug, sel)
+                            (sel) =>
+                              drugInteractsWith(sel, drug) ||
+                              drugInteractsWith(drug, sel),
                           );
                       return (
                         <button
@@ -1967,11 +2222,14 @@ export default function SimulationMode({ role }: Props) {
                               >
                                 {drug.name}
                               </span>
-                              <span className="text-muted-foreground opacity-60">{drug.class}</span>
+                              <span className="text-muted-foreground opacity-60">
+                                {drug.class}
+                              </span>
                               {sev && <ToxicityBadge severity={sev} />}
                               {hasInteraction && selectedDrugs.length > 0 && (
                                 <span className="text-[9px] px-1.5 py-0.5 rounded-md font-black uppercase bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center gap-0.5">
-                                  <ShieldAlert className="w-2.5 h-2.5" /> Interaction
+                                  <ShieldAlert className="w-2.5 h-2.5" />{" "}
+                                  Interaction
                                 </span>
                               )}
                             </div>
@@ -2229,9 +2487,10 @@ export default function SimulationMode({ role }: Props) {
           getAllDrugIdsForRx(rx.prescription_id),
         );
         // Only show prescribed drugs in the dose calculator
-        const prescribedDrugs = preselectedIds.length > 0
-          ? allDrugs.filter((d) => preselectedIds.includes(d.drug_id))
-          : [];
+        const prescribedDrugs =
+          preselectedIds.length > 0
+            ? allDrugs.filter((d) => preselectedIds.includes(d.drug_id))
+            : [];
         return (
           <DrugDoseCalculatorModal
             open={showDrugCalc}
@@ -2245,20 +2504,24 @@ export default function SimulationMode({ role }: Props) {
             }
             petName={myActiveCase?.petName}
             drugs={prescribedDrugs}
-            preselectedDrugIds={preselectedIds.length > 0 ? preselectedIds : undefined}
+            preselectedDrugIds={
+              preselectedIds.length > 0 ? preselectedIds : undefined
+            }
             onDosesCalculated={(results) => {
               setCalculatedDoses((prev) => {
                 const next = new Map(prev);
-                results.forEach((r) => next.set(r.drugId, {
-                  totalMg: r.totalMg,
-                  dose: r.dose,
-                  doseUnit: r.doseUnit,
-                  concLabel: r.concLabel,
-                  drugName: r.drugName,
-                  drugClass: r.drugClass,
-                  frequency: r.frequency,
-                  route: r.route,
-                }));
+                results.forEach((r) =>
+                  next.set(r.drugId, {
+                    totalMg: r.totalMg,
+                    dose: r.dose,
+                    doseUnit: r.doseUnit,
+                    concLabel: r.concLabel,
+                    drugName: r.drugName,
+                    drugClass: r.drugClass,
+                    frequency: r.frequency,
+                    route: r.route,
+                  }),
+                );
                 return next;
               });
             }}

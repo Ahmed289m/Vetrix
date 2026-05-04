@@ -159,59 +159,76 @@ export default function VisitsPage() {
         : null
       : usersList.find((u) => u.user_id === id);
 
+  const getPrescriptionIdsForVisit = (visit: Visit): string[] => {
+    const fromList = Array.isArray(visit.prescription_ids)
+      ? visit.prescription_ids.filter(Boolean)
+      : [];
+
+    if (fromList.length > 0) {
+      return [...new Set(fromList)];
+    }
+
+    return visit.prescription_id ? [visit.prescription_id] : [];
+  };
+
   const getDrugsForVisit = (visit: Visit): { drug: Drug; dose: string }[] => {
-    if (!visit.prescription_id) return [];
-    const rx = prescriptionsList.find(
-      (p) => p.prescription_id === visit.prescription_id,
-    ) as
-      | (typeof prescriptionsList)[number]
-      | {
-          prescriptionItem_ids?: string[];
-          prescriptionItem_id?: string;
-        }
-      | undefined;
-    if (!rx) return [];
-
-    const legacyPrescriptionItemId =
-      "prescriptionItem_id" in rx && typeof rx.prescriptionItem_id === "string"
-        ? rx.prescriptionItem_id
-        : undefined;
-
-    const itemIds =
-      rx.prescriptionItem_ids && rx.prescriptionItem_ids.length > 0
-        ? rx.prescriptionItem_ids
-        : legacyPrescriptionItemId
-          ? legacyPrescriptionItemId
-              .split(",")
-              .map((id) => id.trim())
-              .filter(Boolean)
-          : [];
-    if (!itemIds.length) return [];
-
-    const items = presItemsList.filter((pi) =>
-      itemIds.includes(pi.prescriptionItem_id),
-    ) as Array<
-      (typeof presItemsList)[number] & {
-        drug_ids?: string[];
-        drug_id?: string;
-      }
-    >;
-
     const result: { drug: Drug; dose: string }[] = [];
-    for (const item of items) {
-      const drugIds =
-        item.drug_ids && item.drug_ids.length > 0
-          ? item.drug_ids
-          : item.drug_id
-            ? [item.drug_id]
+    const prescriptionIds = getPrescriptionIdsForVisit(visit);
+
+    for (const prescriptionId of prescriptionIds) {
+      const rx = prescriptionsList.find(
+        (p) => p.prescription_id === prescriptionId,
+      ) as
+        | (typeof prescriptionsList)[number]
+        | {
+            prescriptionItem_ids?: string[];
+            prescriptionItem_id?: string;
+          }
+        | undefined;
+      if (!rx) continue;
+
+      const legacyPrescriptionItemId =
+        "prescriptionItem_id" in rx &&
+        typeof rx.prescriptionItem_id === "string"
+          ? rx.prescriptionItem_id
+          : undefined;
+
+      const itemIds =
+        rx.prescriptionItem_ids && rx.prescriptionItem_ids.length > 0
+          ? rx.prescriptionItem_ids
+          : legacyPrescriptionItemId
+            ? legacyPrescriptionItemId
+                .split(",")
+                .map((id) => id.trim())
+                .filter(Boolean)
             : [];
-      for (const drugId of drugIds) {
-        const drug = drugsList.find((d) => d.drug_id === drugId);
-        if (drug) {
-          result.push({ drug, dose: item.drugDose });
+      if (!itemIds.length) continue;
+
+      const items = presItemsList.filter((pi) =>
+        itemIds.includes(pi.prescriptionItem_id),
+      ) as Array<
+        (typeof presItemsList)[number] & {
+          drug_ids?: string[];
+          drug_id?: string;
+        }
+      >;
+
+      for (const item of items) {
+        const drugIds =
+          item.drug_ids && item.drug_ids.length > 0
+            ? item.drug_ids
+            : item.drug_id
+              ? [item.drug_id]
+              : [];
+        for (const drugId of drugIds) {
+          const drug = drugsList.find((d) => d.drug_id === drugId);
+          if (drug) {
+            result.push({ drug, dose: item.drugDose });
+          }
         }
       }
     }
+
     return result;
   };
 
@@ -258,7 +275,7 @@ export default function VisitsPage() {
       doctor_id: user?.userId || "",
       date: new Date().toISOString().slice(0, 10),
       notes: "",
-      prescription_id: "",
+      prescription_ids: [] as string[],
     },
     validate: (values) => {
       const errors: Record<string, string> = {};
@@ -275,8 +292,8 @@ export default function VisitsPage() {
         doctor_id: values.doctor_id,
         date: new Date(values.date).toISOString(),
         ...(values.notes && { notes: values.notes }),
-        ...(values.prescription_id && {
-          prescription_id: values.prescription_id,
+        ...(values.prescription_ids.length > 0 && {
+          prescription_ids: values.prescription_ids,
         }),
       };
       createVisit.mutate(payload, {
@@ -300,8 +317,9 @@ export default function VisitsPage() {
   );
 
   const deleteVisitCascade = async (visit: Visit) => {
-    if (visit.prescription_id) {
-      await deletePrescription.mutateAsync(visit.prescription_id);
+    const prescriptionIds = getPrescriptionIdsForVisit(visit);
+    for (const prescriptionId of prescriptionIds) {
+      await deletePrescription.mutateAsync(prescriptionId);
     }
     await deleteVisit.mutateAsync(visit.visit_id);
   };
@@ -863,7 +881,7 @@ export default function VisitsPage() {
                 onValueChange={(val) => {
                   formik.setFieldValue("client_id", val);
                   formik.setFieldValue("pet_id", "");
-                  formik.setFieldValue("prescription_id", "");
+                  formik.setFieldValue("prescription_ids", []);
                 }}
               >
                 <SelectTrigger
@@ -993,62 +1011,67 @@ export default function VisitsPage() {
               <div className="space-y-2 pt-2 border-t border-tint/5">
                 <Label className="text-xs font-black uppercase tracking-widest text-emerald ml-1 flex items-center gap-1.5">
                   <Pill className="w-3.5 h-3.5" />{" "}
-                  {t("link_prescription") || "Link Prescription"} (optional)
+                  {t("link_prescription") || "Link Prescription"} (optional, one
+                  or more)
                 </Label>
-                <Select
-                  value={formik.values.prescription_id}
-                  onValueChange={(val) =>
-                    formik.setFieldValue("prescription_id", val)
-                  }
-                >
-                  <SelectTrigger className="h-14 bg-tint/5 border-tint/5 rounded-2xl font-bold">
-                    <SelectValue
-                      placeholder={
-                        t("select_prescription") ||
-                        "Link an existing prescription"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover/95 backdrop-blur-xl border-tint/5 rounded-2xl">
-                    {clientPrescriptions.map((rx) => {
-                      const itemIds =
-                        rx.prescriptionItem_ids &&
-                        rx.prescriptionItem_ids.length > 0
-                          ? rx.prescriptionItem_ids
-                          : (
-                              rx as { prescriptionItem_id?: string }
-                            ).prescriptionItem_id
-                              ?.split(",")
-                              .map((id) => id.trim())
-                              .filter(Boolean) || [];
+                <div className="space-y-2 rounded-2xl border border-tint/5 bg-tint/5 p-3">
+                  {clientPrescriptions.map((rx) => {
+                    const itemIds =
+                      rx.prescriptionItem_ids &&
+                      rx.prescriptionItem_ids.length > 0
+                        ? rx.prescriptionItem_ids
+                        : (
+                            rx as { prescriptionItem_id?: string }
+                          ).prescriptionItem_id
+                            ?.split(",")
+                            .map((id) => id.trim())
+                            .filter(Boolean) || [];
 
-                      const firstItem = presItemsList.find((pi) =>
-                        itemIds.includes(pi.prescriptionItem_id),
-                      ) as
-                        | ((typeof presItemsList)[number] & {
-                            drug_ids?: string[];
-                            drug_id?: string;
-                          })
-                        | undefined;
+                    const firstItem = presItemsList.find((pi) =>
+                      itemIds.includes(pi.prescriptionItem_id),
+                    ) as
+                      | ((typeof presItemsList)[number] & {
+                          drug_ids?: string[];
+                          drug_id?: string;
+                        })
+                      | undefined;
 
-                      const firstDrugId =
-                        firstItem?.drug_ids?.[0] || firstItem?.drug_id;
-                      const drug = drugsList.find(
-                        (d) => d.drug_id === firstDrugId,
-                      );
-                      return (
-                        <SelectItem
-                          key={rx.prescription_id}
-                          value={rx.prescription_id}
-                          className="rounded-xl font-bold"
-                        >
+                    const firstDrugId =
+                      firstItem?.drug_ids?.[0] || firstItem?.drug_id;
+                    const drug = drugsList.find(
+                      (d) => d.drug_id === firstDrugId,
+                    );
+                    const selected = formik.values.prescription_ids.includes(
+                      rx.prescription_id,
+                    );
+
+                    return (
+                      <label
+                        key={rx.prescription_id}
+                        className="flex items-center gap-3 rounded-xl border border-tint/5 bg-background/40 px-3 py-2 cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={selected}
+                          onCheckedChange={(checked) => {
+                            const next = checked
+                              ? [
+                                  ...formik.values.prescription_ids,
+                                  rx.prescription_id,
+                                ]
+                              : formik.values.prescription_ids.filter(
+                                  (id) => id !== rx.prescription_id,
+                                );
+                            formik.setFieldValue("prescription_ids", next);
+                          }}
+                        />
+                        <span className="text-sm font-bold">
                           {drug?.name || "Prescription"} · RX-
                           {rx.prescription_id.slice(0, 6)}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
