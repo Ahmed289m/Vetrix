@@ -549,7 +549,6 @@ export default function VisitsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {visibleVisits.map((visit, i) => {
                 const pet = getPet(visit.pet_id);
-                const pDrugs = getDrugsForVisit(visit);
                 const doctor = getUser(visit.doctor_id);
                 const doctorName =
                   visit.doctor_name || doctor?.fullname || "Assigned";
@@ -622,34 +621,6 @@ export default function VisitsPage() {
                       </p>
                     )}
 
-                    {/* Drug badges */}
-                    {pDrugs.length > 0 && (
-                      <div className="space-y-1.5">
-                        {pDrugs.map(({ drug }, idx: number) => {
-                          const sK = speciesKey(pet?.type);
-                          const toxicityBySpecies = drug.toxicity as Record<
-                            string,
-                            { status?: string }
-                          >;
-                          const s = sK
-                            ? toxicityBySpecies?.[sK]?.status || null
-                            : null;
-                          return (
-                            <div
-                              key={idx}
-                              className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald/5 border border-emerald/10"
-                            >
-                              <Pill className="w-4 h-4 text-emerald shrink-0" />
-                              <span className="text-xs font-bold text-emerald flex-1 truncate">
-                                {drug.name}
-                              </span>
-                              {s && <SeverityBadge severity={s} />}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
                     <p className="text-right text-xs text-emerald font-bold flex items-center justify-end gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
                       View full details <ChevronRight className="w-3.5 h-3.5" />
                     </p>
@@ -692,7 +663,6 @@ export default function VisitsPage() {
                 visit.notes?.trim() ||
                 t("clinical_visit") ||
                 "Clinical Visit";
-              const pDrugs = getDrugsForVisit(visit);
               const PetIcon = pet?.type === "cat" ? Cat : Dog;
               const hasRowActions = canDelete || canOpenDetails;
 
@@ -783,55 +753,31 @@ export default function VisitsPage() {
                     />
                   </div>
 
-                  {/* ── Row 3: Drug badges + actions ── */}
-                  {(pDrugs.length > 0 || hasRowActions) && (
+                  {/* ── Row 3: Actions ── */}
+                  {hasRowActions && (
                     <div className="flex items-center justify-between gap-3 flex-wrap">
-                      {/* Drug pill badges */}
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {pDrugs.slice(0, 3).map(({ drug }, idx) => (
-                          <span
-                            key={idx}
-                            className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase bg-blue-500/10 text-blue-400 flex items-center gap-1"
-                          >
-                            <Pill className="w-2.5 h-2.5" /> {drug.name}
-                          </span>
-                        ))}
-                        {pDrugs.length > 3 && (
-                          <span className="text-[10px] text-muted-foreground font-bold">
-                            +{pDrugs.length - 3} more
-                          </span>
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {canOpenDetails && (
+                          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-muted/30 border border-border/50 group-hover:border-emerald/30 group-hover:text-emerald transition-all">
+                            <Eye className="w-3.5 h-3.5" />
+                            {t("details_btn") || "Details"}
+                            <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                          </div>
                         )}
-                        {pDrugs.length === 0 && (
-                          <span className="text-[10px] text-muted-foreground/50 italic">
-                            No prescription
-                          </span>
+                        {canDelete && !isStaff && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void handleDeleteVisit(visit);
+                            }}
+                            className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                          >
+                            Delete
+                          </button>
                         )}
                       </div>
-
-                      {/* Action buttons */}
-                      {hasRowActions && (
-                        <div className="flex items-center gap-2 shrink-0">
-                          {canOpenDetails && (
-                            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-muted/30 border border-border/50 group-hover:border-emerald/30 group-hover:text-emerald transition-all">
-                              <Eye className="w-3.5 h-3.5" />
-                              {t("details_btn") || "Details"}
-                              <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-                            </div>
-                          )}
-                          {canDelete && !isStaff && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                void handleDeleteVisit(visit);
-                              }}
-                              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </div>
-                      )}
                     </div>
                   )}
                 </motion.div>

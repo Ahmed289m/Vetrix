@@ -1988,7 +1988,7 @@ export default function SimulationMode({ role }: Props) {
                                   {routeStr && (
                                     <div className="flex items-center gap-1.5">
                                       <span className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">
-                                        Route
+                                        Route (how it is given)
                                       </span>
                                       <span className="px-1.5 py-0.5 rounded-md bg-cyan/10 border border-cyan/20 text-cyan text-[10px] font-bold">
                                         {routeStr}

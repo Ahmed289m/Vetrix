@@ -371,7 +371,7 @@ export function VisitDetailModal({
                     {doseRoute && (
                       <div className="p-3 rounded-xl bg-tint/5 border border-tint/5 text-xs text-muted-foreground">
                         <p className="font-bold uppercase tracking-widest text-[10px] text-cyan mb-1">
-                          Route
+                          Route (how it is given)
                         </p>
                         <p>
                           {doseRoute}. In simple terms, this is how the medicine
