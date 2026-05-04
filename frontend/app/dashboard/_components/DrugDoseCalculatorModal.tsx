@@ -30,13 +30,16 @@ import type { Drug } from "@/app/_lib/types/models";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Numeric mg/kg for a structured dose-species entry (or null if unset) */
-function getDoseMgPerKg(drug: Drug | undefined, species: FluidSpecies): number | null {
+/** Info for a structured dose-species entry (or null if unset) */
+function getDoseInfo(drug: Drug | undefined, species: FluidSpecies): { value: number; isFixedDose: boolean; unit: string } | null {
   if (!drug?.dose) return null;
   const entry = drug.dose[species];
   if (!entry || entry.value == null) return null;
   const n = typeof entry.value === "number" ? entry.value : parseFloat(String(entry.value));
-  return Number.isFinite(n) ? n : null;
+  if (!Number.isFinite(n)) return null;
+  const unitStr = (entry.unit || "").toLowerCase();
+  const isFixedDose = ["mg/cat", "mg/dog", "mg/animal", "fixed"].some((u) => unitStr.includes(u));
+  return { value: n, isFixedDose, unit: entry.unit || "" };
 }
 
 /** Human label for a dose entry — e.g. "1 mg/kg q24h" */
@@ -223,8 +226,8 @@ export function DrugDoseCalculatorModal({
         setSelectedDrugId(firstId);
         const drug = drugs.find((d) => d.drug_id === firstId);
         if (drug) {
-          const parsed = getDoseMgPerKg(drug, initialSpecies ?? "dog");
-          if (parsed != null) setDosage(String(parsed));
+          const doseInfo = getDoseInfo(drug, initialSpecies ?? "dog");
+          if (doseInfo != null) setDosage(String(doseInfo.value));
           const conc = getDefaultConcentration(drug);
           if (conc != null) setConcentration(String(conc));
         }
@@ -237,8 +240,8 @@ export function DrugDoseCalculatorModal({
   // ── Auto-fill dosage when drug or species changes ─────────────────────────
   React.useEffect(() => {
     if (selectedDrug) {
-      const parsed = getDoseMgPerKg(selectedDrug, species);
-      if (parsed != null) setDosage(String(parsed));
+      const doseInfo = getDoseInfo(selectedDrug, species);
+      if (doseInfo != null) setDosage(String(doseInfo.value));
       // Reset concentration to the first stored one on drug change
       const conc = getDefaultConcentration(selectedDrug);
       if (conc != null) setConcentration(String(conc));
@@ -272,9 +275,13 @@ export function DrugDoseCalculatorModal({
   const d = parseFloat(dosage) || 0;
   const c = parseFloat(concentration) || 0;
 
+  const manualDoseInfo = selectedDrug ? getDoseInfo(selectedDrug, species) : null;
+  const isManualFixed = manualDoseInfo?.isFixedDose ?? false;
+  const effectiveManualDosage = isManualFixed && w > 0 ? d / w : d;
+
   const result = calculateDose({
     weightKg: w,
-    dosageMgPerKg: d,
+    dosageMgPerKg: effectiveManualDosage,
     concentrationMgPerUnit: c,
     unit: doseUnit,
   });
@@ -289,7 +296,7 @@ export function DrugDoseCalculatorModal({
       .map((drugId) => {
         const drug = drugs.find((dd) => dd.drug_id === drugId);
         if (!drug) return null;
-        const parsed = getDoseMgPerKg(drug, species);
+        const doseInfo = getDoseInfo(drug, species);
         const concIdx = concIndexOverrides[drugId] ?? 0;
         const storedConcs = drug.concentration ?? [];
 
@@ -302,9 +309,9 @@ export function DrugDoseCalculatorModal({
         );
 
         // If no dose data for this species, still include the drug but with null values
-        if (parsed == null) {
+        if (doseInfo == null) {
           return {
-            drug, dosageMgPerKg: null as number | null, result: null, totalMg: 0,
+            drug, dosageMgPerKg: null as number | null, isFixedDose: false, result: null, totalMg: 0,
             rawDosage: "", effectiveConc: resolved.value > 0 ? resolved.value : null,
             concSource: resolved.source,
             storedConcs, concIdx, concLabel: resolved.label,
@@ -312,13 +319,16 @@ export function DrugDoseCalculatorModal({
           };
         }
 
+        const effectiveDosageMgPerKg = doseInfo.isFixedDose && w > 0 ? doseInfo.value / w : doseInfo.value;
+
         const res = resolved.value > 0
-          ? calculateDose({ weightKg: w, dosageMgPerKg: parsed, concentrationMgPerUnit: resolved.value, unit: doseUnit })
+          ? calculateDose({ weightKg: w, dosageMgPerKg: effectiveDosageMgPerKg, concentrationMgPerUnit: resolved.value, unit: doseUnit })
           : null;
-        const totalMg = smartRound(w * parsed);
+        
+        const totalMg = smartRound(doseInfo.isFixedDose ? doseInfo.value : w * doseInfo.value);
 
         return {
-          drug, dosageMgPerKg: parsed as number | null, result: res, totalMg,
+          drug, dosageMgPerKg: doseInfo.value as number | null, isFixedDose: doseInfo.isFixedDose, result: res, totalMg,
           rawDosage: formatDoseLabel(drug, species),
           effectiveConc: resolved.value > 0 ? resolved.value : null,
           concSource: resolved.source,
@@ -327,7 +337,7 @@ export function DrugDoseCalculatorModal({
         };
       })
       .filter(Boolean) as Array<{
-        drug: Drug; dosageMgPerKg: number | null;
+        drug: Drug; dosageMgPerKg: number | null; isFixedDose: boolean;
         result: DoseCalcResult | null;
         totalMg: number;
         rawDosage: string; effectiveConc: number | null;
@@ -523,7 +533,7 @@ export function DrugDoseCalculatorModal({
                                 </div>
                               ) : (
                                 filteredDrugs.map((drug) => {
-                                  const parsed = getDoseMgPerKg(drug, species);
+                                  const doseInfo = getDoseInfo(drug, species);
                                   const isActive =
                                     drug.drug_id === selectedDrugId;
                                   return (
@@ -548,9 +558,9 @@ export function DrugDoseCalculatorModal({
                                           {drug.class}
                                         </p>
                                       </div>
-                                      {parsed && (
+                                      {doseInfo && (
                                         <span className="shrink-0 px-2 py-0.5 rounded-lg bg-cyan/10 border border-cyan/20 text-cyan text-[10px] font-bold tabular-nums">
-                                          {parsed} mg/kg
+                                          {doseInfo.value} {doseInfo.isFixedDose ? `mg/${species}` : "mg/kg"}
                                         </span>
                                       )}
                                     </button>
@@ -754,7 +764,7 @@ export function DrugDoseCalculatorModal({
                         </div>
                       ) : (
                         simFilteredDrugs.map((drug) => {
-                          const parsed = getDoseMgPerKg(drug, species);
+                          const doseInfo = getDoseInfo(drug, species);
                           const isSelected = simSelectedDrugIds.includes(drug.drug_id);
                           return (
                             <button
@@ -787,9 +797,9 @@ export function DrugDoseCalculatorModal({
                                 </span>
                                 <span className="text-muted-foreground/60 ml-1.5">{drug.class}</span>
                               </div>
-                              {parsed != null ? (
+                              {doseInfo != null ? (
                                 <span className="shrink-0 px-2 py-0.5 rounded-lg bg-cyan/10 border border-cyan/20 text-cyan text-[10px] font-bold tabular-nums">
-                                  {parsed} mg/kg
+                                  {doseInfo.value} {doseInfo.isFixedDose ? `mg/${species}` : "mg/kg"}
                                 </span>
                               ) : (
                                 <span className="shrink-0 px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold">
@@ -896,7 +906,7 @@ export function DrugDoseCalculatorModal({
                         {batchResults.length} drug{batchResults.length > 1 ? "s" : ""}
                       </span>
                     </p>
-                    {batchResults.map(({ drug, dosageMgPerKg: dMgKg, result: res, totalMg, rawDosage, effectiveConc, concSource, storedConcs, concIdx, missingDose }) => {
+                    {batchResults.map(({ drug, dosageMgPerKg: dMgKg, isFixedDose, result: res, totalMg, rawDosage, effectiveConc, concSource, storedConcs, concIdx, missingDose }) => {
                       const cardStatus = res?.status ?? "ok";
                       const statusBorder = missingDose
                         ? "bg-amber-500/5 border border-amber-500/15"
@@ -973,7 +983,7 @@ export function DrugDoseCalculatorModal({
                         {/* Detail row */}
                         {!missingDose && (
                         <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap pt-0.5 border-t border-emerald/10">
-                          <span>Dosage: <span className="font-bold text-cyan">{dMgKg} mg/kg</span>{rawDosage && <span className="opacity-60"> ({rawDosage})</span>}</span>
+                          <span>Dosage: <span className="font-bold text-cyan">{dMgKg} {isFixedDose ? `mg/${species} (fixed)` : "mg/kg"}</span>{rawDosage && <span className="opacity-60"> ({rawDosage})</span>}</span>
                           {effectiveConc != null && (
                             <span>Conc: <span className="font-bold">{effectiveConc} mg/{doseUnit === "mL" ? "mL" : "tab"}</span>{concSource === "db" && <span className="ml-1 text-emerald/60">(stored)</span>}</span>
                           )}
