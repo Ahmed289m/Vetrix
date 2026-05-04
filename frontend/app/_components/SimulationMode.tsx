@@ -2579,15 +2579,26 @@ export default function SimulationMode({ role }: Props) {
       {/* ═══════════════════ DOSE CALCULATOR MODAL ══════════════════════════ */}
       {(() => {
         const activePet = allPets.find((p) => p.pet_id === myActiveCase?.petId);
-        // Only calculate doses for drugs prescribed in THIS session — not historical case prescriptions.
+        // Primary: prescriptions created in this browser session.
+        // Fallback: unlinked prescriptions for this case (handles page-refresh / state-loss).
+        // "Unlinked" = not yet saved into a visit record → effectively the current visit's drugs.
+        const sourcePrescriptions =
+          sessionCasePrescriptions.length > 0
+            ? sessionCasePrescriptions
+            : myActiveCase
+              ? getUnlinkedCasePrescriptions(
+                  myActiveCase.petId,
+                  myActiveCase.clientId,
+                )
+              : [];
         const preselectedIds = [
           ...new Set(
-            sessionCasePrescriptions.flatMap((rx) =>
+            sourcePrescriptions.flatMap((rx) =>
               getAllDrugIdsForRx(rx.prescription_id),
             ),
           ),
         ];
-        // Filter drug list to only session-prescribed drugs
+        // Filter drug list to only the current case's prescribed drugs
         const prescribedDrugs =
           preselectedIds.length > 0
             ? allDrugs.filter((d) => preselectedIds.includes(d.drug_id))
