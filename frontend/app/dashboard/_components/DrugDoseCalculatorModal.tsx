@@ -17,7 +17,13 @@ import {
 } from "lucide-react";
 import {
   calculateDose,
+  resolveConcentration,
+  smartRound,
+  formForDoseUnit,
   type DoseUnit,
+  type DoseCalcResult,
+  type DoseWarning,
+  type SafetyStatus,
 } from "@/app/_lib/utils/dosage-calculator";
 import type { FluidSpecies } from "@/app/_lib/utils/fluid-therapy";
 import type { Drug } from "@/app/_lib/types/models";
@@ -278,44 +284,51 @@ export function DrugDoseCalculatorModal({
   // ── Batch results for preselected drugs ────────────────────────────────────
   const batchResults = React.useMemo(() => {
     if (!effectiveDrugIds.length || !drugs.length || w <= 0) return [];
+    const expectedForm = formForDoseUnit(doseUnit);
     return effectiveDrugIds
       .map((drugId) => {
         const drug = drugs.find((dd) => dd.drug_id === drugId);
         if (!drug) return null;
         const parsed = getDoseMgPerKg(drug, species);
-        // Per-drug concentration: use selected index override if set, else first stored, else global manual
         const concIdx = concIndexOverrides[drugId] ?? 0;
         const storedConcs = drug.concentration ?? [];
-        const storedConc = storedConcs[concIdx];
-        const storedConcVal = storedConc?.value != null
-          ? (typeof storedConc.value === "number" ? storedConc.value : parseFloat(String(storedConc.value)))
-          : null;
-        const drugConc = storedConcVal != null && Number.isFinite(storedConcVal) ? storedConcVal : null;
-        const effectiveConc = drugConc != null ? drugConc : c > 0 ? c : null;
+
+        // Use the engine's safe concentration resolver
+        const resolved = resolveConcentration(
+          storedConcs,
+          concIdx,
+          c > 0 ? c : null,
+          expectedForm,
+        );
+
         // If no dose data for this species, still include the drug but with null values
         if (parsed == null) {
           return {
             drug, dosageMgPerKg: null as number | null, result: null, totalMg: 0,
-            rawDosage: "", effectiveConc, concSource: (drugConc != null ? "db" : c > 0 ? "manual" : "none") as "db" | "manual" | "none",
-            storedConcs, concIdx, concLabel: "",
+            rawDosage: "", effectiveConc: resolved.value > 0 ? resolved.value : null,
+            concSource: resolved.source,
+            storedConcs, concIdx, concLabel: resolved.label,
             missingDose: true,
           };
         }
-        const res = effectiveConc != null
-          ? calculateDose({ weightKg: w, dosageMgPerKg: parsed, concentrationMgPerUnit: effectiveConc, unit: doseUnit })
+
+        const res = resolved.value > 0
+          ? calculateDose({ weightKg: w, dosageMgPerKg: parsed, concentrationMgPerUnit: resolved.value, unit: doseUnit })
           : null;
-        const totalMg = parseFloat((w * parsed).toFixed(2));
-        const concLabel = storedConc ? `${storedConc.value} mg/${storedConc.form || (doseUnit === "mL" ? "mL" : "tab")}` : effectiveConc ? `${effectiveConc} mg/unit` : "";
+        const totalMg = smartRound(w * parsed);
+
         return {
-          drug, dosageMgPerKg: parsed as number | null, result: res, totalMg, rawDosage: formatDoseLabel(drug, species),
-          effectiveConc, concSource: (drugConc != null ? "db" : c > 0 ? "manual" : "none") as "db" | "manual" | "none",
-          storedConcs, concIdx, concLabel,
+          drug, dosageMgPerKg: parsed as number | null, result: res, totalMg,
+          rawDosage: formatDoseLabel(drug, species),
+          effectiveConc: resolved.value > 0 ? resolved.value : null,
+          concSource: resolved.source,
+          storedConcs, concIdx, concLabel: resolved.label,
           missingDose: false,
         };
       })
       .filter(Boolean) as Array<{
         drug: Drug; dosageMgPerKg: number | null;
-        result: ReturnType<typeof calculateDose> | null;
+        result: DoseCalcResult | null;
         totalMg: number;
         rawDosage: string; effectiveConc: number | null;
         concSource: "db" | "manual" | "none";
@@ -848,11 +861,24 @@ export function DrugDoseCalculatorModal({
                         </div>
                       </div>
 
-                      {/* Warning */}
-                      {result.warning && (
-                        <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400">
-                          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                          <span className="font-semibold">{result.warning}</span>
+                      {/* Warnings */}
+                      {result.warnings.length > 0 && (
+                        <div className="space-y-1.5">
+                          {result.warnings.map((warn) => (
+                            <div
+                              key={warn.code}
+                              className={`flex items-start gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold ${
+                                warn.level === "danger"
+                                  ? "bg-red-500/10 border border-red-500/20 text-red-400"
+                                  : warn.level === "warning"
+                                    ? "bg-amber-500/10 border border-amber-500/20 text-amber-400"
+                                    : "bg-cyan/10 border border-cyan/20 text-cyan"
+                              }`}
+                            >
+                              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                              <span>{warn.message}</span>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </motion.div>
@@ -870,8 +896,17 @@ export function DrugDoseCalculatorModal({
                         {batchResults.length} drug{batchResults.length > 1 ? "s" : ""}
                       </span>
                     </p>
-                    {batchResults.map(({ drug, dosageMgPerKg: dMgKg, result: res, totalMg, rawDosage, effectiveConc, concSource, storedConcs, concIdx, missingDose }) => (
-                      <div key={drug.drug_id} className={`p-3.5 rounded-xl space-y-2 ${missingDose ? "bg-amber-500/5 border border-amber-500/15" : "bg-emerald/5 border border-emerald/15"}`}>
+                    {batchResults.map(({ drug, dosageMgPerKg: dMgKg, result: res, totalMg, rawDosage, effectiveConc, concSource, storedConcs, concIdx, missingDose }) => {
+                      const cardStatus = res?.status ?? "ok";
+                      const statusBorder = missingDose
+                        ? "bg-amber-500/5 border border-amber-500/15"
+                        : cardStatus === "danger"
+                          ? "bg-red-500/5 border border-red-500/20"
+                          : cardStatus === "warning"
+                            ? "bg-amber-500/5 border border-amber-500/15"
+                            : "bg-emerald/5 border border-emerald/15";
+                      return (
+                      <div key={drug.drug_id} className={`p-3.5 rounded-xl space-y-2 ${statusBorder}`}>
                         {/* Drug name + result */}
                         <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
@@ -944,8 +979,29 @@ export function DrugDoseCalculatorModal({
                           )}
                         </div>
                         )}
+                        {/* Per-drug warnings */}
+                        {!missingDose && res?.warnings && res.warnings.length > 0 && (
+                          <div className="space-y-1 pt-1">
+                            {res.warnings.map((warn) => (
+                              <div
+                                key={warn.code}
+                                className={`flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold ${
+                                  warn.level === "danger"
+                                    ? "bg-red-500/10 border border-red-500/15 text-red-400"
+                                    : warn.level === "warning"
+                                      ? "bg-amber-500/10 border border-amber-500/15 text-amber-400"
+                                      : "bg-cyan/10 border border-cyan/15 text-cyan"
+                                }`}
+                              >
+                                <AlertTriangle className="w-3 h-3 shrink-0 mt-px" />
+                                <span>{warn.message}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
 
