@@ -1994,16 +1994,6 @@ export default function SimulationMode({ role }: Props) {
                                     <span className="text-cyan">
                                       {calced.totalMg} mg
                                     </span>
-                                    {calced.dose != null && calced.doseUnit && (
-                                      <>
-                                        <span className="text-muted-foreground/40">
-                                          →
-                                        </span>
-                                        <span className="text-emerald">
-                                          {calced.dose} {calced.doseUnit}
-                                        </span>
-                                      </>
-                                    )}
                                     {calced.concLabel && (
                                       <span className="text-muted-foreground/50 font-normal text-[10px]">
                                         ({calced.concLabel})

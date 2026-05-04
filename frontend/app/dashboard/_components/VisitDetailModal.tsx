@@ -367,27 +367,29 @@ export function VisitDetailModal({
                       {sev && <SeverityBadge severity={sev} />}
                     </div>
 
-                    {/* Species-specific dosage */}
+                    {/* Calculated dose — show totalMg + concentration only */}
                     {calculatedDose && (
                       <div className="p-3 rounded-xl bg-emerald/10 border border-emerald/20 space-y-2">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-emerald">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-emerald flex items-center gap-1">
                           Calculated Dose
                         </p>
-                        <p className="text-sm font-black text-emerald">
-                          {calculatedDose.dose != null
-                            ? `${calculatedDose.dose} ${calculatedDose.doseUnit || ""}`.trim()
-                            : "—"}
+                        {/* Primary: total mg */}
+                        <p className="text-lg font-black text-emerald tabular-nums">
+                          {calculatedDose.totalMg}{" "}
+                          <span className="text-sm font-bold">mg</span>
                         </p>
+                        {/* Concentration used */}
+                        {calculatedDose.concLabel && (
+                          <p className="text-[11px] text-muted-foreground font-semibold">
+                            Concentration: {calculatedDose.concLabel}
+                          </p>
+                        )}
                         <div className="text-[11px] text-muted-foreground space-y-0.5">
-                          <p>Total mg: {calculatedDose.totalMg}</p>
                           {calculatedDose.frequency && (
                             <p>Frequency: {calculatedDose.frequency}</p>
                           )}
                           {calculatedDose.route && (
-                            <p>
-                              Route: {calculatedDose.route} - how the medicine
-                              is given
-                            </p>
+                            <p>Route: {calculatedDose.route}</p>
                           )}
                         </div>
                       </div>
