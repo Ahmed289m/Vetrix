@@ -40,6 +40,7 @@ import {
 } from "@/app/_components/ui/select";
 import { DashboardForm } from "@/app/_components/ui/dashboard-form";
 import { cn } from "@/app/_lib/utils";
+import { toast } from "sonner";
 
 import {
   useVisits,
@@ -347,7 +348,11 @@ export default function VisitsPage() {
   const deleteVisitCascade = async (visit: Visit) => {
     const prescriptionIds = getPrescriptionIdsForVisit(visit);
     for (const prescriptionId of prescriptionIds) {
-      await deletePrescription.mutateAsync(prescriptionId);
+      try {
+        await deletePrescription.mutateAsync(prescriptionId);
+      } catch (err) {
+        console.warn(`Failed to delete prescription ${prescriptionId}`, err);
+      }
     }
     await deleteVisit.mutateAsync(visit.visit_id);
   };
@@ -357,8 +362,9 @@ export default function VisitsPage() {
     try {
       await deleteVisitCascade(visit);
       setSelectedVisitIds((prev) => prev.filter((id) => id !== visit.visit_id));
+      toast.success("Visit deleted successfully");
     } catch {
-      // Deletion errors are handled by mutation/query state.
+      toast.error("Failed to delete visit");
     }
   };
 
@@ -386,6 +392,8 @@ export default function VisitsPage() {
       return;
     }
 
+    const toastId = toast.loading(`Deleting ${count} visits...`);
+
     const visitMap = new Map(
       visibleVisits.map((visit) => [visit.visit_id, visit]),
     );
@@ -408,6 +416,17 @@ export default function VisitsPage() {
     });
 
     setSelectedVisitIds(failedIds);
+
+    if (failedIds.length === 0) {
+      toast.success(`Successfully deleted ${successCount} visits`, {
+        id: toastId,
+      });
+    } else {
+      toast.error(
+        `Deleted ${successCount} visits, but ${failedIds.length} failed.`,
+        { id: toastId },
+      );
+    }
   };
 
   // ── Skeletons ──────────────────────────────────────────────────────────────
