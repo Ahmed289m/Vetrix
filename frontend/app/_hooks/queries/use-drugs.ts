@@ -7,10 +7,11 @@ const LIST_STALE_TIME = 1000 * 60 * 5;
 const DETAIL_STALE_TIME = 1000 * 60 * 2;
 const QUERY_GC_TIME = 1000 * 60 * 60;
 
-export function useDrugs() {
+export function useDrugs(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: DRUGS_KEY,
     queryFn: () => drugsApi.list(),
+    enabled: options?.enabled ?? true,
     staleTime: LIST_STALE_TIME,
     gcTime: QUERY_GC_TIME,
   });

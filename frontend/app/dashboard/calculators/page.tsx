@@ -14,7 +14,7 @@ export default function CalculatorsPage() {
   const { t } = useLang();
   const [isFluidOpen, setIsFluidOpen] = React.useState(false);
   const [isDoseOpen, setIsDoseOpen] = React.useState(false);
-  const { data: drugsData } = useDrugs();
+  const { data: drugsData } = useDrugs({ enabled: isDoseOpen });
   const allDrugs: Drug[] = drugsData?.data ?? [];
 
   return (
@@ -124,8 +124,8 @@ export default function CalculatorsPage() {
               </h2>
               <p className="text-sm font-medium text-muted-foreground/80 leading-relaxed max-w-md">
                 Calculate precise drug dosages using the standard veterinary
-                formula: Dose = Weight × Dosage ÷ Concentration. Supports
-                both liquid (mL) and tablet formulations.
+                formula: Dose = Weight × Dosage ÷ Concentration. Supports both
+                liquid (mL) and tablet formulations.
               </p>
 
               {/* Feature pills */}
@@ -171,4 +171,3 @@ export default function CalculatorsPage() {
     </>
   );
 }
-

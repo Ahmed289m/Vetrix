@@ -2482,10 +2482,21 @@ export default function SimulationMode({ role }: Props) {
       {/* ═══════════════════ DOSE CALCULATOR MODAL ══════════════════════════ */}
       {(() => {
         const activePet = allPets.find((p) => p.pet_id === myActiveCase?.petId);
-        // Collect all drug IDs from session prescriptions for batch calculation
-        const preselectedIds = sessionCasePrescriptions.flatMap((rx) =>
-          getAllDrugIdsForRx(rx.prescription_id),
-        );
+        // Prefer all prescriptions for the active case, not only current session ones.
+        const casePrescriptions = myActiveCase
+          ? getCasePrescriptions(myActiveCase.petId, myActiveCase.clientId)
+          : [];
+        const sourcePrescriptions =
+          casePrescriptions.length > 0
+            ? casePrescriptions
+            : sessionCasePrescriptions;
+        const preselectedIds = [
+          ...new Set(
+            sourcePrescriptions.flatMap((rx) =>
+              getAllDrugIdsForRx(rx.prescription_id),
+            ),
+          ),
+        ];
         // Only show prescribed drugs in the dose calculator
         const prescribedDrugs =
           preselectedIds.length > 0
