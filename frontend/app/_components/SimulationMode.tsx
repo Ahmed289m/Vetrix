@@ -474,6 +474,31 @@ export default function SimulationMode({ role }: Props) {
     return visit.prescription_id ? [visit.prescription_id] : [];
   };
 
+  const getAppointmentReasonForVisit = (visit: Visit): string | null => {
+    const candidates = allAppointments.filter(
+      (appt) =>
+        appt.pet_id === visit.pet_id && appt.client_id === visit.client_id,
+    );
+    if (!candidates.length) return null;
+
+    const visitTs = new Date(visit.date).getTime();
+    if (!Number.isFinite(visitTs)) {
+      return candidates[0]?.reason?.trim() || null;
+    }
+
+    const closest = [...candidates].sort((a, b) => {
+      const aTs = a.appointment_date
+        ? new Date(a.appointment_date).getTime()
+        : 0;
+      const bTs = b.appointment_date
+        ? new Date(b.appointment_date).getTime()
+        : 0;
+      return Math.abs(aTs - visitTs) - Math.abs(bTs - visitTs);
+    })[0];
+
+    return closest?.reason?.trim() || null;
+  };
+
   const getUnlinkedCasePrescriptions = (petId: string, clientId: string) => {
     const linked = new Set(
       allVisits.flatMap((visit) => getVisitPrescriptionIds(visit)),
@@ -539,6 +564,9 @@ export default function SimulationMode({ role }: Props) {
     }
     return pairs;
   }, [selectedDrugs]);
+
+  const showNoInteractionNotice =
+    selectedDrugIds.length > 1 && interactions.length === 0;
 
   const interactingDrugIds = useMemo(() => {
     const ids = new Set<string>();
@@ -1735,6 +1763,7 @@ export default function SimulationMode({ role }: Props) {
             const doctorName =
               detailVisit.doctor_name || doctor?.fullname || "Unknown";
             const sKey = pet ? speciesKey(pet.type) : null;
+            const appointmentReason = getAppointmentReasonForVisit(detailVisit);
             // Gather all drugs for this visit's linked prescription(s)
             const linkedRxIds = getVisitPrescriptionIds(detailVisit);
             const rxDrugIds = [
@@ -1815,17 +1844,24 @@ export default function SimulationMode({ role }: Props) {
                   </div>
                 </div>
 
-                {/* Notes */}
-                {detailVisit.notes && (
-                  <div className="p-3 rounded-xl bg-tint/5 border border-tint/5 space-y-1">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1">
-                      <FileText className="w-3 h-3" /> Clinical Notes
-                    </p>
-                    <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
-                      {detailVisit.notes}
-                    </p>
-                  </div>
-                )}
+                {/* Reason + Notes */}
+                <div className="p-3 rounded-xl bg-tint/5 border border-tint/5 space-y-1">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                    <ClipboardList className="w-3 h-3" /> Appointment Reason
+                  </p>
+                  <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
+                    {appointmentReason || "Not recorded"}
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-xl bg-tint/5 border border-tint/5 space-y-1">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                    <FileText className="w-3 h-3" /> Doctor Notes
+                  </p>
+                  <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
+                    {detailVisit.notes || "No notes recorded"}
+                  </p>
+                </div>
 
                 {/* Prescription drugs */}
                 {rxDrugs.length > 0 && (
@@ -2105,6 +2141,20 @@ export default function SimulationMode({ role }: Props) {
                     with <span className="font-black">{pair.b}</span>
                   </p>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {showNoInteractionNotice && (
+            <div className="flex items-start gap-2.5 px-3 py-3 rounded-xl bg-emerald/10 border border-emerald/20 text-xs text-emerald">
+              <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-black uppercase tracking-widest text-[10px]">
+                  Interaction Check
+                </p>
+                <p className="font-semibold">
+                  No known interactions detected among the selected drugs.
+                </p>
               </div>
             </div>
           )}
