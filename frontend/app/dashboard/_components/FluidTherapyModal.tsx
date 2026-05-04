@@ -18,20 +18,9 @@ import {
   Scale,
 } from "lucide-react";
 import {
-  calcMaintenanceAllometric,
-  calcFluidDeficit,
-  calcOngoingLosses,
-  calcTotal24h,
-  calcHourlyRate,
-  calcMinuteRate,
-  calcDropsPerMinute,
-  calcDropsPerSecond,
+  calculateFluidPlan,
   calcDilutionV1,
   getDehydrationSeverity,
-  getSmartPlan,
-  calcPhaseVolumes,
-  getMaxBolusRate,
-  getNormalRateRange,
   CLINICAL_PRECAUTIONS,
   DEHYDRATION_COLOR,
   VOMIT_RATE,
@@ -207,22 +196,31 @@ export function FluidTherapyModal({
 
   // ── Calculations ────────────────────────────────────────────────────────────
   const w = parseFloat(weight) || 0;
-  const maintenance = calcMaintenanceAllometric(w, species);
-  const deficit = calcFluidDeficit(w, dehydration);
-  const ongoing = calcOngoingLosses(w, vomitCount, diarrheaCount, vomitSeverity, diarrheaSeverity);
-  const total24h = calcTotal24h(maintenance, deficit, ongoing);
-  const hourlyRate = calcHourlyRate(total24h);
-  const minuteRate = calcMinuteRate(hourlyRate);
-  const dropsPerMin = calcDropsPerMinute(minuteRate, dropFactor);
-  const dropsPerSec = calcDropsPerSecond(dropsPerMin);
-  const maxBolus = getMaxBolusRate(w, species);
-  const normalRange = getNormalRateRange(w, species);
-  const severity = getDehydrationSeverity(dehydration);
+  const plan = calculateFluidPlan({
+    weightKg: w,
+    species,
+    dehydrationPct: dehydration,
+    vomitCount,
+    diarrheaCount,
+    vomitSeverity,
+    diarrheaSeverity,
+    dropFactor,
+  });
+
+  const maintenance = plan.maintenance.perDay;
+  const deficit = plan.deficit.total;
+  const ongoing = plan.ongoing.perDay;
+  const total24h = plan.total24h;
+  const hourlyRate = plan.hourlyRate;
+  const minuteRate = plan.minuteRate;
+  const dropsPerMin = plan.dropsPerMin;
+  const dropsPerSec = plan.dropsPerSec;
+  const maxBolus = plan.maxBolusRate;
+  const normalRange = plan.normalRateRange;
+  const severity = plan.severity;
   const colors = DEHYDRATION_COLOR[severity];
-  const smartPlan = getSmartPlan(species);
-  const [phase1, phase2] = smartPlan.map((p) =>
-    calcPhaseVolumes(p, deficit, maintenance, ongoing),
-  );
+  const phase1 = plan.phase1;
+  const phase2 = plan.phase2;
 
   // Dilution
   const dilV1 = calcDilutionV1(
@@ -232,7 +230,7 @@ export function FluidTherapyModal({
   );
 
   const hasWeight = w > 0;
-  const phase1Hours = smartPlan[0].hours[1];
+  const phase1Hours = phase1.hours[1];
 
   if (typeof document === "undefined") return null;
 
@@ -511,6 +509,12 @@ export function FluidTherapyModal({
                       exit={{ opacity: 0, y: -10 }}
                       className="space-y-4 rounded-2xl border border-border/40 bg-card/40 p-4 sm:p-5"
                     >
+                      {/* Rehydration-only banner */}
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/8 border border-amber-500/15 text-xs text-amber-400">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                        <span className="font-semibold">{plan.rehydrationWarning}</span>
+                      </div>
+
                       <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
                         <Activity className="w-3.5 h-3.5" />
                         Volume Calculations
@@ -533,7 +537,7 @@ export function FluidTherapyModal({
                         <StatCard
                           label="Ongoing Loss"
                           value={ongoing}
-                          unit="mL"
+                          unit="mL/day"
                           color="bg-orange/5 border-orange/20 text-orange"
                         />
                         <StatCard
@@ -542,6 +546,52 @@ export function FluidTherapyModal({
                           unit="mL"
                           color="gradient-emerald-cyan text-primary-foreground border-transparent"
                         />
+                      </div>
+
+                      {/* Deficit correction window info */}
+                      {deficit > 0 && (
+                        <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-blue-500/5 border border-blue-500/15 text-xs">
+                          <Clock className="w-4 h-4 text-blue-400 shrink-0" />
+                          <div className="flex-1">
+                            <span className="font-bold text-blue-400">
+                              Deficit Correction Window: {plan.deficit.correctionHours}h
+                            </span>
+                            <span className="text-muted-foreground ml-2">
+                              ({plan.deficit.ratePerHour.toFixed(1)} mL/hr deficit rate)
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Dynamic safety warnings */}
+                      {plan.safety.warnings.length > 0 && (
+                        <div className="space-y-2">
+                          {plan.safety.warnings.map((w, i) => (
+                            <div
+                              key={i}
+                              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold ${
+                                w.severity === "danger"
+                                  ? "bg-red-500/10 border border-red-500/20 text-red-400"
+                                  : "bg-amber-500/10 border border-amber-500/20 text-amber-400"
+                              }`}
+                            >
+                              <AlertTriangle className="w-4 h-4 shrink-0" />
+                              {w.message}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Reassessment + ongoing loss notes */}
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan/5 border border-cyan/15 text-[10px] text-cyan font-bold flex-1">
+                          <Info className="w-3 h-3 shrink-0" />
+                          {plan.reassessmentMessage}
+                        </div>
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-tint/5 border border-tint/5 text-[10px] text-muted-foreground font-medium flex-1">
+                          <Info className="w-3 h-3 shrink-0" />
+                          {plan.ongoingLossNote}
+                        </div>
                       </div>
 
                       {/* Rate section */}
@@ -696,7 +746,6 @@ export function FluidTherapyModal({
                                 {[
                                   {
                                     ph: phase1,
-                                    plan: smartPlan[0],
                                     col: "border-emerald/20 bg-emerald/5",
                                     rateCol: "gradient-emerald-cyan",
                                     tag: "text-emerald",
@@ -704,14 +753,13 @@ export function FluidTherapyModal({
                                   },
                                   {
                                     ph: phase2,
-                                    plan: smartPlan[1],
                                     col: "border-cyan/20 bg-cyan/5",
                                     rateCol: "bg-cyan",
                                     tag: "text-cyan",
                                     num: "2",
                                   },
                                 ].map(
-                                  ({ ph, plan, col, rateCol, tag, num }) => (
+                                  ({ ph, col, rateCol, tag, num }) => (
                                     <div
                                       key={num}
                                       className={`p-3.5 rounded-xl border ${col} space-y-2.5`}
@@ -724,30 +772,30 @@ export function FluidTherapyModal({
                                             {num}
                                           </div>
                                           <span className="text-xs font-bold uppercase">
-                                            {plan.label}
+                                            {ph.label}
                                           </span>
                                         </div>
                                         <span
                                           className={`text-[10px] font-mono ${tag}`}
                                         >
-                                          {plan.hours[0]}–{plan.hours[1]}h
+                                          {ph.hours[0]}–{ph.hours[1]}h
                                         </span>
                                       </div>
                                       <div className="space-y-1 text-xs">
                                         {[
                                           {
                                             l: "Deficit",
-                                            v: ph.deficit.toFixed(0),
+                                            v: ph.deficitMl.toFixed(0),
                                           },
                                           {
                                             l: "Maintenance",
-                                            v: ph.maintenance.toFixed(0),
+                                            v: ph.maintenanceMl.toFixed(0),
                                           },
-                                          ...(ph.losses > 0
+                                          ...(ph.ongoingMl > 0
                                             ? [
                                                 {
-                                                  l: "Losses",
-                                                  v: ph.losses.toFixed(0),
+                                                  l: "Ongoing Losses",
+                                                  v: ph.ongoingMl.toFixed(0),
                                                 },
                                               ]
                                             : []),
