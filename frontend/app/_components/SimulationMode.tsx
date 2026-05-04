@@ -293,10 +293,10 @@ export default function SimulationMode({ role }: Props) {
   // ── Fluid therapy modal ───────────────────────────────────────────────
   const [showFluidTherapy, setShowFluidTherapy] = useState(false);
 
-  // ── Drug dose calculator modal ────────────────────────────────────────
+  // ── Dose calculator modal ────────────────────────────────────────────
   const [showDrugCalc, setShowDrugCalc] = useState(false);
   // Calculated doses keyed by drug_id — populated by onDosesCalculated callback
-  const [calculatedDoses, setCalculatedDoses] = useState<Map<string, { totalMg: number; dose: number | null; doseUnit: string | null; concLabel: string; drugName: string }>>(new Map());
+  const [calculatedDoses, setCalculatedDoses] = useState<Map<string, { totalMg: number; dose: number | null; doseUnit: string | null; concLabel: string; drugName: string; drugClass: string; frequency: string | null; route: string | null }>>(new Map());
 
   // ── Update weight modal ───────────────────────────────────────────────
   const [showUpdateWeight, setShowUpdateWeight] = useState(false);
@@ -635,7 +635,7 @@ export default function SimulationMode({ role }: Props) {
         // A drug is "calculated" when totalMg > 0 (even if concentration was missing)
         const anyCalculated = rxDrugIds.some((id) => (calculatedDoses.get(id)?.totalMg ?? 0) > 0);
         if (!anyCalculated) {
-          toast.error("Please open the Drug Dose Calculator first to calculate doses.", { duration: 5000 });
+          toast.error("Please open the Dose Calculator first to calculate doses.", { duration: 5000 });
           return;
         }
       }
@@ -1102,7 +1102,7 @@ export default function SimulationMode({ role }: Props) {
                       Fluid Therapy
                     </motion.button>
 
-                    {/* Drug Calculator */}
+                    {/* Dose Calculator */}
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.97 }}
@@ -1110,7 +1110,7 @@ export default function SimulationMode({ role }: Props) {
                       className="flex items-center gap-2 bg-emerald/10 hover:bg-emerald/20 text-emerald px-4 py-2.5 rounded-xl text-sm font-bold border border-emerald/20 transition-colors"
                     >
                       <Calculator className="w-4 h-4" />
-                      Drug Calculator
+                      Dose Calculator
                     </motion.button>
 
                     {/* Case History */}
@@ -1412,8 +1412,7 @@ export default function SimulationMode({ role }: Props) {
           {/* ── Calculated doses panel ── */}
           {visitMode === "create" && visitPrescriptionId && (() => {
             const rxDrugIds = getAllDrugIdsForRx(visitPrescriptionId);
-            const calced = rxDrugIds.map((id) => calculatedDoses.get(id)).filter(Boolean) as Array<{ totalMg: number; dose: number | null; doseUnit: string | null; concLabel: string; drugName: string }>;
-            // Only flag as uncalculated when the drug has NEVER been through the calculator (totalMg = 0 or absent)
+            const calced = rxDrugIds.map((id) => calculatedDoses.get(id)).filter(Boolean) as Array<{ totalMg: number; dose: number | null; doseUnit: string | null; concLabel: string; drugName: string; drugClass: string; frequency: string | null; route: string | null }>;
             const uncalced = rxDrugIds.filter((id) => (calculatedDoses.get(id)?.totalMg ?? 0) === 0)
               .map((id) => allDrugs.find((d) => d.drug_id === id)?.name || id);
             return (
@@ -1422,24 +1421,42 @@ export default function SimulationMode({ role }: Props) {
                   <Calculator className="w-3 h-3" /> Calculated Doses
                 </p>
                 {calced.length > 0 && (
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     {calced.map((cd, i) => (
-                      <div key={i} className="flex items-center justify-between px-3 py-2 rounded-xl bg-emerald/5 border border-emerald/15 text-xs">
-                        <div className="flex items-center gap-2">
-                          <Pill className="w-3 h-3 text-emerald shrink-0" />
-                          <span className="font-bold text-emerald">{cd.drugName}</span>
-                          {cd.concLabel && <span className="text-muted-foreground/60">({cd.concLabel})</span>}
+                      <div key={i} className="rounded-xl bg-emerald/5 border border-emerald/15 overflow-hidden">
+                        {/* Drug header */}
+                        <div className="flex items-center justify-between px-3 py-2 border-b border-emerald/10">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Pill className="w-3 h-3 text-emerald shrink-0" />
+                            <div className="min-w-0">
+                              <span className="font-black text-xs text-emerald truncate block">{cd.drugName}</span>
+                              {cd.drugClass && <span className="text-[9px] text-muted-foreground/60">{cd.drugClass}</span>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 font-black tabular-nums text-xs shrink-0">
+                            <span className="text-cyan">{cd.totalMg} mg</span>
+                            {cd.dose != null && cd.doseUnit && (
+                              <>
+                                <span className="text-muted-foreground/40">→</span>
+                                <span className="text-emerald">{cd.dose} {cd.doseUnit}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 font-black tabular-nums">
-                          <span className="text-cyan">{cd.totalMg} mg</span>
-                          {cd.dose != null && cd.doseUnit ? (
-                            <>
-                              <span className="text-muted-foreground/40">→</span>
-                              <span className="text-emerald">{cd.dose} {cd.doseUnit}</span>
-                            </>
-                          ) : (
-                            <span className="text-muted-foreground/50 font-normal text-[10px]">total</span>
+                        {/* Drug details */}
+                        <div className="flex items-center gap-3 px-3 py-1.5 text-[10px] text-muted-foreground">
+                          {cd.frequency && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-2.5 h-2.5" />
+                              <span className="font-bold">{cd.frequency}</span>
+                            </span>
                           )}
+                          {cd.route && (
+                            <span className="px-1.5 py-0.5 rounded-md bg-cyan/10 border border-cyan/15 text-cyan font-bold text-[9px]">
+                              {cd.route}
+                            </span>
+                          )}
+                          {cd.concLabel && <span className="opacity-60">{cd.concLabel}</span>}
                         </div>
                       </div>
                     ))}
@@ -1450,7 +1467,7 @@ export default function SimulationMode({ role }: Props) {
                     <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <p className="font-black">Not yet calculated: {uncalced.join(", ")}</p>
-                      <p className="opacity-70 mt-0.5">Open the Drug Dose Calculator and enter patient weight to calculate.</p>
+                      <p className="opacity-70 mt-0.5">Open the Dose Calculator and enter patient weight to calculate.</p>
                     </div>
                     <button
                       onClick={() => { setShowVisitModal(false); setShowDrugCalc(true); }}
@@ -1499,7 +1516,7 @@ export default function SimulationMode({ role }: Props) {
                   whileTap={{ scale: isBlocked ? 1 : 0.97 }}
                   onClick={handleSaveVisit}
                   disabled={createVisit.isPending || updateVisit.isPending || isBlocked}
-                  title={isBlocked ? "Calculate all drug doses first using the Drug Dose Calculator" : undefined}
+                  title={isBlocked ? "Calculate all drug doses first using the Dose Calculator" : undefined}
                   className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${isBlocked ? "bg-muted/30 text-muted-foreground cursor-not-allowed" : "gradient-cyan-blue text-primary-foreground disabled:opacity-50"}`}
                 >
                   {createVisit.isPending || updateVisit.isPending
@@ -1625,18 +1642,20 @@ export default function SimulationMode({ role }: Props) {
                     <div className="space-y-2">
                       {rxDrugs.map((d) => {
                         const sp = sKey ?? "dog";
-                        // Read raw dose entry for this species
                         const rawDose = d.dose ? (d.dose as Record<string, unknown>)[sp] as { value?: number | null; unit?: string | null; frequency?: string | null } | null | undefined : null;
                         const dosageEntry = rawDose ?? (d.dose ? (d.dose as Record<string, unknown>)[sp === "dog" ? "cat" : "dog"] as { value?: number | null; unit?: string | null; frequency?: string | null } | null | undefined : null);
                         const sev = getDrugSeverityForSpecies(d, sKey);
                         const cl = severityColor(sev);
                         const calced = calculatedDoses.get(d.drug_id);
-                        const routes: string[] = Array.isArray((d.dose as Record<string, unknown> | null)?.["route"]) ? (d.dose as Record<string, unknown>)["route"] as string[] : [];
+                        // Frequency: prefer calculated (from dose calc confirm), fall back to drug model
+                        const freq = calced?.frequency || dosageEntry?.frequency || null;
+                        // Route: prefer calculated, fall back to drug model
+                        const routeStr = calced?.route || (typeof d.dose?.route === "string" ? d.dose.route : null);
                         return (
                           <div key={d.drug_id} className="rounded-xl bg-emerald/5 border border-emerald/15 overflow-hidden">
-                            {/* Drug header */}
+                            {/* Drug header — name, class, toxicity badge */}
                             <div className="flex items-center justify-between px-4 py-3 border-b border-emerald/10">
-                              <div className="flex items-center gap-2 min-w-0">
+                              <div className="flex items-center gap-2.5 min-w-0">
                                 <Pill className="w-3.5 h-3.5 text-emerald shrink-0" />
                                 <div className="min-w-0">
                                   <span className="font-black text-sm text-emerald truncate block">{d.name}</span>
@@ -1647,8 +1666,9 @@ export default function SimulationMode({ role }: Props) {
                                 {sev && <ToxicityBadge severity={sev} />}
                               </div>
                             </div>
+
                             {/* Detail grid */}
-                            <div className="px-4 py-3 space-y-2">
+                            <div className="px-4 py-3 space-y-2.5">
                               {/* Calculated dose */}
                               {calced ? (
                                 <div className="flex items-center justify-between text-xs">
@@ -1657,8 +1677,12 @@ export default function SimulationMode({ role }: Props) {
                                   </span>
                                   <div className="flex items-center gap-1.5 tabular-nums font-black">
                                     <span className="text-cyan">{calced.totalMg} mg</span>
-                                    <span className="text-muted-foreground/40">→</span>
-                                    <span className="text-emerald">{calced.dose} {calced.doseUnit}</span>
+                                    {calced.dose != null && calced.doseUnit && (
+                                      <>
+                                        <span className="text-muted-foreground/40">→</span>
+                                        <span className="text-emerald">{calced.dose} {calced.doseUnit}</span>
+                                      </>
+                                    )}
                                     {calced.concLabel && <span className="text-muted-foreground/50 font-normal text-[10px]">({calced.concLabel})</span>}
                                   </div>
                                 </div>
@@ -1667,7 +1691,29 @@ export default function SimulationMode({ role }: Props) {
                                   <Calculator className="w-3 h-3" /> No calculated dose recorded
                                 </div>
                               )}
-                              {/* Species dosage */}
+
+                              {/* Frequency + Route row */}
+                              {(freq || routeStr) && (
+                                <div className="flex items-center gap-3 text-xs">
+                                  {freq && (
+                                    <div className="flex items-center gap-1.5">
+                                      <Clock className="w-3 h-3 text-cyan" />
+                                      <span className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">Frequency</span>
+                                      <span className="font-bold text-cyan">{freq}</span>
+                                    </div>
+                                  )}
+                                  {routeStr && (
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">Route</span>
+                                      <span className="px-1.5 py-0.5 rounded-md bg-cyan/10 border border-cyan/20 text-cyan text-[10px] font-bold">
+                                        {routeStr}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Species dosage reference */}
                               {dosageEntry && (
                                 <div className="flex items-center justify-between text-xs">
                                   <span className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">
@@ -1681,19 +1727,7 @@ export default function SimulationMode({ role }: Props) {
                                   </span>
                                 </div>
                               )}
-                              {/* Routes */}
-                              {routes.length > 0 && (
-                                <div className="flex items-center gap-2 text-xs">
-                                  <span className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] shrink-0">Route</span>
-                                  <div className="flex flex-wrap gap-1">
-                                    {routes.map((r) => (
-                                      <span key={r} className="px-1.5 py-0.5 rounded-md bg-cyan/10 border border-cyan/20 text-cyan text-[10px] font-bold">
-                                        {r}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
+
                               {/* Toxicity note */}
                               {(() => {
                                 const tox = getDrugToxicityForSpecies(d, sKey);
@@ -2187,7 +2221,7 @@ export default function SimulationMode({ role }: Props) {
         );
       })()}
 
-      {/* ═══════════════════ DRUG DOSE CALCULATOR MODAL ══════════════════════════ */}
+      {/* ═══════════════════ DOSE CALCULATOR MODAL ══════════════════════════ */}
       {(() => {
         const activePet = allPets.find((p) => p.pet_id === myActiveCase?.petId);
         // Collect all drug IDs from session prescriptions for batch calculation
@@ -2217,6 +2251,9 @@ export default function SimulationMode({ role }: Props) {
                   doseUnit: r.doseUnit,
                   concLabel: r.concLabel,
                   drugName: r.drugName,
+                  drugClass: r.drugClass,
+                  frequency: r.frequency,
+                  route: r.route,
                 }));
                 return next;
               });

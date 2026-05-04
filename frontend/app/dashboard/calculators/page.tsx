@@ -100,7 +100,7 @@ export default function CalculatorsPage() {
           </div>
         </motion.button>
 
-        {/* Drug Dose Calculator Card */}
+        {/* Dose Calculator Card */}
         <motion.button
           variants={fadeUp}
           whileHover={{ scale: 1.015 }}
@@ -120,7 +120,7 @@ export default function CalculatorsPage() {
             {/* Text */}
             <div className="flex-1 space-y-2">
               <h2 className="text-2xl font-black text-foreground group-hover:text-emerald transition-colors">
-                Drug Dose Calculator
+                Dose Calculator
               </h2>
               <p className="text-sm font-medium text-muted-foreground/80 leading-relaxed max-w-md">
                 Calculate precise drug dosages using the standard veterinary

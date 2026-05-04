@@ -69,7 +69,7 @@ export interface DrugDoseCalculatorModalProps {
   /** Pre-selected drug IDs (from prescriptions) for auto batch calculation */
   preselectedDrugIds?: string[];
   /** Called when doctor confirms doses (simulation mode only) */
-  onDosesCalculated?: (results: Array<{ drugId: string; drugName: string; totalMg: number; dose: number | null; doseUnit: string | null; concLabel: string }>) => void;
+  onDosesCalculated?: (results: Array<{ drugId: string; drugName: string; drugClass: string; totalMg: number; dose: number | null; doseUnit: string | null; concLabel: string; frequency: string | null; route: string | null }>) => void;
 }
 
 // ── Input Field ───────────────────────────────────────────────────────────────
@@ -294,17 +294,23 @@ export function DrugDoseCalculatorModal({
   const handleConfirmDoses = React.useCallback(() => {
     if (!onDosesCalculated || batchResults.length === 0) return;
     onDosesCalculated(
-      batchResults.map((r) => ({
-        drugId: r.drug.drug_id,
-        drugName: r.drug.name,
-        totalMg: r.totalMg,
-        dose: r.result?.valid ? r.result.dose : null,
-        doseUnit: r.result?.valid ? doseUnit : null,
-        concLabel: r.concLabel,
-      }))
+      batchResults.map((r) => {
+        const doseEntry = r.drug.dose?.[species];
+        return {
+          drugId: r.drug.drug_id,
+          drugName: r.drug.name,
+          drugClass: r.drug.class || "",
+          totalMg: r.totalMg,
+          dose: r.result?.valid ? r.result.dose : null,
+          doseUnit: r.result?.valid ? doseUnit : null,
+          concLabel: r.concLabel,
+          frequency: doseEntry?.frequency ?? null,
+          route: r.drug.dose?.route ?? null,
+        };
+      })
     );
     onClose();
-  }, [batchResults, doseUnit, onDosesCalculated, onClose]);
+  }, [batchResults, doseUnit, species, onDosesCalculated, onClose]);
 
   const isSimulation = mode === "simulation";
   const hasBatchDoses = batchResults.length > 0;
@@ -352,7 +358,7 @@ export function DrugDoseCalculatorModal({
                     </div>
                     <div className="min-w-0">
                       <h2 className="text-base sm:text-lg font-black tracking-tight">
-                        Drug Dose Calculator
+                        Dose Calculator
                       </h2>
                       <p className="text-[10px] sm:text-xs text-muted-foreground">
                         {isSimulation && petName
@@ -381,7 +387,7 @@ export function DrugDoseCalculatorModal({
 
                   <button
                     onClick={onClose}
-                    aria-label="Close drug dose calculator"
+                    aria-label="Close dose calculator"
                     className="p-2 hover:bg-muted rounded-xl transition-colors shrink-0"
                   >
                     <X className="w-4 h-4" />
