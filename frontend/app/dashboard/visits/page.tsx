@@ -52,7 +52,7 @@ import { useUsers } from "@/app/_hooks/queries/use-users";
 import { usePrescriptions } from "@/app/_hooks/queries/use-prescriptions";
 import { usePrescriptionItems } from "@/app/_hooks/queries/use-prescription-items";
 import { useDrugs } from "@/app/_hooks/queries/use-drugs";
-import type { Visit, Drug } from "@/app/_lib/types/models";
+import type { Visit, Drug, VisitCalculatedDose } from "@/app/_lib/types/models";
 
 import {
   VisitDetailModal,
@@ -159,6 +159,14 @@ export default function VisitsPage() {
         : null
       : usersList.find((u) => u.user_id === id);
 
+  const getCalculatedDoseForDrug = (
+    visit: Visit,
+    drugId: string,
+  ): VisitCalculatedDose | null =>
+    Array.isArray(visit.calculated_doses)
+      ? visit.calculated_doses.find((dose) => dose.drugId === drugId) || null
+      : null;
+
   const getPrescriptionIdsForVisit = (visit: Visit): string[] => {
     const fromList = Array.isArray(visit.prescription_ids)
       ? visit.prescription_ids.filter(Boolean)
@@ -171,8 +179,18 @@ export default function VisitsPage() {
     return visit.prescription_id ? [visit.prescription_id] : [];
   };
 
-  const getDrugsForVisit = (visit: Visit): { drug: Drug; dose: string }[] => {
-    const result: { drug: Drug; dose: string }[] = [];
+  const getDrugsForVisit = (
+    visit: Visit,
+  ): {
+    drug: Drug;
+    dose: string;
+    calculatedDose?: VisitCalculatedDose | null;
+  }[] => {
+    const result: {
+      drug: Drug;
+      dose: string;
+      calculatedDose?: VisitCalculatedDose | null;
+    }[] = [];
     const prescriptionIds = getPrescriptionIdsForVisit(visit);
 
     for (const prescriptionId of prescriptionIds) {
@@ -223,7 +241,11 @@ export default function VisitsPage() {
         for (const drugId of drugIds) {
           const drug = drugsList.find((d) => d.drug_id === drugId);
           if (drug) {
-            result.push({ drug, dose: item.drugDose });
+            result.push({
+              drug,
+              dose: item.drugDose,
+              calculatedDose: getCalculatedDoseForDrug(visit, drugId),
+            });
           }
         }
       }
@@ -283,6 +305,10 @@ export default function VisitsPage() {
       if (!values.pet_id) errors.pet_id = "Select a pet";
       if (!values.doctor_id) errors.doctor_id = "Select a doctor";
       if (!values.date) errors.date = "Enter visit date";
+      if (values.prescription_ids.length > 0) {
+        errors.prescription_ids =
+          "Prescription-linked visits must be created from the dose calculator flow after calculating the selected drugs.";
+      }
       return errors;
     },
     onSubmit: (values, { setSubmitting, resetForm }) => {
@@ -1017,6 +1043,11 @@ export default function VisitsPage() {
                       </label>
                     );
                   })}
+                  {formik.errors.prescription_ids && (
+                    <p className="px-1 text-[11px] font-semibold text-amber-400 leading-relaxed">
+                      {formik.errors.prescription_ids}
+                    </p>
+                  )}
                 </div>
               </div>
             )}

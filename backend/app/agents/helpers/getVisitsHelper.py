@@ -64,7 +64,12 @@ async def getVisitsInfo(pet_id: str, pet_type: str | None = None):
     db = get_database()
     normalized_pet_type = _normalize_pet_type(pet_type)
 
-    visit_service = VisitService(VisitRepository(db),  UserRepository(db))
+    visit_service = VisitService(
+        VisitRepository(db),
+        UserRepository(db),
+        PrescriptionRepository(db),
+        PrescriptionItemRepository(db),
+    )
     prescription_service = PrescriptionService(
         PrescriptionRepository(db),
         DrugRepository(db),

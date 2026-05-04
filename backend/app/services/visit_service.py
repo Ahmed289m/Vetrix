@@ -3,6 +3,8 @@ from fastapi import HTTPException, status
 from app.core.permission_checker import TokenData
 from app.models.enums.user_role import UserRole
 from app.models.visit import Visit
+from app.repositories.prescription_item_repository import PrescriptionItemRepository
+from app.repositories.prescription_repository import PrescriptionRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.visit_repository import VisitRepository
 from app.schemas.visit import VisitCreate, VisitUpdate
@@ -12,10 +14,18 @@ from app.utils.ws import broadcast
 
 
 class VisitService:
-    def __init__(self, repository: VisitRepository, user_repository: UserRepository) -> None:
+    def __init__(
+        self,
+        repository: VisitRepository,
+        user_repository: UserRepository,
+        prescription_repository: PrescriptionRepository,
+        prescription_item_repository: PrescriptionItemRepository,
+    ) -> None:
         self.crud = BaseCrudService(repository, Visit, id_field="visit_id", id_prefix="visit")
         self.repository = repository
         self.user_repository = user_repository
+        self.prescription_repository = prescription_repository
+        self.prescription_item_repository = prescription_item_repository
 
     @staticmethod
     def _normalize_prescription_ids(data: dict) -> dict:
@@ -54,6 +64,100 @@ class VisitService:
         normalized = dict(visit)
         return self._normalize_prescription_ids(normalized)
 
+    @staticmethod
+    def _normalize_calculated_doses(data: dict) -> dict:
+        raw_doses = data.get("calculated_doses")
+        if raw_doses is None:
+            return data
+
+        if not isinstance(raw_doses, list):
+            data["calculated_doses"] = []
+            return data
+
+        normalized_doses: list[dict] = []
+        seen_drug_ids: set[str] = set()
+        for entry in raw_doses:
+            if not isinstance(entry, dict):
+                continue
+            drug_id = entry.get("drugId") or entry.get("drug_id")
+            if not isinstance(drug_id, str) or not drug_id.strip():
+                continue
+            normalized_drug_id = drug_id.strip()
+            if normalized_drug_id in seen_drug_ids:
+                continue
+            normalized_entry = dict(entry)
+            normalized_entry["drugId"] = normalized_drug_id
+            normalized_entry.pop("drug_id", None)
+            normalized_doses.append(normalized_entry)
+            seen_drug_ids.add(normalized_drug_id)
+
+        data["calculated_doses"] = normalized_doses
+        return data
+
+    async def _get_expected_drug_ids(self, prescription_ids: list[str]) -> set[str]:
+        expected_drug_ids: set[str] = set()
+
+        for prescription_id in prescription_ids:
+            prescription = await self.prescription_repository.get_by_id(prescription_id)
+            if not prescription:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Prescription not found: {prescription_id}",
+                )
+
+            item_ids = prescription.get("prescriptionItem_ids") or []
+            if not isinstance(item_ids, list):
+                continue
+
+            for item_id in item_ids:
+                if not isinstance(item_id, str) or not item_id.strip():
+                    continue
+                item = await self.prescription_item_repository.get_by_id(item_id.strip())
+                if not item:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Prescription item not found: {item_id}",
+                    )
+
+                drug_ids = item.get("drug_ids") or []
+                if not isinstance(drug_ids, list):
+                    drug_ids = []
+                if not drug_ids and isinstance(item.get("drug_id"), str):
+                    drug_ids = [item["drug_id"]]
+
+                for drug_id in drug_ids:
+                    if isinstance(drug_id, str) and drug_id.strip():
+                        expected_drug_ids.add(drug_id.strip())
+
+        return expected_drug_ids
+
+    async def _require_calculated_doses(
+        self,
+        prescription_ids: list[str],
+        calculated_doses: list[dict] | None,
+    ) -> None:
+        if not prescription_ids:
+            return
+
+        if not isinstance(calculated_doses, list) or not calculated_doses:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Calculate drug doses before creating or updating the visit.",
+            )
+
+        expected_drug_ids = await self._get_expected_drug_ids(prescription_ids)
+        provided_drug_ids = {
+            entry.get("drugId")
+            for entry in calculated_doses
+            if isinstance(entry, dict) and isinstance(entry.get("drugId"), str)
+        }
+
+        if expected_drug_ids - provided_drug_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Calculate doses for every selected drug before saving the visit.",
+            )
+
     async def create_visit(self, request: VisitCreate, current_user: TokenData) -> dict:
         """
         Create a visit with authorization.
@@ -78,6 +182,11 @@ class VisitService:
 
         payload = request.model_dump(exclude_none=True)
         payload = self._normalize_prescription_ids(payload)
+        payload = self._normalize_calculated_doses(payload)
+        await self._require_calculated_doses(
+            payload.get("prescription_ids") or [],
+            payload.get("calculated_doses"),
+        )
         payload["clinic_id"] = clinic_id
         created = await self.crud.create(Visit(**payload))
         return self._normalize_visit_record(created)
@@ -208,6 +317,11 @@ class VisitService:
                 )
         
         payload = self._normalize_prescription_ids(request.model_dump(exclude_none=True))
+        payload = self._normalize_calculated_doses(payload)
+        await self._require_calculated_doses(
+            payload.get("prescription_ids") or [],
+            payload.get("calculated_doses"),
+        )
         if not payload:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

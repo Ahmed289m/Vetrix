@@ -77,7 +77,7 @@ def _services() -> dict[str, Any]:
 	return {
 		"appointments": AppointmentService(appointment_repo, clinic_repo, pet_repo, user_repo),
 		"pets": PetService(pet_repo, user_repo),
-		"visits": VisitService(visit_repo, user_repo),
+		"visits": VisitService(visit_repo, user_repo, prescription_repo, prescription_item_repo),
 		"prescriptions": PrescriptionService(prescription_repo, drug_repo, prescription_item_repo),
 		"prescription_items": PrescriptionItemService(prescription_item_repo, prescription_repo),
 		"drugs": DrugService(drug_repo),

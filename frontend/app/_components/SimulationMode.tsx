@@ -74,6 +74,10 @@ import type {
   Visit,
 } from "@/app/_lib/types/models";
 
+type CalculatedDosePayload = NonNullable<
+  VisitCreate["calculated_doses"]
+>[number];
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const fmtDate = (d?: string | null) =>
@@ -690,6 +694,31 @@ export default function SimulationMode({ role }: Props) {
     setShowVisitModal(true);
   };
 
+  const getSelectedDrugIdsForVisit = (prescriptionIds: string[]) => [
+    ...new Set(prescriptionIds.flatMap((rxId) => getAllDrugIdsForRx(rxId))),
+  ];
+
+  const buildCalculatedDosePayload = (
+    prescriptionIds: string[],
+  ): CalculatedDosePayload[] =>
+    getSelectedDrugIdsForVisit(prescriptionIds)
+      .map((drugId) => {
+        const calced = calculatedDoses.get(drugId);
+        if (!calced || calced.totalMg <= 0) return null;
+        return {
+          drugId,
+          drugName: calced.drugName,
+          drugClass: calced.drugClass,
+          totalMg: calced.totalMg,
+          dose: calced.dose,
+          doseUnit: calced.doseUnit,
+          concLabel: calced.concLabel,
+          frequency: calced.frequency,
+          route: calced.route,
+        } satisfies CalculatedDosePayload;
+      })
+      .filter(Boolean) as CalculatedDosePayload[];
+
   const handleSaveVisit = () => {
     if (visitMode === "create") {
       const appt = simAppointments.find(
@@ -698,6 +727,8 @@ export default function SimulationMode({ role }: Props) {
       if (!appt) return;
       const casePrescriptions = getCasePrescriptions(appt.petId, appt.clientId);
       const linkedRxIds = visitPrescriptionIds;
+      const linkedDrugIds = getSelectedDrugIdsForVisit(linkedRxIds);
+      const calculatedDosePayload = buildCalculatedDosePayload(linkedRxIds);
 
       // Block when any selected prescription has no calculated doses yet.
       if (linkedRxIds.length > 0 && casePrescriptions.length > 0) {
@@ -717,16 +748,26 @@ export default function SimulationMode({ role }: Props) {
           );
           return;
         }
+        if (calculatedDosePayload.length !== linkedDrugIds.length) {
+          toast.error(
+            "Please calculate doses for every selected drug before saving the visit.",
+            { duration: 5000 },
+          );
+          return;
+        }
       }
     }
 
     if (visitMode === "edit") {
+      const calculatedDosePayload =
+        buildCalculatedDosePayload(visitPrescriptionIds);
       updateVisit.mutate(
         {
           id: editingVisitId,
           data: {
             notes: visitNotes,
             prescription_ids: visitPrescriptionIds,
+            calculated_doses: calculatedDosePayload,
           },
         },
         {
@@ -751,6 +792,7 @@ export default function SimulationMode({ role }: Props) {
         date: new Date().toISOString(),
         ...(visitPrescriptionIds.length > 0 && {
           prescription_ids: visitPrescriptionIds,
+          calculated_doses: buildCalculatedDosePayload(visitPrescriptionIds),
         }),
       };
       createVisit.mutate(payload, {
@@ -1269,17 +1311,17 @@ export default function SimulationMode({ role }: Props) {
                 >
                   {/* Ambient glow */}
                   <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
-                    <div className="absolute -top-20 left-1/4 w-72 h-72 bg-emerald/[0.06] rounded-full blur-[100px]" />
-                    <div className="absolute -bottom-16 right-1/3 w-60 h-60 bg-cyan/[0.04] rounded-full blur-[80px]" />
+                    <div className="absolute -top-20 left-1/4 w-72 h-72 bg-emerald/6 rounded-full blur-[100px]" />
+                    <div className="absolute -bottom-16 right-1/3 w-60 h-60 bg-cyan/4 rounded-full blur-[80px]" />
                   </div>
                   {/* Gradient top edge */}
-                  <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-emerald/40 to-transparent" />
+                  <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-emerald/40 to-transparent" />
 
                   {/* Modal header */}
                   <div className="shrink-0 relative z-10 flex items-center justify-between px-5 py-3.5 border-b border-border/20">
                     <div className="flex items-center gap-3">
                       <div className="relative">
-                        <div className="absolute -inset-0.5 bg-gradient-to-br from-emerald/30 to-cyan/20 rounded-xl blur-sm" />
+                        <div className="absolute -inset-0.5 bg-linear-to-br from-emerald/30 to-cyan/20 rounded-xl blur-sm" />
                         <div className="relative w-8 h-8 rounded-xl gradient-emerald-cyan flex items-center justify-center shadow-md shadow-emerald/15">
                           <Bot className="w-4 h-4 text-primary-foreground" />
                         </div>
@@ -1422,7 +1464,7 @@ export default function SimulationMode({ role }: Props) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <div className="absolute -inset-0.5 bg-gradient-to-br from-cyan/30 to-emerald/20 rounded-xl blur-sm" />
+                  <div className="absolute -inset-0.5 bg-linear-to-br from-cyan/30 to-emerald/20 rounded-xl blur-sm" />
                   <div className="relative w-9 h-9 rounded-xl gradient-cyan-blue flex items-center justify-center">
                     <Stethoscope className="w-4 h-4 text-primary-foreground" />
                   </div>
@@ -1901,7 +1943,12 @@ export default function SimulationMode({ role }: Props) {
                             : null);
                         const sev = getDrugSeverityForSpecies(d, sKey);
                         const cl = severityColor(sev);
-                        const calced = calculatedDoses.get(d.drug_id);
+                        const storedCalced =
+                          detailVisit.calculated_doses?.find(
+                            (entry) => entry.drugId === d.drug_id,
+                          ) || null;
+                        const calced =
+                          storedCalced ?? calculatedDoses.get(d.drug_id);
                         // Frequency: prefer calculated (from dose calc confirm), fall back to drug model
                         const freq =
                           calced?.frequency || dosageEntry?.frequency || null;

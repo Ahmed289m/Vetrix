@@ -128,10 +128,23 @@ export interface ClinicUpdate {
 
 /* ── Visit ────────────────────────────────────────────────────────── */
 
+export interface VisitCalculatedDose {
+  drugId: string;
+  drugName: string;
+  drugClass: string;
+  totalMg: number;
+  dose: number | null;
+  doseUnit: string | null;
+  concLabel: string;
+  frequency: string | null;
+  route: string | null;
+}
+
 export interface Visit {
   visit_id: string;
   prescription_id?: string;
   prescription_ids?: string[];
+  calculated_doses?: VisitCalculatedDose[];
   clinic_id: string;
   client_id: string;
   client_name?: string;
@@ -145,6 +158,7 @@ export interface Visit {
 export interface VisitCreate {
   prescription_id?: string;
   prescription_ids?: string[];
+  calculated_doses?: VisitCalculatedDose[];
   client_id: string;
   notes?: string;
   pet_id: string;
@@ -155,6 +169,7 @@ export interface VisitCreate {
 export interface VisitUpdate {
   prescription_id?: string;
   prescription_ids?: string[];
+  calculated_doses?: VisitCalculatedDose[];
   client_id?: string;
   notes?: string;
   pet_id?: string;

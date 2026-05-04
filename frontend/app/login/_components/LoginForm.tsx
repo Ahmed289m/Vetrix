@@ -42,16 +42,16 @@ export function LoginForm() {
     !!(formik.touched[name] && formik.errors[name]);
 
   return (
-    <div className="flex-1 flex flex-col relative z-10">
+    <div className="flex-1 min-h-0 flex flex-col relative z-10 overflow-hidden">
       {/* Mobile header bar */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="lg:hidden flex items-center justify-between p-4 sm:p-5 border-b border-border/20 bg-background/60 backdrop-blur-xl"
+        className="lg:hidden flex items-center justify-between px-4 py-3 sm:p-5 border-b border-border/20 bg-background/60 backdrop-blur-xl shrink-0"
       >
         <div className="flex items-center gap-3">
-          <div className="relative w-10 h-10 rounded-2xl bg-tint/5 border border-tint/10 flex items-center justify-center overflow-hidden shadow-lg shadow-emerald/10">
+          <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-tint/5 border border-tint/10 flex items-center justify-center overflow-hidden shadow-lg shadow-emerald/10">
             <div className="absolute -inset-4 bg-radial from-emerald/20 to-transparent" />
             <Image
               src="/logo.svg"
@@ -61,13 +61,15 @@ export function LoginForm() {
               sizes="32px"
               unoptimized
               draggable={false}
-              className="relative w-8 h-8 object-contain"
+              className="relative w-7 h-7 sm:w-8 sm:h-8 object-contain"
               priority
             />
           </div>
           <div>
-            <p className="text-sm font-black tracking-[0.1em]">VETRIX</p>
-            <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/60 font-bold">
+            <p className="text-xs sm:text-sm font-black tracking-widest">
+              VETRIX
+            </p>
+            <p className="text-[9px] sm:text-[10px] uppercase tracking-[0.12em] text-muted-foreground/60 font-bold">
               Smart Vet Platform
             </p>
           </div>
@@ -75,17 +77,17 @@ export function LoginForm() {
       </motion.div>
 
       {/* Centered form area */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
+      <div className="flex-1 min-h-0 flex items-center justify-center px-4 py-4 sm:p-10">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, ease: [0.2, 0, 0, 1] }}
-          className="w-full max-w-sm"
+          className="w-full max-w-[24rem]"
         >
           {/* Card */}
-          <div className="bg-card/60 backdrop-blur-xl border border-border/40 rounded-3xl p-7 sm:p-8 shadow-2xl shadow-black/10 space-y-6">
+          <div className="bg-card/60 backdrop-blur-xl border border-border/40 rounded-3xl p-5 sm:p-8 shadow-2xl shadow-black/10 space-y-4 sm:space-y-6 max-h-[calc(100dvh-6rem)] overflow-hidden">
             {/* Header */}
-            <div className="space-y-1.5 text-center">
+            <div className="space-y-1 text-center">
               <motion.div
                 initial={{ scale: 0.85, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -95,14 +97,14 @@ export function LoginForm() {
                   type: "spring",
                   damping: 20,
                 }}
-                className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-emerald/20 to-cyan/10 border border-emerald/20 flex items-center justify-center mb-4 shadow-lg shadow-emerald/10"
+                className="w-12 h-12 sm:w-14 sm:h-14 mx-auto rounded-2xl bg-linear-to-br from-emerald/20 to-cyan/10 border border-emerald/20 flex items-center justify-center mb-3 sm:mb-4 shadow-lg shadow-emerald/10"
               >
-                <div className="w-7 h-7 rounded-full gradient-emerald-cyan opacity-90" />
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full gradient-emerald-cyan opacity-90" />
               </motion.div>
-              <h2 className="text-2xl font-extrabold tracking-tight">
+              <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
                 Welcome back
               </h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 Sign in to your clinic account
               </p>
             </div>
@@ -127,10 +129,13 @@ export function LoginForm() {
             </AnimatePresence>
 
             {/* Form */}
-            <form onSubmit={formik.handleSubmit} className="space-y-4">
+            <form
+              onSubmit={formik.handleSubmit}
+              className="space-y-3 sm:space-y-4"
+            >
               {/* Email */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider ml-0.5">
+                <label className="block text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider ml-0.5">
                   Email
                 </label>
                 <div className="relative group">
@@ -154,7 +159,7 @@ export function LoginForm() {
                     }}
                     onFocus={() => setFocusedField("email")}
                     placeholder="doctor@clinic.com"
-                    className={`w-full pl-10 pr-4 py-3 rounded-xl bg-tint/5 border text-sm outline-none transition-all duration-200 ${
+                    className={`w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-xl bg-tint/5 border text-sm outline-none transition-all duration-200 ${
                       fieldHasError("email")
                         ? "border-red-500/40 bg-red-500/5 focus:ring-2 focus:ring-red-500/15"
                         : focusedField === "email"
@@ -180,7 +185,7 @@ export function LoginForm() {
 
               {/* Password */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider ml-0.5">
+                <label className="block text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider ml-0.5">
                   Password
                 </label>
                 <div className="relative group">
@@ -204,7 +209,7 @@ export function LoginForm() {
                     }}
                     onFocus={() => setFocusedField("password")}
                     placeholder="••••••••"
-                    className={`w-full pl-10 pr-12 py-3 rounded-xl bg-tint/5 border text-sm outline-none transition-all duration-200 ${
+                    className={`w-full pl-10 pr-12 py-2.5 sm:py-3 rounded-xl bg-tint/5 border text-sm outline-none transition-all duration-200 ${
                       fieldHasError("password")
                         ? "border-red-500/40 bg-red-500/5 focus:ring-2 focus:ring-red-500/15"
                         : focusedField === "password"
@@ -239,37 +244,13 @@ export function LoginForm() {
                 </AnimatePresence>
               </div>
 
-              {/* Remember me + forgot */}
-              <div className="flex items-center justify-between pt-0.5">
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      name="rememberMe"
-                      checked={formik.values.rememberMe}
-                      onChange={formik.handleChange}
-                      className="w-4 h-4 rounded border-border accent-emerald cursor-pointer"
-                    />
-                  </div>
-                  <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
-                    Remember me
-                  </span>
-                </label>
-                <button
-                  type="button"
-                  className="text-xs text-emerald hover:text-emerald/80 font-semibold transition-colors hover:underline"
-                >
-                  Forgot password?
-                </button>
-              </div>
-
               {/* Submit */}
               <motion.button
                 type="submit"
                 disabled={isLoggingIn}
                 whileHover={isLoggingIn ? {} : { scale: 1.01, y: -1 }}
                 whileTap={isLoggingIn ? {} : { scale: 0.98 }}
-                className={`w-full py-3.5 rounded-xl gradient-emerald-cyan text-primary-foreground text-sm font-bold flex items-center justify-center gap-2 glow-emerald transition-all duration-300 mt-2 ${
+                className={`w-full py-3 rounded-xl gradient-emerald-cyan text-primary-foreground text-sm font-bold flex items-center justify-center gap-2 glow-emerald transition-all duration-300 mt-1 sm:mt-2 ${
                   isLoggingIn
                     ? "opacity-70 cursor-not-allowed"
                     : "hover:shadow-xl hover:shadow-emerald/20"
@@ -290,7 +271,7 @@ export function LoginForm() {
             </form>
 
             {/* Footer note */}
-            <p className="text-center text-[11px] text-muted-foreground/40 leading-relaxed">
+            <p className="hidden sm:block text-center text-[11px] text-muted-foreground/40 leading-relaxed">
               Protected access · Vetrix Health Technologies
             </p>
           </div>

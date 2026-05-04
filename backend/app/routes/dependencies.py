@@ -88,7 +88,9 @@ def get_visit_controller() -> VisitController:
     db = get_database()
     repo = VisitRepository(db)
     user_repo = UserRepository(db)
-    service = VisitService(repo, user_repo)
+    prescription_repo = PrescriptionRepository(db)
+    prescription_item_repo = PrescriptionItemRepository(db)
+    service = VisitService(repo, user_repo, prescription_repo, prescription_item_repo)
     return VisitController(service)
 
 

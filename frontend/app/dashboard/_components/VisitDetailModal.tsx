@@ -29,6 +29,22 @@ import {
 import type { Visit, Drug, Pet } from "@/app/_lib/types/models";
 import { cn } from "@/app/_lib/utils";
 
+type VisitDrugInfo = {
+  drug: Drug;
+  dose: string;
+  calculatedDose?: {
+    drugId: string;
+    drugName: string;
+    drugClass: string;
+    totalMg: number;
+    dose: number | null;
+    doseUnit: string | null;
+    concLabel: string;
+    frequency: string | null;
+    route: string | null;
+  } | null;
+};
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 export const fmtDate = (d?: string | null) =>
@@ -165,7 +181,7 @@ export function VisitDetailModal({
   onClose: () => void;
   getPet: (id: string) => Pet | undefined;
   getUser: (id: string) => { fullname: string } | null | undefined;
-  getDrugsForVisit: (v: Visit) => { drug: Drug; dose: string }[];
+  getDrugsForVisit: (v: Visit) => VisitDrugInfo[];
   isClient: boolean;
 }) {
   if (!visit) return null;
@@ -294,7 +310,7 @@ export function VisitDetailModal({
             </div>
 
             <div className="space-y-4">
-              {pDrugs.map(({ drug, dose }, idx) => {
+              {pDrugs.map(({ drug, dose, calculatedDose }, idx) => {
                 const sKey = speciesKey(pet?.type);
                 const doseEntry =
                   sKey && drug.dose
@@ -352,6 +368,31 @@ export function VisitDetailModal({
                     </div>
 
                     {/* Species-specific dosage */}
+                    {calculatedDose && (
+                      <div className="p-3 rounded-xl bg-emerald/10 border border-emerald/20 space-y-2">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-emerald">
+                          Calculated Dose
+                        </p>
+                        <p className="text-sm font-black text-emerald">
+                          {calculatedDose.dose != null
+                            ? `${calculatedDose.dose} ${calculatedDose.doseUnit || ""}`.trim()
+                            : "—"}
+                        </p>
+                        <div className="text-[11px] text-muted-foreground space-y-0.5">
+                          <p>Total mg: {calculatedDose.totalMg}</p>
+                          {calculatedDose.frequency && (
+                            <p>Frequency: {calculatedDose.frequency}</p>
+                          )}
+                          {calculatedDose.route && (
+                            <p>
+                              Route: {calculatedDose.route} - how the medicine
+                              is given
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {specDose ? (
                       <div className="p-3 rounded-xl bg-cyan/5 border border-cyan/15">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-cyan mb-1">

@@ -7,6 +7,7 @@ class Visit(BaseModel):
     visit_id: str | None = Field(default=None, alias="_id")
     prescription_id: str | None = None
     prescription_ids: list[str] | None = None
+    calculated_doses: list[dict] | None = None
     clinic_id: str
     client_id: str
     notes: str | None = None
