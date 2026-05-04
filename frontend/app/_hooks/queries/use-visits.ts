@@ -7,12 +7,13 @@ const LIST_STALE_TIME = 1000 * 30;
 const DETAIL_STALE_TIME = 1000 * 15;
 const QUERY_GC_TIME = 1000 * 60 * 20;
 
-export function useVisits() {
+export function useVisits(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: VISITS_KEY,
     queryFn: () => visitsApi.list(),
     staleTime: LIST_STALE_TIME,
     gcTime: QUERY_GC_TIME,
+    enabled: options?.enabled !== false,
   });
 }
 

@@ -127,7 +127,9 @@ export default function VisitsPage() {
   const canCreate = isOwner;
   const canOpenDetails = Boolean(user?.role);
 
-  const { data: visitsData, isLoading: visitsLoading } = useVisits();
+  const { data: visitsData, isLoading: visitsLoading } = useVisits({
+    enabled: !isAuthLoading && !!user && !isClient,
+  });
   const { data: petsData } = usePets();
   const { data: usersData } = useUsers({ enabled: shouldLoadUsers });
   const { data: prescriptionsData } = usePrescriptions();
