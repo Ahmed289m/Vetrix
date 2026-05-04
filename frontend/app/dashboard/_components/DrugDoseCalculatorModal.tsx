@@ -13,6 +13,7 @@ import {
   Pill,
   Search,
   ChevronDown,
+  CheckCircle2,
 } from "lucide-react";
 import {
   calculateDose,
@@ -149,8 +150,32 @@ export function DrugDoseCalculatorModal({
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   // Per-drug concentration index picker (for drugs with multiple concentrations)
   const [concIndexOverrides, setConcIndexOverrides] = React.useState<Record<string, number>>({});
+  // Simulation mode: manual drug selection when no preselected drugs
+  const [simSelectedDrugIds, setSimSelectedDrugIds] = React.useState<string[]>([]);
+  const [simDrugSearch, setSimDrugSearch] = React.useState("");
 
   const selectedDrug = drugs.find((d) => d.drug_id === selectedDrugId);
+
+  // Effective drug IDs for batch calculation: preselected (from prescriptions) or manually picked
+  const effectiveDrugIds = React.useMemo(() => {
+    if (preselectedDrugIds?.length) return preselectedDrugIds;
+    if (mode === "simulation" && simSelectedDrugIds.length) return simSelectedDrugIds;
+    return [];
+  }, [preselectedDrugIds, mode, simSelectedDrugIds]);
+
+  const hasPreselected = (preselectedDrugIds?.length ?? 0) > 0;
+
+  // Filtered drugs for simulation-mode manual selector
+  const simFilteredDrugs = React.useMemo(() => {
+    if (!drugs.length) return [];
+    const q = simDrugSearch.trim().toLowerCase();
+    if (!q) return drugs;
+    return drugs.filter(
+      (d) =>
+        d.name.toLowerCase().includes(q) ||
+        (d.class || "").toLowerCase().includes(q),
+    );
+  }, [drugs, simDrugSearch]);
 
   // ── Filter drugs ──────────────────────────────────────────────────────────
   const filteredDrugs = React.useMemo(() => {
@@ -184,6 +209,8 @@ export function DrugDoseCalculatorModal({
     if (open) {
       if (initialSpecies) setSpecies(initialSpecies);
       if (initialWeight != null) setWeight(String(initialWeight));
+      setSimDrugSearch("");
+      if (!preselectedDrugIds?.length) setSimSelectedDrugIds([]);
       // If preselectedDrugIds provided, pick the first one
       if (preselectedDrugIds?.length && drugs.length) {
         const firstId = preselectedDrugIds[0];
@@ -250,13 +277,12 @@ export function DrugDoseCalculatorModal({
 
   // ── Batch results for preselected drugs ────────────────────────────────────
   const batchResults = React.useMemo(() => {
-    if (!preselectedDrugIds?.length || !drugs.length || w <= 0) return [];
-    return preselectedDrugIds
+    if (!effectiveDrugIds.length || !drugs.length || w <= 0) return [];
+    return effectiveDrugIds
       .map((drugId) => {
         const drug = drugs.find((dd) => dd.drug_id === drugId);
         if (!drug) return null;
         const parsed = getDoseMgPerKg(drug, species);
-        if (parsed == null) return null;
         // Per-drug concentration: use selected index override if set, else first stored, else global manual
         const concIdx = concIndexOverrides[drugId] ?? 0;
         const storedConcs = drug.concentration ?? [];
@@ -266,35 +292,47 @@ export function DrugDoseCalculatorModal({
           : null;
         const drugConc = storedConcVal != null && Number.isFinite(storedConcVal) ? storedConcVal : null;
         const effectiveConc = drugConc != null ? drugConc : c > 0 ? c : null;
+        // If no dose data for this species, still include the drug but with null values
+        if (parsed == null) {
+          return {
+            drug, dosageMgPerKg: null as number | null, result: null, totalMg: 0,
+            rawDosage: "", effectiveConc, concSource: (drugConc != null ? "db" : c > 0 ? "manual" : "none") as "db" | "manual" | "none",
+            storedConcs, concIdx, concLabel: "",
+            missingDose: true,
+          };
+        }
         const res = effectiveConc != null
           ? calculateDose({ weightKg: w, dosageMgPerKg: parsed, concentrationMgPerUnit: effectiveConc, unit: doseUnit })
           : null;
-        // Always compute totalMg even if no concentration is available
         const totalMg = parseFloat((w * parsed).toFixed(2));
         const concLabel = storedConc ? `${storedConc.value} mg/${storedConc.form || (doseUnit === "mL" ? "mL" : "tab")}` : effectiveConc ? `${effectiveConc} mg/unit` : "";
         return {
-          drug, dosageMgPerKg: parsed, result: res, totalMg, rawDosage: formatDoseLabel(drug, species),
+          drug, dosageMgPerKg: parsed as number | null, result: res, totalMg, rawDosage: formatDoseLabel(drug, species),
           effectiveConc, concSource: (drugConc != null ? "db" : c > 0 ? "manual" : "none") as "db" | "manual" | "none",
           storedConcs, concIdx, concLabel,
+          missingDose: false,
         };
       })
       .filter(Boolean) as Array<{
-        drug: Drug; dosageMgPerKg: number;
+        drug: Drug; dosageMgPerKg: number | null;
         result: ReturnType<typeof calculateDose> | null;
         totalMg: number;
         rawDosage: string; effectiveConc: number | null;
         concSource: "db" | "manual" | "none";
         storedConcs: NonNullable<Drug["concentration"]>;
         concIdx: number; concLabel: string;
+        missingDose: boolean;
       }>;
-  }, [preselectedDrugIds, drugs, w, c, species, doseUnit, concIndexOverrides]);
+  }, [effectiveDrugIds, drugs, w, c, species, doseUnit, concIndexOverrides]);
 
   // ── Confirm handler for simulation mode ────────────────────────────────
   // Only fires when doctor explicitly presses "Confirm" — NOT automatically.
   const handleConfirmDoses = React.useCallback(() => {
     if (!onDosesCalculated || batchResults.length === 0) return;
     onDosesCalculated(
-      batchResults.map((r) => {
+      batchResults
+        .filter((r) => !r.missingDose)
+        .map((r) => {
         const doseEntry = r.drug.dose?.[species];
         return {
           drugId: r.drug.drug_id,
@@ -313,7 +351,8 @@ export function DrugDoseCalculatorModal({
   }, [batchResults, doseUnit, species, onDosesCalculated, onClose]);
 
   const isSimulation = mode === "simulation";
-  const hasBatchDoses = batchResults.length > 0;
+  const hasBatchDoses = batchResults.some((r) => !r.missingDose);
+  const hasAnyDrugsSelected = effectiveDrugIds.length > 0;
 
   if (typeof document === "undefined") return null;
 
@@ -644,6 +683,106 @@ export function DrugDoseCalculatorModal({
                   )}
                 </div>
 
+                {/* ── Simulation mode: drug selector when no preselected drugs ── */}
+                {isSimulation && !hasPreselected && drugs.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-emerald flex items-center gap-1">
+                        <Pill className="w-3 h-3" />
+                        Select Drugs to Calculate
+                        {simSelectedDrugIds.length > 0 && (
+                          <span className="ml-1 text-muted-foreground/60 font-bold normal-case">
+                            ({simSelectedDrugIds.length} selected)
+                          </span>
+                        )}
+                      </p>
+                      {simSelectedDrugIds.length > 0 && (
+                        <button
+                          onClick={() => setSimSelectedDrugIds([])}
+                          className="text-[10px] text-muted-foreground hover:text-red-400 font-bold uppercase tracking-widest transition-colors"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                      <input
+                        type="text"
+                        value={simDrugSearch}
+                        onChange={(e) => setSimDrugSearch(e.target.value)}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        placeholder="Search drugs by name or class…"
+                        autoComplete="off"
+                        spellCheck={false}
+                        className="w-full pl-9 pr-3 py-2 rounded-xl bg-muted/30 border border-border/50 text-xs placeholder-muted-foreground focus:outline-none focus:border-emerald/50 transition-colors"
+                      />
+                      {simDrugSearch && (
+                        <button
+                          onClick={() => setSimDrugSearch("")}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-44 overflow-y-auto pr-1 space-y-1 custom-scrollbar">
+                      {simFilteredDrugs.length === 0 ? (
+                        <div className="py-4 text-center text-xs text-muted-foreground">
+                          No drugs found
+                        </div>
+                      ) : (
+                        simFilteredDrugs.map((drug) => {
+                          const parsed = getDoseMgPerKg(drug, species);
+                          const isSelected = simSelectedDrugIds.includes(drug.drug_id);
+                          return (
+                            <button
+                              key={drug.drug_id}
+                              onClick={() =>
+                                setSimSelectedDrugIds((prev) =>
+                                  prev.includes(drug.drug_id)
+                                    ? prev.filter((id) => id !== drug.drug_id)
+                                    : [...prev, drug.drug_id],
+                                )
+                              }
+                              className={`w-full text-left flex items-center gap-2.5 px-3 py-2 rounded-xl border transition-all text-xs ${
+                                isSelected
+                                  ? "bg-emerald/10 border-emerald/30"
+                                  : "bg-tint/3 border-transparent hover:bg-tint/5 hover:border-tint/10"
+                              }`}
+                            >
+                              <div
+                                className={`w-4 h-4 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${
+                                  isSelected
+                                    ? "bg-emerald border-emerald"
+                                    : "border-muted-foreground/30"
+                                }`}
+                              >
+                                {isSelected && <CheckCircle2 className="w-2.5 h-2.5 text-white" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <span className={`font-bold ${isSelected ? "text-emerald" : ""}`}>
+                                  {drug.name}
+                                </span>
+                                <span className="text-muted-foreground/60 ml-1.5">{drug.class}</span>
+                              </div>
+                              {parsed != null ? (
+                                <span className="shrink-0 px-2 py-0.5 rounded-lg bg-cyan/10 border border-cyan/20 text-cyan text-[10px] font-bold tabular-nums">
+                                  {parsed} mg/kg
+                                </span>
+                              ) : (
+                                <span className="shrink-0 px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold">
+                                  No {species} dose
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* ── Manual result (manual mode only) ── */}
                 {!isSimulation && (
                 <AnimatePresence>
@@ -718,21 +857,26 @@ export function DrugDoseCalculatorModal({
                   <div className="space-y-3">
                     <p className="text-[10px] font-black uppercase tracking-widest text-emerald flex items-center gap-1">
                       <Calculator className="w-3 h-3" />
-                      All Prescription Doses
+                      {hasPreselected ? "All Prescription Doses" : "Selected Drug Doses"}
                       <span className="ml-auto text-muted-foreground/60 font-bold normal-case">
                         {batchResults.length} drug{batchResults.length > 1 ? "s" : ""}
                       </span>
                     </p>
-                    {batchResults.map(({ drug, dosageMgPerKg, result: res, totalMg, rawDosage, effectiveConc, concSource, storedConcs, concIdx }) => (
-                      <div key={drug.drug_id} className="p-3.5 rounded-xl bg-emerald/5 border border-emerald/15 space-y-2">
+                    {batchResults.map(({ drug, dosageMgPerKg: dMgKg, result: res, totalMg, rawDosage, effectiveConc, concSource, storedConcs, concIdx, missingDose }) => (
+                      <div key={drug.drug_id} className={`p-3.5 rounded-xl space-y-2 ${missingDose ? "bg-amber-500/5 border border-amber-500/15" : "bg-emerald/5 border border-emerald/15"}`}>
                         {/* Drug name + result */}
                         <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="text-sm font-black text-emerald truncate">{drug.name}</p>
+                            <p className={`text-sm font-black truncate ${missingDose ? "text-amber-400" : "text-emerald"}`}>{drug.name}</p>
                             <p className="text-[10px] text-muted-foreground/60">{drug.class}</p>
                           </div>
                           <div className="text-right shrink-0">
-                            {res?.valid ? (
+                            {missingDose ? (
+                              <div className="flex items-center gap-1.5 text-xs text-amber-400">
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                                <span className="font-bold">No {species} dose data</span>
+                              </div>
+                            ) : res?.valid ? (
                               <div>
                                 <span className="text-lg font-black text-emerald tabular-nums">
                                   {res.dose} <span className="text-xs text-emerald/60">{doseUnit}</span>
@@ -755,7 +899,7 @@ export function DrugDoseCalculatorModal({
                           </div>
                         </div>
                         {/* Concentration type picker for drugs with multiple formulations */}
-                        {storedConcs.length > 1 && (
+                        {!missingDose && storedConcs.length > 1 && (
                           <div className="flex flex-wrap gap-1.5">
                             {storedConcs.map((conc, i) => {
                               const lbl = `${conc.value} mg${conc.form ? ` / ${conc.form}` : ""}`;
@@ -776,57 +920,83 @@ export function DrugDoseCalculatorModal({
                             })}
                           </div>
                         )}
+                        {/* Single concentration display */}
+                        {!missingDose && storedConcs.length === 1 && (
+                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                            <FlaskConical className="w-3 h-3 text-cyan" />
+                            <span>Concentration: <span className="font-bold text-cyan">{storedConcs[0].value} mg/{storedConcs[0].form || (doseUnit === "mL" ? "mL" : "tab")}</span></span>
+                          </div>
+                        )}
                         {/* Detail row */}
+                        {!missingDose && (
                         <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap pt-0.5 border-t border-emerald/10">
-                          <span>Dosage: <span className="font-bold text-cyan">{dosageMgPerKg} mg/kg</span>{rawDosage && <span className="opacity-60"> ({rawDosage})</span>}</span>
+                          <span>Dosage: <span className="font-bold text-cyan">{dMgKg} mg/kg</span>{rawDosage && <span className="opacity-60"> ({rawDosage})</span>}</span>
                           {effectiveConc != null && (
                             <span>Conc: <span className="font-bold">{effectiveConc} mg/{doseUnit === "mL" ? "mL" : "tab"}</span>{concSource === "db" && <span className="ml-1 text-emerald/60">(stored)</span>}</span>
                           )}
                         </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
 
                 {/* Prompt when inputs are incomplete */}
-                {!hasAllInputs && batchResults.length === 0 && (
+                {!hasAllInputs && batchResults.length === 0 && !isSimulation && (
                   <div className="p-6 rounded-2xl border border-border/30 bg-muted/5 text-center space-y-2">
                     <Calculator className="w-8 h-8 text-muted-foreground/30 mx-auto" />
                     <p className="text-sm text-muted-foreground font-medium">
-                      {preselectedDrugIds?.length
-                        ? "Enter patient weight to calculate all doses"
-                        : "Enter weight, dosage, and concentration"}
+                      Enter weight, dosage, and concentration
                     </p>
                     <p className="text-xs text-muted-foreground/60">
-                      {preselectedDrugIds?.length
-                        ? "Drug concentrations will be loaded from the database automatically"
-                        : "أدخل الوزن والجرعة والتركيز لحساب الجرعة"}
+                      أدخل الوزن والجرعة والتركيز لحساب الجرعة
                     </p>
                   </div>
                 )}
 
                 {/* ── Simulation mode: Confirm button ── */}
                 {isSimulation && hasBatchDoses && (
-                  <motion.button
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={handleConfirmDoses}
-                    className="w-full py-3.5 rounded-xl gradient-emerald-cyan text-primary-foreground text-sm font-black tracking-wide shadow-lg shadow-emerald/20 transition-all"
-                  >
-                    ✓ Confirm & Save Doses ({batchResults.length} drug{batchResults.length > 1 ? "s" : ""})
-                  </motion.button>
+                  (() => {
+                    const calculable = batchResults.filter((r) => !r.missingDose);
+                    return (
+                      <motion.button
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={handleConfirmDoses}
+                        className="w-full py-3.5 rounded-xl gradient-emerald-cyan text-primary-foreground text-sm font-black tracking-wide shadow-lg shadow-emerald/20 transition-all"
+                      >
+                        Confirm & Save Doses ({calculable.length} drug{calculable.length > 1 ? "s" : ""})
+                      </motion.button>
+                    );
+                  })()
                 )}
 
-                {isSimulation && !hasBatchDoses && w <= 0 && (
+                {isSimulation && !hasBatchDoses && w <= 0 && hasAnyDrugsSelected && (
                   <div className="p-6 rounded-2xl border border-border/30 bg-muted/5 text-center space-y-2">
                     <Calculator className="w-8 h-8 text-muted-foreground/30 mx-auto" />
                     <p className="text-sm text-muted-foreground font-medium">
-                      Enter patient weight above to calculate all prescription doses
+                      Enter patient weight above to calculate doses
                     </p>
                     <p className="text-xs text-muted-foreground/60">
                       Dosage and concentration will be loaded automatically from the drug database
+                    </p>
+                  </div>
+                )}
+
+                {isSimulation && !hasAnyDrugsSelected && !hasPreselected && (
+                  <div className="p-6 rounded-2xl border border-border/30 bg-muted/5 text-center space-y-2">
+                    <Pill className="w-8 h-8 text-muted-foreground/30 mx-auto" />
+                    <p className="text-sm text-muted-foreground font-medium">
+                      {drugs.length > 0
+                        ? "Select drugs above to calculate doses"
+                        : "No drugs available in the system"}
+                    </p>
+                    <p className="text-xs text-muted-foreground/60">
+                      {drugs.length > 0
+                        ? "Or create a prescription first, then open the calculator"
+                        : "Add drugs to the formulary to use the dose calculator"}
                     </p>
                   </div>
                 )}
