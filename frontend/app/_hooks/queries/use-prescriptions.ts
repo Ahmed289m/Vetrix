@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { prescriptionsApi } from "@/app/_lib/api/prescriptions.api";
+import { PRESCRIPTION_ITEMS_KEY } from "./use-prescription-items";
 import type {
   PrescriptionCreate,
   PrescriptionUpdate,
@@ -33,7 +34,12 @@ export function useCreatePrescription() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: PrescriptionCreate) => prescriptionsApi.create(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: PRESCRIPTIONS_KEY }),
+    onSuccess: () => {
+      // Backend creates prescription items alongside the prescription,
+      // so both caches must be invalidated for the UI to resolve drug IDs.
+      qc.invalidateQueries({ queryKey: PRESCRIPTIONS_KEY });
+      qc.invalidateQueries({ queryKey: PRESCRIPTION_ITEMS_KEY });
+    },
   });
 }
 
@@ -50,6 +56,9 @@ export function useDeletePrescription() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => prescriptionsApi.delete(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: PRESCRIPTIONS_KEY }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: PRESCRIPTIONS_KEY });
+      qc.invalidateQueries({ queryKey: PRESCRIPTION_ITEMS_KEY });
+    },
   });
 }

@@ -887,16 +887,19 @@ export default function SimulationMode({ role }: Props) {
             toast.success(
               `Prescription issued with ${selectedDrugIds.length} drug${
                 selectedDrugIds.length > 1 ? "s" : ""
-              }. Now calculate doses.`,
+              }. Click "Calculate Doses" to proceed.`,
+              { duration: 5000 },
             );
 
-            // ── Flow enforcement: open Dose Calculator next (not Visit modal) ──
-            // The doctor must calculate doses for all prescribed drugs before
-            // being allowed to create the visit.
+            // Close the prescription modal and reset selection.
+            // We intentionally do NOT auto-open the Dose Calculator here
+            // because react-query hasn't refetched the prescriptions/items
+            // yet — the Dose Calculator would open with an empty drug list.
+            // The step progress indicator shows "Calculate" as the next step,
+            // and the "Calculate Doses" button appears after refetch completes.
             setShowPressModal(false);
             setSelectedDrugIds([]);
             setDrugSearch("");
-            setShowDrugCalc(true);
           }
         },
         onError: () => {
@@ -1147,15 +1150,13 @@ export default function SimulationMode({ role }: Props) {
                           {rxs.length} Rx
                         </span>
                       </p>
-                      {rxs.map((rx) => {
-                        const drug = getDrugForRx(rx.prescription_id);
-                        const sKey = speciesKey(myActiveCase.petType);
-                        const sev = getDrugSeverityForSpecies(drug, sKey);
-                        const activePetForDose = allPets.find(
-                          (p) => p.pet_id === myActiveCase.petId,
-                        );
-                        // Check if all drugs in this Rx have been calculated
+                      {rxs.map((rx, rxIdx) => {
+                        // Gather ALL drugs for this prescription
                         const rxDrugIds = getAllDrugIdsForRx(rx.prescription_id);
+                        const rxDrugs = rxDrugIds
+                          .map((id) => allDrugs.find((d) => d.drug_id === id))
+                          .filter(Boolean) as Drug[];
+                        // Check if all drugs in this Rx have been calculated
                         const allCalced =
                           rxDrugIds.length > 0 &&
                           rxDrugIds.every(
@@ -1164,12 +1165,13 @@ export default function SimulationMode({ role }: Props) {
                         return (
                           <div
                             key={rx.prescription_id}
-                            className="px-3 py-2 rounded-xl bg-emerald/5 border border-emerald/15 text-xs group space-y-1"
+                            className="rounded-xl bg-emerald/5 border border-emerald/15 text-xs group overflow-hidden"
                           >
-                            <div className="flex items-center gap-2">
+                            {/* Prescription header */}
+                            <div className="flex items-center gap-2 px-3 py-2 border-b border-emerald/10">
                               <Pill className="w-3.5 h-3.5 text-emerald shrink-0" />
-                              <span className="font-bold text-emerald flex-1 truncate">
-                                {drug?.name || "Drug"}
+                              <span className="font-black text-emerald flex-1">
+                                Prescription {rxIdx + 1}
                               </span>
                               {/* Dose calculated badge */}
                               {allCalced ? (
@@ -1181,7 +1183,6 @@ export default function SimulationMode({ role }: Props) {
                                   Needs Calc
                                 </span>
                               )}
-                              {sev && <ToxicityBadge severity={sev} />}
                               <button
                                 onClick={() =>
                                   handleDeletePrescription(rx.prescription_id)
@@ -1191,48 +1192,76 @@ export default function SimulationMode({ role }: Props) {
                                 <Trash2 className="w-3 h-3 text-red-400" />
                               </button>
                             </div>
-                            {/* Show calculated dose if available */}
-                            {allCalced && rxDrugIds.map((drugId) => {
-                              const cd = calculatedDoses.get(drugId);
-                              if (!cd) return null;
-                              return (
-                                <div
-                                  key={drugId}
-                                  className="flex items-center gap-2 text-[10px] text-muted-foreground ml-5"
-                                >
-                                  <Calculator className="w-3 h-3 text-emerald shrink-0" />
-                                  <span className="font-black text-emerald">
-                                    {cd.totalMg} mg
-                                  </span>
-                                  {cd.dose != null && cd.doseUnit && (
-                                    <span className="text-cyan font-bold">
-                                      → {cd.dose} {cd.doseUnit}
-                                    </span>
-                                  )}
-                                  {cd.frequency && (
-                                    <span className="opacity-60">{cd.frequency}</span>
-                                  )}
+
+                            {/* Drug list for this prescription */}
+                            <div className="px-3 py-1.5 space-y-1">
+                              {rxDrugs.length > 0 ? (
+                                rxDrugs.map((drug) => {
+                                  const sKey = speciesKey(myActiveCase.petType);
+                                  const sev = getDrugSeverityForSpecies(drug, sKey);
+                                  const cd = calculatedDoses.get(drug.drug_id);
+                                  const activePetForDose = allPets.find(
+                                    (p) => p.pet_id === myActiveCase.petId,
+                                  );
+                                  return (
+                                    <div key={drug.drug_id} className="space-y-0.5">
+                                      <div className="flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald/60 shrink-0" />
+                                        <span className="font-bold text-foreground/90 flex-1 truncate">
+                                          {drug.name}
+                                        </span>
+                                        {drug.class && (
+                                          <span className="text-[9px] text-muted-foreground/50">
+                                            {drug.class}
+                                          </span>
+                                        )}
+                                        {sev && <ToxicityBadge severity={sev} />}
+                                      </div>
+                                      {/* Calculated dose */}
+                                      {cd && (cd.totalMg ?? 0) > 0 ? (
+                                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground ml-4">
+                                          <Calculator className="w-3 h-3 text-emerald shrink-0" />
+                                          <span className="font-black text-emerald">
+                                            {cd.totalMg} mg
+                                          </span>
+                                          {cd.dose != null && cd.doseUnit && (
+                                            <span className="text-cyan font-bold">
+                                              → {cd.dose} {cd.doseUnit}
+                                            </span>
+                                          )}
+                                          {cd.frequency && (
+                                            <span className="opacity-60">{cd.frequency}</span>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        /* Show auto-dose estimate if not calculated */
+                                        (() => {
+                                          const autoDose =
+                                            activePetForDose
+                                              ? calcAutoDose(
+                                                  drug,
+                                                  activePetForDose.weight,
+                                                  myActiveCase.petType,
+                                                )
+                                              : null;
+                                          if (!autoDose) return null;
+                                          return (
+                                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground ml-4 opacity-50">
+                                              <Calculator className="w-3 h-3 text-cyan shrink-0" />
+                                              <span>Est: <span className="font-bold text-cyan">{autoDose.mgPerKg} mg/kg × {activePetForDose?.weight} kg = {autoDose.totalMg} mg</span></span>
+                                            </div>
+                                          );
+                                        })()
+                                      )}
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <div className="text-muted-foreground/40 italic py-0.5">
+                                  Loading drugs…
                                 </div>
-                              );
-                            })}
-                            {/* Show auto-dose estimate if not yet calculated */}
-                            {!allCalced && (() => {
-                              const autoDose =
-                                drug && activePetForDose
-                                  ? calcAutoDose(
-                                      drug,
-                                      activePetForDose.weight,
-                                      myActiveCase.petType,
-                                    )
-                                  : null;
-                              if (!autoDose) return null;
-                              return (
-                                <div className="flex items-center gap-2 text-[10px] text-muted-foreground ml-5 opacity-60">
-                                  <Calculator className="w-3 h-3 text-cyan shrink-0" />
-                                  <span>Est: <span className="font-bold text-cyan">{autoDose.mgPerKg} mg/kg × {activePetForDose?.weight} kg = {autoDose.totalMg} mg</span></span>
-                                </div>
-                              );
-                            })()}
+                              )}
+                            </div>
                           </div>
                         );
                       })}
