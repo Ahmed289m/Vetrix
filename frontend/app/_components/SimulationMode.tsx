@@ -646,6 +646,7 @@ export default function SimulationMode({ role }: Props) {
       { id: apptId, data: { status: "in-progress", doctor_id: user.userId } },
       {
         onSuccess: () => {
+          const pet = allPets.find((p) => p.pet_id === appt.petId);
           // Initialize empty visit in database immediately
           createVisit.mutate(
             {
@@ -656,6 +657,7 @@ export default function SimulationMode({ role }: Props) {
               date: new Date().toISOString(),
               prescription_ids: [],
               calculated_doses: [],
+              weight_at_visit: pet?.weight,
             },
             {
               onSuccess: () => toast.success("Case accepted — you are the assigned doctor"),
@@ -969,6 +971,12 @@ export default function SimulationMode({ role }: Props) {
       { id: activePet.pet_id, data: { weight: w } },
       {
         onSuccess: () => {
+          if (activeSessionVisit) {
+            updateVisit.mutate({
+              id: activeSessionVisit.visit_id,
+              data: { weight_at_visit: w },
+            });
+          }
           toast.success(`Weight updated to ${w} kg`);
           setShowUpdateWeight(false);
         },
