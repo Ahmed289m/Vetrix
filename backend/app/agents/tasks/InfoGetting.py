@@ -23,6 +23,10 @@ Summarize all visits in a medical shape:
 - Do not write information that is not present in the input data.
 - Do not use label-like phrasing such as "key note is" or "medications are".
 - Use natural clinical sentences and smooth transitions between visits.
+- Weight tracking:
+    - If weight_at_visit is available for a visit, mention the patient's body weight for that visit.
+    - If the patient's weight changed between visits, note this as a clinical observation (e.g., weight gain, weight loss, or stable weight).
+    - Highlight significant or rapid weight changes as they may be clinically relevant.
 - Language policy:
     - If output_language is "ar", write the full report in professional Arabic.
     - In Arabic mode, avoid mixing English words unless a source drug name is only available in English.

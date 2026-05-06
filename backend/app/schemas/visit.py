@@ -19,6 +19,7 @@ class VisitCreate(BaseModel):
     prescription_id: str | None = None
     prescription_ids: list[str] | None = None
     calculated_doses: list[CalculatedDose] | None = None
+    weight_at_visit: float | None = None
     client_id: str
     notes: str | None = None
     pet_id: str
@@ -31,6 +32,7 @@ class VisitUpdate(BaseModel):
     prescription_id: str | None = None
     prescription_ids: list[str] | None = None
     calculated_doses: list[CalculatedDose] | None = None
+    weight_at_visit: float | None = None
     client_id: str | None = None
     notes: str | None = None
     pet_id: str | None = None
@@ -44,6 +46,7 @@ class VisitResponse(BaseModel):
     prescription_id: str | None = None
     prescription_ids: list[str] | None = None
     calculated_doses: list[CalculatedDose] | None = None
+    weight_at_visit: float | None = None
     clinic_id: str
     client_id: str
     notes: str | None = None

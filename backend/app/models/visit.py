@@ -8,6 +8,7 @@ class Visit(BaseModel):
     prescription_id: str | None = None
     prescription_ids: list[str] | None = None
     calculated_doses: list[dict] | None = None
+    weight_at_visit: float | None = None
     clinic_id: str
     client_id: str
     notes: str | None = None

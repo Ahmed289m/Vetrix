@@ -124,6 +124,7 @@ async def getVisitsInfo(pet_id: str, pet_type: str | None = None):
         result.append({
             "visit_notes": visit.get("notes"),
             "date": visit.get("date"),
+            "weight_at_visit": visit.get("weight_at_visit"),
             "medications": medications
         })
 

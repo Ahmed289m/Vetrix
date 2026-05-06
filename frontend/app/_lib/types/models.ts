@@ -145,6 +145,7 @@ export interface Visit {
   prescription_id?: string;
   prescription_ids?: string[];
   calculated_doses?: VisitCalculatedDose[];
+  weight_at_visit?: number;
   clinic_id: string;
   client_id: string;
   client_name?: string;
@@ -159,6 +160,7 @@ export interface VisitCreate {
   prescription_id?: string;
   prescription_ids?: string[];
   calculated_doses?: VisitCalculatedDose[];
+  weight_at_visit?: number;
   client_id: string;
   notes?: string;
   pet_id: string;
@@ -170,6 +172,7 @@ export interface VisitUpdate {
   prescription_id?: string;
   prescription_ids?: string[];
   calculated_doses?: VisitCalculatedDose[];
+  weight_at_visit?: number;
   client_id?: string;
   notes?: string;
   pet_id?: string;
