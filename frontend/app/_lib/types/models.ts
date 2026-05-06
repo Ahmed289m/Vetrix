@@ -142,6 +142,7 @@ export interface VisitCalculatedDose {
 
 export interface Visit {
   visit_id: string;
+  appointment_id?: string;
   prescription_id?: string;
   prescription_ids?: string[];
   calculated_doses?: VisitCalculatedDose[];
@@ -157,6 +158,7 @@ export interface Visit {
 }
 
 export interface VisitCreate {
+  appointment_id?: string;
   prescription_id?: string;
   prescription_ids?: string[];
   calculated_doses?: VisitCalculatedDose[];

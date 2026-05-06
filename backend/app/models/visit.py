@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class Visit(BaseModel):
     visit_id: str | None = Field(default=None, alias="_id")
+    appointment_id: str | None = None
     prescription_id: str | None = None
     prescription_ids: list[str] | None = None
     calculated_doses: list[dict] | None = None
@@ -17,3 +18,4 @@ class Visit(BaseModel):
     date: datetime
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+

@@ -183,10 +183,6 @@ class VisitService:
         payload = request.model_dump(exclude_none=True)
         payload = self._normalize_prescription_ids(payload)
         payload = self._normalize_calculated_doses(payload)
-        await self._require_calculated_doses(
-            payload.get("prescription_ids") or [],
-            payload.get("calculated_doses"),
-        )
         payload["clinic_id"] = clinic_id
         created = await self.crud.create(Visit(**payload))
         return self._normalize_visit_record(created)
@@ -318,10 +314,6 @@ class VisitService:
         
         payload = self._normalize_prescription_ids(request.model_dump(exclude_none=True))
         payload = self._normalize_calculated_doses(payload)
-        await self._require_calculated_doses(
-            payload.get("prescription_ids") or [],
-            payload.get("calculated_doses"),
-        )
         if not payload:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

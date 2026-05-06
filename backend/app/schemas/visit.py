@@ -16,6 +16,7 @@ class CalculatedDose(BaseModel):
 
 
 class VisitCreate(BaseModel):
+    appointment_id: str | None = None
     prescription_id: str | None = None
     prescription_ids: list[str] | None = None
     calculated_doses: list[CalculatedDose] | None = None
@@ -29,6 +30,7 @@ class VisitCreate(BaseModel):
 
 
 class VisitUpdate(BaseModel):
+    appointment_id: str | None = None
     prescription_id: str | None = None
     prescription_ids: list[str] | None = None
     calculated_doses: list[CalculatedDose] | None = None
@@ -43,6 +45,7 @@ class VisitUpdate(BaseModel):
 
 class VisitResponse(BaseModel):
     visit_id: str
+    appointment_id: str | None = None
     prescription_id: str | None = None
     prescription_ids: list[str] | None = None
     calculated_doses: list[CalculatedDose] | None = None

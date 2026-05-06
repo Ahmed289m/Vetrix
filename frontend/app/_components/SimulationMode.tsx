@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "@/app/_components/fast-motion";
 import {
@@ -273,11 +273,6 @@ function ToxicityBadge({ severity }: { severity?: string }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function SimulationMode({ role }: Props) {
-  // ── Session Rx tracking ──────────────────────────────────────────────────
-  const [sessionRxIds, setSessionRxIds] = useState<Set<string>>(new Set());
-
-  // ── Session visit tracking (one visit per session) ───────────────────────
-  const [sessionVisitCreated, setSessionVisitCreated] = useState(false);
 
   // ── Visit modal ──────────────────────────────────────────────────────────
   const [visitMode, setVisitMode] = useState<"create" | "edit">("create");
@@ -304,22 +299,6 @@ export default function SimulationMode({ role }: Props) {
 
   // ── Dose calculator modal ────────────────────────────────────────────
   const [showDrugCalc, setShowDrugCalc] = useState(false);
-  // Calculated doses keyed by drug_id — populated by onDosesCalculated callback
-  const [calculatedDoses, setCalculatedDoses] = useState<
-    Map<
-      string,
-      {
-        totalMg: number;
-        dose: number | null;
-        doseUnit: string | null;
-        concLabel: string;
-        drugName: string;
-        drugClass: string;
-        frequency: string | null;
-        route: string | null;
-      }
-    >
-  >(new Map());
 
   // ── Update weight modal ───────────────────────────────────────────────
   const [showUpdateWeight, setShowUpdateWeight] = useState(false);
@@ -419,6 +398,46 @@ export default function SimulationMode({ role }: Props) {
     () => simAppointments.filter((a) => a.simStatus === "pending-doctor"),
     [simAppointments],
   );
+
+  // ── Session State (DB Source of Truth) ──────────────────────────────────
+  const activeSessionVisit = useMemo(() => {
+    if (!myActiveCase) return null;
+    return allVisits.find(
+      (v) =>
+        v.pet_id === myActiveCase.petId &&
+        v.doctor_id === user?.userId &&
+        v.appointment_id === myActiveCase.appointment_id,
+    );
+  }, [allVisits, myActiveCase, user?.userId]);
+
+  const sessionCasePrescriptions = useMemo(() => {
+    if (!activeSessionVisit?.prescription_ids) return [];
+    return allPrescriptions.filter((rx) =>
+      activeSessionVisit.prescription_ids!.includes(rx.prescription_id),
+    );
+  }, [allPrescriptions, activeSessionVisit?.prescription_ids]);
+
+  const calculatedDoses = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        totalMg: number;
+        dose: number | null;
+        doseUnit: string | null;
+        concLabel: string;
+        drugName: string;
+        drugClass: string;
+        frequency: string | null;
+        route: string | null;
+      }
+    >();
+    if (activeSessionVisit?.calculated_doses) {
+      activeSessionVisit.calculated_doses.forEach((d) => {
+        map.set(d.drugId, d);
+      });
+    }
+    return map;
+  }, [activeSessionVisit?.calculated_doses]);
 
   // ── Drug helpers ─────────────────────────────────────────────────────────
   const getDrugForRx = (rxId: string): Drug | undefined => {
@@ -522,7 +541,7 @@ export default function SimulationMode({ role }: Props) {
     const unlinked = getUnlinkedCasePrescriptions(petId, clientId);
     if (!unlinked.length) return [];
     const unlinkedIds = new Set(unlinked.map((rx) => rx.prescription_id));
-    const sessionOrder = Array.from(sessionRxIds);
+    const sessionOrder = activeSessionVisit?.prescription_ids || [];
     for (let i = sessionOrder.length - 1; i >= 0; i--) {
       const rxId = sessionOrder[i];
       if (unlinkedIds.has(rxId)) {
@@ -533,15 +552,13 @@ export default function SimulationMode({ role }: Props) {
   };
 
   // ── Session Rx list ───────────────────────────────────────────────────────
-  const sessionCasePrescriptions = useMemo(
-    () => allPrescriptions.filter((rx) => sessionRxIds.has(rx.prescription_id)),
-    [allPrescriptions, sessionRxIds],
-  );
+  // Replaced by sessionCasePrescriptions derived from DB
 
   // ── Selected drugs for prescription modal ─────────────────────────────────
   const selectedDrugs: Drug[] = selectedDrugIds
     .map((id) => allDrugs.find((d) => d.drug_id === id))
     .filter(Boolean) as Drug[];
+
 
   // ── Drug interaction detection (by ID, name, or class) ──────────────────
   const drugInteractsWith = (a: Drug, b: Drug): boolean => {
@@ -622,14 +639,29 @@ export default function SimulationMode({ role }: Props) {
       toast.error("Complete your current case before accepting another.");
       return;
     }
+    const appt = simAppointments.find((a) => a.appointment_id === apptId);
+    if (!appt) return;
+
     updateAppointment.mutate(
       { id: apptId, data: { status: "in-progress", doctor_id: user.userId } },
       {
         onSuccess: () => {
-          setSessionRxIds(new Set());
-          setCalculatedDoses(new Map());
-          setSessionVisitCreated(false);
-          toast.success("Case accepted — you are the assigned doctor");
+          // Initialize empty visit in database immediately
+          createVisit.mutate(
+            {
+              appointment_id: apptId,
+              client_id: appt.clientId,
+              pet_id: appt.petId,
+              doctor_id: user.userId,
+              date: new Date().toISOString(),
+              prescription_ids: [],
+              calculated_doses: [],
+            },
+            {
+              onSuccess: () => toast.success("Case accepted — you are the assigned doctor"),
+              onError: () => toast.error("Failed to initialize visit record"),
+            }
+          );
         },
         onError: () => toast.error("Failed to accept case"),
       },
@@ -641,9 +673,6 @@ export default function SimulationMode({ role }: Props) {
       { id: apptId, data: { status: "completed" } },
       {
         onSuccess: () => {
-          setSessionRxIds(new Set());
-          setCalculatedDoses(new Map());
-          setSessionVisitCreated(false);
           toast.success("Case completed");
         },
         onError: () => toast.error("Failed to complete case"),
@@ -675,10 +704,11 @@ export default function SimulationMode({ role }: Props) {
     setEditingVisitId("");
     // Pre-link ALL session prescriptions — one visit can have multiple Rx.
     // Fall back to the standard auto-link when no session Rx exist.
-    const sessionRxForCase = Array.from(sessionRxIds).filter((rxId) => {
+    const sessionRxForCase = Array.from(sessionCasePrescriptions.map((r) => r.prescription_id)).filter((rxId) => {
       const rx = allPrescriptions.find((p) => p.prescription_id === rxId);
       return rx?.pet_id === petId && rx?.client_id === clientId;
     });
+
     setVisitPrescriptionIds(
       sessionRxForCase.length > 0
         ? sessionRxForCase
@@ -818,7 +848,6 @@ export default function SimulationMode({ role }: Props) {
       createVisit.mutate(payload, {
         onSuccess: () => {
           toast.success("Visit recorded.");
-          setSessionVisitCreated(true);
           setShowVisitModal(false);
         },
         onError: (err: unknown) =>
@@ -838,21 +867,23 @@ export default function SimulationMode({ role }: Props) {
 
   const handleDeletePrescription = (rxId: string) => {
     if (!confirm("Delete this prescription?")) return;
-    // Collect drug IDs for this prescription so we can clear their calculated doses
-    const rxDrugIds = getAllDrugIdsForRx(rxId);
     deletePrescription.mutate(rxId, {
       onSuccess: () => {
-        setSessionRxIds((prev) => {
-          const next = new Set(prev);
-          next.delete(rxId);
-          return next;
-        });
-        // Remove calculated doses for drugs that belonged to the deleted prescription
-        if (rxDrugIds.length > 0) {
-          setCalculatedDoses((prev) => {
-            const next = new Map(prev);
-            rxDrugIds.forEach((id) => next.delete(id));
-            return next;
+        if (activeSessionVisit) {
+          const nextRxIds = (activeSessionVisit.prescription_ids || []).filter(
+            (id) => id !== rxId,
+          );
+          const rxDrugIds = getAllDrugIdsForRx(rxId);
+          let nextDoses = activeSessionVisit.calculated_doses || [];
+          if (rxDrugIds.length > 0) {
+            nextDoses = nextDoses.filter((d) => !rxDrugIds.includes(d.drugId));
+          }
+          updateVisit.mutate({
+            id: activeSessionVisit.visit_id,
+            data: {
+              prescription_ids: nextRxIds,
+              calculated_doses: nextDoses,
+            },
           });
         }
         toast.success("Prescription deleted.");
@@ -883,7 +914,17 @@ export default function SimulationMode({ role }: Props) {
           const maybeResponse = res as { data?: { prescription_id?: string } };
           const rxId = maybeResponse?.data?.prescription_id;
           if (rxId) {
-            setSessionRxIds((prev) => new Set([...prev, rxId]));
+            if (activeSessionVisit) {
+              updateVisit.mutate({
+                id: activeSessionVisit.visit_id,
+                data: {
+                  prescription_ids: [
+                    ...(activeSessionVisit.prescription_ids || []),
+                    rxId,
+                  ],
+                },
+              });
+            }
             toast.success(
               `Prescription issued with ${selectedDrugIds.length} drug${
                 selectedDrugIds.length > 1 ? "s" : ""
@@ -1285,12 +1326,13 @@ export default function SimulationMode({ role }: Props) {
                       (id) => (calculatedDoses.get(id)?.totalMg ?? 0) > 0,
                     );
 
+                  const hasNotes = !!activeSessionVisit?.notes;
                   // Step index: 0=prescribe, 1=calculate, 2=visit, 3=complete
                   const stepIdx = !hasRx
                     ? 0
                     : !allDosesCalced
                       ? 1
-                      : !sessionVisitCreated
+                      : !hasNotes
                         ? 2
                         : 3;
 
@@ -1380,10 +1422,10 @@ export default function SimulationMode({ role }: Props) {
 
                   // Create Visit disabled until all drugs are calculated
                   const visitDisabled = hasRx && !allDosesCalced;
-                  // Visit already created this session — only one per session
-                  const visitAlreadyCreated = sessionVisitCreated;
-                  // Complete blocked if prescriptions exist but no visit recorded
-                  const completeBlocked = hasRx && !sessionVisitCreated;
+                  // Visit notes already created this session
+                  const visitAlreadyCreated = !!activeSessionVisit?.notes;
+                  // Complete blocked if prescriptions exist but no notes recorded
+                  const completeBlocked = hasRx && !visitAlreadyCreated;
 
                   return (
                     <div className="space-y-2.5 pt-1">
@@ -1430,13 +1472,11 @@ export default function SimulationMode({ role }: Props) {
                           <motion.button
                             whileHover={{ scale: visitDisabled ? 1 : 1.02 }}
                             whileTap={{ scale: visitDisabled ? 1 : 0.97 }}
-                            onClick={() =>
-                              openCreateVisit(
-                                myActiveCase.appointment_id,
-                                myActiveCase.petId,
-                                myActiveCase.clientId,
-                              )
-                            }
+                            onClick={() => {
+                              if (activeSessionVisit) {
+                                openEditVisit(activeSessionVisit);
+                              }
+                            }}
                             disabled={visitDisabled}
                             title={
                               visitDisabled
@@ -2860,22 +2900,18 @@ export default function SimulationMode({ role }: Props) {
               preselectedIds.length > 0 ? preselectedIds : undefined
             }
             onDosesCalculated={(results) => {
-              setCalculatedDoses((prev) => {
-                const next = new Map(prev);
-                results.forEach((r) =>
-                  next.set(r.drugId, {
-                    totalMg: r.totalMg,
-                    dose: r.dose,
-                    doseUnit: r.doseUnit,
-                    concLabel: r.concLabel,
-                    drugName: r.drugName,
-                    drugClass: r.drugClass,
-                    frequency: r.frequency,
-                    route: r.route,
-                  }),
-                );
-                return next;
+              if (!activeSessionVisit) return;
+              const currentDoses = activeSessionVisit.calculated_doses || [];
+              const dosesMap = new Map(currentDoses.map((d) => [d.drugId, d]));
+              results.forEach((r) => dosesMap.set(r.drugId, r));
+
+              updateVisit.mutate({
+                id: activeSessionVisit.visit_id,
+                data: {
+                  calculated_doses: Array.from(dosesMap.values()),
+                },
               });
+              setShowDrugCalc(false);
             }}
           />
         );
